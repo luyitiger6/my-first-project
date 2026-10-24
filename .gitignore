@@ -1,0 +1,26 @@
+# 构建产物
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# 日志与临时文件
+logs/
+*.log
+*.tmp
+.scaffold-tmp/
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# AI 工具的本地私有配置（团队共享的 commands/skills 要提交，私有配置不要）
+.claude/settings.local.json
+.qoder/*.local.json
