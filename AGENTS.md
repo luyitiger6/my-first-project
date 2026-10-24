@@ -71,6 +71,13 @@ my-first-project/
 │       │   ├── domain/              Todo / TodoService
 │       │   └── web/                 TodoController
 │       └── test/java/com/luyi/myfirst/  单元测试 + 容器装配契约测试
+├── frontend/                  Vue 3 + Vite + TypeScript（npm 项目根）
+│   ├── package.json           前端脚本（dev/build/test）与依赖
+│   └── src/
+│       ├── main.ts             入口（最小挂载）
+│       ├── api.ts              Todo API fetch 封装（/api/todos）
+│       ├── App.vue             Todo 界面（列表 / 新增 / 完成）
+│       └── App.spec.ts         组件测试（vitest + jsdom，mock api）
 ├── openspec/                  【工件层】
 │   ├── config.yaml              OpenSpec 配置（schema: spec-driven）
 │   ├── specs/                   当前真相：已归档能力的需求描述
@@ -81,7 +88,8 @@ my-first-project/
 │   └── checks/
 │       ├── 01-compile.ps1       能不能编译
 │       ├── 02-test.ps1          行为对不对 + 容器能不能装配
-│       └── 03-static-guard.ps1  有没有伪造绿灯
+│       ├── 03-static-guard.ps1  有没有伪造绿灯
+│       └── 04-frontend.ps1      前端：npm ci → build → test
 ├── .agents/skills/            【行为层】
 │   ├── systematic-debugging/    四阶段根因法
 │   └── verification-before-completion/  先证后宣布
@@ -96,7 +104,11 @@ my-first-project/
 | 只编译 | `powershell -File harness\checks\01-compile.ps1` |
 | 只跑测试 | `powershell -File harness\checks\02-test.ps1` |
 | 只查红线 | `powershell -File harness\checks\03-static-guard.ps1` |
+| 只查前端 | `powershell -File harness\checks\04-frontend.ps1` |
 | 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（访问 `http://localhost:8989/api/todos`） |
+| 前端开发 | `cd frontend; npm run dev`（开发代理 /api → 8989） |
+| 前端构建 | `cd frontend; npm run build` |
+| 前端测试 | `cd frontend; npm run test` |
 | 新建变更 | `/opsx:propose <想法>` |
 | 实施变更 | `/opsx:apply` |
 | 归档变更 | `/opsx:archive` |

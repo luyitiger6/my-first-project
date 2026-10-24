@@ -4,6 +4,10 @@ target/
 *.jar
 !.mvn/wrapper/maven-wrapper.jar
 
+# 前端（Node，根级双保险；frontend/.gitignore 另有同规则）
+node_modules/
+frontend/dist/
+
 # IDE
 .idea/
 *.iml

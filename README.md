@@ -20,11 +20,15 @@
 # 1. 验收当前代码是否健康（应该是 ALL CHECKS PASSED）
 powershell -File harness\run-all.ps1
 
-# 2. 启动服务
+# 2. 启动后端服务
 mvn -f backend/pom.xml spring-boot:run
 # 浏览器 / curl 访问 http://localhost:8989/api/todos
 
-# 3. 提一个新需求（会生成规格，不写代码）
+# 3. 启动前端（开发代理 /api → 8989）
+cd frontend; npm install; npm run dev
+# 浏览器访问 http://localhost:5173
+
+# 4. 提一个新需求（会生成规格，不写代码）
 #    在 AI 工具里执行：/opsx:propose 增加按完成状态过滤的查询
 ```
 
@@ -41,9 +45,10 @@ propose（定规格）→ 人工审阅 → apply（实施）→ harness（验收
 
 ```
 openspec/    规格与变更（proposal / specs / design / tasks / archive）
-harness/     三道闸门：compile → test → static-guard
+harness/     四道闸门：compile → test → static-guard → frontend
 .agents/     两个技能：systematic-debugging、verification-before-completion
 backend/     Spring Boot 后端（Todo 领域，Maven 项目根）
+frontend/    Vue 3 前端（Todo 界面，npm 项目根）
 AGENTS.md    AI 的入口契约，先读这个
 ```
 
@@ -51,7 +56,10 @@ AGENTS.md    AI 的入口契约，先读这个
 
 - JDK 17+（本机 25 已验证可用）
 - Maven 3.9+
-- Node.js 20.19+（仅 `openspec` CLI 需要）
+- Node.js 20.19+（前端构建 + `openspec` CLI 需要）
+
+npm registry 提示：如默认源访问慢，可切换镜像（本机验证可用：`https://mirrors.tencent.com/npm/`），
+但团队若自建私有源，以私有源为准，`package-lock.json` 会钉住版本不受源切换影响。
 
 ## 设计取舍
 
