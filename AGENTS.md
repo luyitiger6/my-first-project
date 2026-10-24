@@ -57,6 +57,8 @@
 
 技能不是建议，是流程的一部分。跳过技能等同于跳过检查。
 
+上表两个自研强制技能（`systematic-debugging`、`verification-before-completion`）以 `.agents/skills/` 为编写真源，逐字节分发到 `.claude/skills/`、`.qoder/skills/`、`.opencode/skills/`，四个适配层的 agent 都能获得同等的文件级强化，不再依赖各自读 AGENTS.md 文字；分发关系与「先改真源再同步副本」的修订顺序见 §6。
+
 ## 6. 目录地图
 
 ```
@@ -93,10 +95,12 @@ my-first-project/
 │       └── 05-scaffold-check.ps1 模板改名演练 + 残留扫描
 ├── scaffold/                  【模板改名】
 │   └── rename.mjs              分发后第一步执行：替换模板身份标识
-├── .agents/skills/            【行为层】
+├── .agents/skills/            【行为层】自研技能编写真源（source of truth）
 │   ├── systematic-debugging/    四阶段根因法
 │   └── verification-before-completion/  先证后宣布
-└── .claude/ .qoder/ .opencode/ 各 AI 工具适配层（由 openspec init 生成）
+└── .claude/ .qoder/ .opencode/ 各 AI 工具适配层：openspec-* 技能与 commands 由 openspec init 生成；
+                                 上述两个自研技能在此为分发副本，内容与真源逐字节一致。
+                                 修订顺序固定为「先改 .agents/skills/ 真源 → 再同步三处副本」，禁止直接改副本。
 ```
 
 ## 7. 命令速查
@@ -132,4 +136,4 @@ my-first-project/
 
 - 本骨架**不连接任何外部中间件**，保证 `mvn test` 在任何机器上可重复执行。接入数据库/缓存后，应把「起容器」也纳入 Harness，否则护栏会出现空洞。
 - 静态红线目前只有三条，由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
-- `openspec/specs/` 在第一次归档前是空的，这是正常的：真相从第一次变更开始积累。
+- `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。
