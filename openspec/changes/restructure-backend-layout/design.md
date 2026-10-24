@@ -49,6 +49,15 @@
 
 - 理由：分阶段执行必然出现短暂红灯，且无信息量；以「全部改完 → run-all 退出码 0」作为唯一验收点。
 
+**D6：服务端口由 8080 调整为 8989**
+
+- 理由：按用户要求调整。端口属于运行配置，不影响 API 契约；后续 change 中前端 dev 代理将以 8989 作为后端地址。
+
+**D7：Java 包名重命名为 `com.luyi.myfirst`，pom `groupId` 对齐为 `com.luyi`**
+
+- 理由：`com.example` 是示例占位域，模板应使用真实组织域；`artifactId` 保持 `my-first-project`，复制时的最终命名替换留给 change 3 的 scaffold 脚本。
+- 备选：仅改包名、groupId 不动 —— 否决：Maven 坐标与包名长期不一致会误导模板复制者。
+
 ## Risks / Trade-offs
 
 - [迁移是结构性手术，中途出错必须可回滚] → apply 开始前以当前干净工作区为基线 commit 并记录 hash；迁移验证全绿后再提交，中途任何失败可用基线回滚
@@ -61,5 +70,5 @@
 1. 确认工作区干净，以当前 HEAD 为回滚基线（记录基线 hash）
 2. 一次性执行 tasks 中的全部移动与修改
 3. `powershell -File harness\run-all.ps1` → 退出码必须为 0
-4. `mvn -f backend/pom.xml spring-boot:run` → 访问 `http://localhost:8080/api/todos` 正常
+4. `mvn -f backend/pom.xml spring-boot:run` → 访问 `http://localhost:8989/api/todos` 正常
 5. 删除根 `target/`，确认 Harness 再次全绿

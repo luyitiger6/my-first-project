@@ -13,8 +13,10 @@
 - `harness/checks/03-static-guard.ps1`：源码扫描根从仓库根改为 `backend/src`
 - `AGENTS.md` 目录地图与命令速查、`README.md` 目录说明与快速开始命令同步更新（`mvn spring-boot:run` 改为在 `backend/` 下执行）
 - 清理仓库根的过期构建产物目录 `target/`
+- 服务监听端口由 8080 调整为 8989（`application.yml` 的 `server.port`）
+- Java 包名由 `com.example.myfirstproject` 重命名为 `com.luyi.myfirst`（目录结构、package 声明、import 同步；pom `groupId` 由 `com.example` 对齐为 `com.luyi`，`artifactId` 保持不变）
 
-无 **BREAKING** 变更：对外 API（`/api/todos`）、端口（8080）、依赖与配置值全部不变，仅目录布局变化。
+除监听端口由 8080 调整为 8989 外，无 **BREAKING** 变更：对外 API（`/api/todos`）与依赖全部不变。端口属于运行配置，不改变 API 契约与业务行为，故本 change 仍不产生 delta spec。
 
 ## Capabilities
 
@@ -30,8 +32,10 @@
 
 ## Impact
 
-- 代码：5 个 Java 文件与 `application.yml` 位置变化，内容不变
+- 代码：5 个 Java 文件迁入 `backend/` 且包名重命名为 `com.luyi.myfirst`；`application.yml` 随迁入 `backend/` 且端口调整为 8989
+- 命名：pom `groupId` 由 `com.example` 对齐为 `com.luyi`；`artifactId` 保持不变
 - 构建：Maven 工作目录由仓库根变为 `backend/`；`mvn spring-boot:run` 等命令需在 `backend/` 下执行
+- 配置：`server.port` 由 8080 改为 8989；文档中所有访问地址同步更新
 - 护栏：`harness/checks/` 三个脚本的路径假设全部更新
 - 文档：`AGENTS.md` 目录地图与命令速查、`README.md` 目录说明与快速开始命令
 - 依赖：无新增、无移除
