@@ -8,7 +8,7 @@
 
 - 迁移后 `powershell -File harness\run-all.ps1` 必须退出码 0（护栏优先）
 - 任何 Java 源码与配置内容不得改变
-- 项目尚未纳入 git 版本控制（见 Risks）
+- 项目已纳入 git 并发布至 GitHub，本地 main 与 origin/main 一致（回滚策略见 Risks）
 
 ## Goals / Non-Goals
 
@@ -51,14 +51,14 @@
 
 ## Risks / Trade-offs
 
-- [项目无 git 版本控制，迁移是纯文件系统操作，出错无法回滚] → 执行移动前先在仓库外做一次完整备份，再开始迁移
+- [迁移是结构性手术，中途出错必须可回滚] → apply 开始前以当前干净工作区为基线 commit 并记录 hash；迁移验证全绿后再提交，中途任何失败可用基线回滚
 - [根 `target/` 是旧构建产物，迁移后 Maven 会在 `backend/target` 重新生成，若不清理将长期并存两份] → tasks 显式包含删除根 `target/`
 - [`AGENTS.md` 与 `README.md` 中路径描述分散多处，漏改一处会误导模板复制者] → tasks 逐条列全：AGENTS.md §6 目录地图、§7 命令速查；README 目录段与快速开始
 - [`run-all.ps1` 锚定仓库根、以子进程调用 checks，理论上无需改动] → 验收时显式验证，若 run-all 有隐含路径假设则一并修正
 
 ## Migration Plan
 
-1. 在仓库外做完整备份
+1. 确认工作区干净，以当前 HEAD 为回滚基线（记录基线 hash）
 2. 一次性执行 tasks 中的全部移动与修改
 3. `powershell -File harness\run-all.ps1` → 退出码必须为 0
 4. `mvn -f backend/pom.xml spring-boot:run` → 访问 `http://localhost:8080/api/todos` 正常

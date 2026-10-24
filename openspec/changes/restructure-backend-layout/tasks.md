@@ -1,8 +1,8 @@
 # Tasks
 
-## 1. 迁移前备份
+## 1. 回滚基线
 
-- [ ] 1.1 将整个仓库复制到仓库外临时目录作为备份，并核对文件总数与源一致（验证：备份目录存在，且 `Get-ChildItem -Recurse` 文件计数与源相同）
+- [ ] 1.1 确认工作区干净并以当前 HEAD 为回滚基线（验证：`git status` 无改动输出，`git log -1` 记录基线 hash）
 
 ## 2. 目录迁移
 
@@ -28,4 +28,5 @@
 ## Workflow follow-up
 
 - 验收通过后按项目流程归档本 change：`/opsx:archive`
+- 迁移验证全绿后提交第二个 commit，与 1.1 基线形成「迁移前 → 迁移后」两个审计点（提交时机由人决定，AI 不主动提交）
 - 归档后 `openspec/specs/` 无新增（本 change 声明 skip_specs），`openspec/changes/archive/` 出现本 change
