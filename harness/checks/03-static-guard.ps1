@@ -10,7 +10,7 @@
 $projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $projectRoot
 
-$srcDir = Join-Path $projectRoot 'src'
+$srcDir = Join-Path $projectRoot 'backend\src'
 if (-not (Test-Path $srcDir)) {
     Write-Host "src directory not found: $srcDir" -ForegroundColor Red
     exit 1

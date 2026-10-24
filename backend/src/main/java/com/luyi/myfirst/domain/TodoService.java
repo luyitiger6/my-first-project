@@ -1,4 +1,4 @@
-package com.example.myfirstproject.domain;
+package com.luyi.myfirst.domain;
 
 import org.springframework.stereotype.Service;
 

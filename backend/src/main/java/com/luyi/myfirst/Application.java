@@ -1,4 +1,4 @@
-package com.example.myfirstproject;
+package com.luyi.myfirst;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

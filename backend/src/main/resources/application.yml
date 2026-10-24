@@ -1,6 +1,6 @@
 # 最小运行配置：不引入任何外部中间件，保证 mvn test / 启动开箱即用
 server:
-  port: 8080
+  port: 8989
 
 spring:
   application:

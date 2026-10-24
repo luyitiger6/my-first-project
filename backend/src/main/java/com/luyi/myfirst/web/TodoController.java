@@ -1,7 +1,7 @@
-package com.example.myfirstproject.web;
+package com.luyi.myfirst.web;
 
-import com.example.myfirstproject.domain.Todo;
-import com.example.myfirstproject.domain.TodoService;
+import com.luyi.myfirst.domain.Todo;
+import com.luyi.myfirst.domain.TodoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

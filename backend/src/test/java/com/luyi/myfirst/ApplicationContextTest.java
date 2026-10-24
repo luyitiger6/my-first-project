@@ -1,4 +1,4 @@
-package com.example.myfirstproject;
+package com.luyi.myfirst;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

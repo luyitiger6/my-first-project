@@ -6,7 +6,8 @@
     注意：本检查不允许 -DskipTests，跳过测试等于拆掉护栏。
 #>
 $projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-Set-Location $projectRoot
+# Maven 项目根已迁入 backend/（change: restructure-backend-layout）
+Set-Location (Join-Path $projectRoot 'backend')
 
 Write-Host 'Running: mvn -B test' -ForegroundColor DarkGray
 & mvn -B test

@@ -9,7 +9,7 @@
 一个 Spring Boot 3.5.5 / Java 17 的最小工程。它的业务功能（待办事项）刻意做得极简，
 真正要沉淀的是**「AI 编码如何被约束」这件事如何变成可执行、可验证、可追溯的骨架**。
 
-一句话：**这个仓库的价值不在 src/，在护栏。**
+一句话：**这个仓库的价值不在 backend/，在护栏。**
 
 ## 2. 三层分工
 
@@ -63,7 +63,14 @@
 my-first-project/
 ├── AGENTS.md                  ← 你正在读的文件
 ├── README.md                  人看的快速上手
-├── pom.xml                    Spring Boot 3.5.5 / Java 17
+├── backend/                   Spring Boot 3.5.5 / Java 17（Maven 项目根）
+│   ├── pom.xml                Maven 构建文件
+│   └── src/
+│       ├── main/java/com/luyi/myfirst/
+│       │   ├── Application.java
+│       │   ├── domain/              Todo / TodoService
+│       │   └── web/                 TodoController
+│       └── test/java/com/luyi/myfirst/  单元测试 + 容器装配契约测试
 ├── openspec/                  【工件层】
 │   ├── config.yaml              OpenSpec 配置（schema: spec-driven）
 │   ├── specs/                   当前真相：已归档能力的需求描述
@@ -78,13 +85,7 @@ my-first-project/
 ├── .agents/skills/            【行为层】
 │   ├── systematic-debugging/    四阶段根因法
 │   └── verification-before-completion/  先证后宣布
-├── .claude/ .qoder/ .opencode/ 各 AI 工具适配层（由 openspec init 生成）
-└── src/
-    ├── main/java/com/example/myfirstproject/
-    │   ├── Application.java
-    │   ├── domain/              Todo / TodoService
-    │   └── web/                 TodoController
-    └── test/java/               单元测试 + 容器装配契约测试
+└── .claude/ .qoder/ .opencode/ 各 AI 工具适配层（由 openspec init 生成）
 ```
 
 ## 7. 命令速查
@@ -95,7 +96,7 @@ my-first-project/
 | 只编译 | `powershell -File harness\checks\01-compile.ps1` |
 | 只跑测试 | `powershell -File harness\checks\02-test.ps1` |
 | 只查红线 | `powershell -File harness\checks\03-static-guard.ps1` |
-| 启动服务 | `mvn spring-boot:run`（访问 `http://localhost:8080/api/todos`） |
+| 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（访问 `http://localhost:8989/api/todos`） |
 | 新建变更 | `/opsx:propose <想法>` |
 | 实施变更 | `/opsx:apply` |
 | 归档变更 | `/opsx:archive` |

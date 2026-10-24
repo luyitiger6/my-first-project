@@ -32,7 +32,7 @@
 
 ## Impact
 
-- 代码：5 个 Java 文件迁入 `backend/` 且包名重命名为 `com.luyi.myfirst`；`application.yml` 随迁入 `backend/` 且端口调整为 8989
+- 代码：6 个 Java 文件迁入 `backend/` 且包名重命名为 `com.luyi.myfirst`；`application.yml` 随迁入 `backend/` 且端口调整为 8989
 - 命名：pom `groupId` 由 `com.example` 对齐为 `com.luyi`；`artifactId` 保持不变
 - 构建：Maven 工作目录由仓库根变为 `backend/`；`mvn spring-boot:run` 等命令需在 `backend/` 下执行
 - 配置：`server.port` 由 8080 改为 8989；文档中所有访问地址同步更新

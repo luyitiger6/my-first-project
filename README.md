@@ -21,8 +21,8 @@
 powershell -File harness\run-all.ps1
 
 # 2. 启动服务
-mvn spring-boot:run
-# 浏览器 / curl 访问 http://localhost:8080/api/todos
+mvn -f backend/pom.xml spring-boot:run
+# 浏览器 / curl 访问 http://localhost:8989/api/todos
 
 # 3. 提一个新需求（会生成规格，不写代码）
 #    在 AI 工具里执行：/opsx:propose 增加按完成状态过滤的查询
@@ -43,7 +43,7 @@ propose（定规格）→ 人工审阅 → apply（实施）→ harness（验收
 openspec/    规格与变更（proposal / specs / design / tasks / archive）
 harness/     三道闸门：compile → test → static-guard
 .agents/     两个技能：systematic-debugging、verification-before-completion
-src/         Spring Boot 最小实现（Todo 领域）
+backend/     Spring Boot 后端（Todo 领域，Maven 项目根）
 AGENTS.md    AI 的入口契约，先读这个
 ```
 

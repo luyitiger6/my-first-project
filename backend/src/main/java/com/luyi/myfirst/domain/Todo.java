@@ -1,4 +1,4 @@
-package com.example.myfirstproject.domain;
+package com.luyi.myfirst.domain;
 
 /**
  * 待办事项。使用 record 保证不可变，完成状态通过生成新实例表达，
