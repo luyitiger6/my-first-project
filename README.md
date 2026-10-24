@@ -32,6 +32,22 @@ cd frontend; npm install; npm run dev
 #    在 AI 工具里执行：/opsx:propose 增加按完成状态过滤的查询
 ```
 
+## 模板改名（clone 后第一步）
+
+仓库里刻着模板作者的项目身份（`my-first-project` / `com.luyi` / `myfirst`），
+分发出去的新项目要先把它们换成自己的：
+
+```powershell
+node scaffold/rename.mjs --name <新项目名> --package <新包名>
+# 例：node scaffold/rename.mjs --name order-service --package com.acme.order
+```
+
+- `--name`：kebab-case 项目名（Maven artifactId、Spring 应用名、文档标题）
+- `--package`：点分小写的 Java 包名（至少两段；groupId 自动取去掉末段的前缀）
+- 脚本只改 10 个模板身份文件与 2 个包目录，不碰 `openspec/` 历史工件与构建产物
+- 改名后运行 `powershell -File harness\run-all.ps1` 验收——五道闸门含「改名演练 + 残留扫描」，漏改一处就会被拦下
+- 已改名仓库重复执行会被拒绝（需要 git 还原后再试）
+
 ## 工作流
 
 ```
@@ -45,7 +61,8 @@ propose（定规格）→ 人工审阅 → apply（实施）→ harness（验收
 
 ```
 openspec/    规格与变更（proposal / specs / design / tasks / archive）
-harness/     四道闸门：compile → test → static-guard → frontend
+harness/     五道闸门：compile → test → static-guard → frontend → scaffold-check
+scaffold/    模板改名脚本（分发出去后第一步执行）
 .agents/     两个技能：systematic-debugging、verification-before-completion
 backend/     Spring Boot 后端（Todo 领域，Maven 项目根）
 frontend/    Vue 3 前端（Todo 界面，npm 项目根）
@@ -56,7 +73,7 @@ AGENTS.md    AI 的入口契约，先读这个
 
 - JDK 17+（本机 25 已验证可用）
 - Maven 3.9+
-- Node.js 20.19+（前端构建 + `openspec` CLI 需要）
+- Node.js 20.19+（前端构建 + `openspec` CLI + 模板改名脚本需要）
 
 npm registry 提示：如默认源访问慢，可切换镜像（本机验证可用：`https://mirrors.tencent.com/npm/`），
 但团队若自建私有源，以私有源为准，`package-lock.json` 会钉住版本不受源切换影响。

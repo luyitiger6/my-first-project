@@ -28,10 +28,10 @@
 硬编码一个「旧名 → 新值」映射 + 文件清单，逐文件精确替换（不做全仓库盲替换，避免误伤 `openspec/changes/archive/` 里的历史工件与 .git）。目录重命名在文本替换之后执行。
 
 ### D4: 残留扫描用同一份旧名清单
-残留扫描（05 闸门演练环节）只认三类旧名 token：`my-first-project`、`com.luyi`、`myfirst`，并排除 `.git/`、`target/`、`node_modules/`、`dist/`、`openspec/changes/archive/`。扫描命中即输出文件位置并以非 0 退出。
+残留扫描（05 闸门演练环节）只认三类旧名 token：`my-first-project`、`com.luyi`（含路径形式 `com/luyi`）、`myfirst`，并排除 `.git/`、`target/`、`node_modules/`、`dist/`、整个 `openspec/`（流程工件层不属于模板身份点，在飞 change 与归档工件中引用旧名属于历史描述）以及改名工具自身（`scaffold/rename.mjs` 与 05 闸门脚本——它们是旧名字面量的单一事实源）。扫描命中即输出文件位置并以非 0 退出。
 
 ### D5: 05 闸门 = 临时目录演练
-`harness/checks/05-scaffold-check.ps1` 流程：复制仓库（排除 `.git`、构建产物、`openspec/changes/archive/`）到临时目录 → 在副本中执行 `rename.mjs --name demo-app --package com.demo.app` → 在副本中执行残留扫描 → 清理临时目录 → 全过 exit 0，任一步失败 exit 1。这样模板自身（未改名）与改名后的使用者仓库都能过闸门。
+`harness/checks/05-scaffold-check.ps1` 流程：复制仓库（排除 `.git`、`target/`、`node_modules/`、`dist/`；`openspec/` 随副本复制但由扫描阶段的排除规则覆盖）到临时目录 → 在副本中执行 `rename.mjs --name demo-app --package com.demo.app` → 在副本中执行残留扫描 → 清理临时目录 → 全过 exit 0，任一步失败 exit 1。这样模板自身（未改名）与改名后的使用者仓库都能过闸门。
 
 ### D6: 演练不含编译验证
 05 闸门只验证「替换完整性」（文本 + 残留扫描），不在临时目录跑 mvn/npm 编译——闸门要快且不依赖演练环境；改名后编译是否通过由使用者本地的 `run-all.ps1` 四闸门兜底（改名后仓库跑 run-all 是 README 指引的一部分）。

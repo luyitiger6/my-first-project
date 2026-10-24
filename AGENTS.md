@@ -89,7 +89,10 @@ my-first-project/
 │       ├── 01-compile.ps1       能不能编译
 │       ├── 02-test.ps1          行为对不对 + 容器能不能装配
 │       ├── 03-static-guard.ps1  有没有伪造绿灯
-│       └── 04-frontend.ps1      前端：npm ci → build → test
+│       ├── 04-frontend.ps1      前端：npm ci → build → test
+│       └── 05-scaffold-check.ps1 模板改名演练 + 残留扫描
+├── scaffold/                  【模板改名】
+│   └── rename.mjs              分发后第一步执行：替换模板身份标识
 ├── .agents/skills/            【行为层】
 │   ├── systematic-debugging/    四阶段根因法
 │   └── verification-before-completion/  先证后宣布
@@ -105,6 +108,8 @@ my-first-project/
 | 只跑测试 | `powershell -File harness\checks\02-test.ps1` |
 | 只查红线 | `powershell -File harness\checks\03-static-guard.ps1` |
 | 只查前端 | `powershell -File harness\checks\04-frontend.ps1` |
+| 只查改名 | `powershell -File harness\checks\05-scaffold-check.ps1` |
+| 模板改名 | `node scaffold/rename.mjs --name <新项目名> --package <新包名>`（改名后跑一键验收） |
 | 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（访问 `http://localhost:8989/api/todos`） |
 | 前端开发 | `cd frontend; npm run dev`（开发代理 /api → 8989） |
 | 前端构建 | `cd frontend; npm run build` |
