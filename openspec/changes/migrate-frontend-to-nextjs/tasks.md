@@ -37,7 +37,7 @@
 
 - [x] 6.1 更新父仓库文档：`AGENTS.md` §6/§7（Vue 3 + Vite → Next.js App Router、前端端口 3000、目录清单）、`README.md`（框架描述、启动端口、Node 版本）、`docs/specs/todo-module-spec.md`（`App.vue` → `components/TodoApp.tsx`、`src/api.ts` → `lib/api.ts`），验证：在上述三个文件中 grep 无 `Vue`、`@vue`、`5173`、`App.vue`、`src/api.ts` 残留
 - [x] 6.2 运行 `powershell -File harness\run-all.ps1`，验证：退出码 0 且六道闸门全部输出通过
-- [ ] 6.3 经人工确认后提交并推送 `frontend` 子模块，父仓库 `git add frontend` 更新 gitlink，与 harness 及文档改动一并提交，验证：`git submodule status` 中 frontend 条目无 `+` 前缀，且再次运行 `run-all.ps1` 退出码 0
+- [x] 6.3 经人工确认后提交并推送 `frontend` 子模块，父仓库 `git add frontend` 更新 gitlink，与 harness 及文档改动一并提交，验证：`git submodule status` 中 frontend 条目无 `+` 前缀，且再次运行 `run-all.ps1` 退出码 0
 
 ## Workflow follow-up
 
