@@ -13,9 +13,10 @@ $oldDisplay = 'AI' + 'WorkSpace'
 $oldSlug = 'ai' + '-workspace'
 
 # 复制排除：不属于工作区身份改名范围，或体积/性质不适合复制
+# .qoder 是 IDE 目录，其中的 repowiki 由工具自动生成且不随改名更新，按 spec「扫描 MUST 排除 IDE 目录」整体排除
 $copyExcludedDirs = @(
     '.git', 'backend', 'frontend', 'openspec', 'docs',
-    '.idea', '.vscode', '.scaffold-tmp',
+    '.idea', '.vscode', '.qoder', '.scaffold-tmp',
     'target', 'node_modules', 'dist'
 )
 

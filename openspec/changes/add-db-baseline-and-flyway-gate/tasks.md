@@ -18,8 +18,8 @@
 ## 4. Flyway Harness 闸门
 
 - [x] 4.1 新增 `harness/checks/06-flyway.ps1`（UTF-8 with BOM）：检查 `127.0.0.1:8806` 的 MySQL 8 可连接；凭据优先读 `FLYWAY_DB_PASSWORD`，未设置时若 8806 由 Docker 容器发布则从容器环境读取 root 密码；只重建专用 schema `ai_chat_gate`（schema 名守卫，禁止对 `green-note` 执行 DDL）；调用 Flyway Maven 插件迁移；用容器内 `mysql` 客户端查询 `information_schema` 断言四张表、关键唯一键/索引/CHECK/生成列存在；再次迁移验证幂等；不启动/删除容器；失败时输出原因并 exit 1，不做交互提问；验证：单独运行脚本退出码 0，`green-note` 表集合不变，`docker ps` 前后容器列表一致
-- [ ] 4.2 负向验证闸门：临时新增一条语法错误的 `V2__broken.sql`，运行 `06-flyway.ps1` 确认退出码 1 且输出指向失败迁移；删除临时文件后再次运行确认退出码 0；验证：两次退出码分别为 1 和 0，且两次执行前后容器列表一致，`green-note` 未被改动
-- [ ] 4.3 确认 `run-all.ps1` 无需修改即可按文件名排序执行第 6 道闸门；验证：`run-all.ps1` 输出包含 `06-flyway`，且 01–05 仍按原顺序执行
+- [x] 4.2 负向验证闸门：临时新增一条语法错误的 `V2__broken.sql`，运行 `06-flyway.ps1` 确认退出码 1 且输出指向失败迁移；删除临时文件后再次运行确认退出码 0；验证：两次退出码分别为 1 和 0，且两次执行前后容器列表一致，`green-note` 未被改动
+- [x] 4.3 确认 `run-all.ps1` 无需修改即可按文件名排序执行第 6 道闸门；验证：`run-all.ps1` 输出包含 `06-flyway`，且 01–05 仍按原顺序执行
 
 ## 5. 入口文档与边界更新
 
@@ -30,10 +30,11 @@
 
 - [x] 6.1 在未启动 MySQL 的情况下单独运行 `01-compile.ps1` 与 `02-test.ps1`；验证：两个脚本退出码均为 0
 - [x] 6.2 在未配置数据源的情况下启动后端并调用 Todo 接口；验证：应用正常启动，`GET /api/todos` 返回 200
-- [ ] 6.3 运行完整 `harness\run-all.ps1`；验证：退出码 0，00–06 全部通过，未新建/删除容器，且 `green-note` 表集合未变
-- [ ] 6.4 运行 `openspec validate "add-db-baseline-and-flyway-gate" --strict`；验证：输出 valid，无警告
+- [x] 6.3 运行完整 `harness\run-all.ps1`；验证：退出码 0，00–06 全部通过，未新建/删除容器，且 `green-note` 表集合未变
+- [x] 6.4 运行 `openspec validate "add-db-baseline-and-flyway-gate" --strict`；验证：输出 valid，无警告
 
 ## Workflow follow-up
 
 - 人工审阅 proposal / spec / design / tasks 后，再进入 apply 实施。
 - 实施完成后按仓库约定提交；归档前确认迁移与文档一致。
+- 验收期间发现 05 闸门会把 `.qoder/repowiki`（IDE 自动生成物，不随改名脚本更新）判为旧身份残留；按 `workspace-scaffold` spec「扫描 MUST 排除 IDE 目录」把 `.qoder` 加入 05 的复制/扫描排除，未改动其他闸门逻辑。
