@@ -1,11 +1,12 @@
 ﻿<#
-    闸门 3/3：静态红线
-    拦截 AI 编码里最常见的三种「假通过」：
-      1. 留 TODO / FIXME / XXX 占位就宣布完成
-      2. 用 System.out.println 代替日志系统
-      3. 用 @Disabled 让失败的测试消失
+    闸门 3/5：静态红线
+    拦截 AI 编码里最常见的「假通过」：
+      1. 留 TODO / FIXME / XXX 占位就宣布完成（Java 与前端）
+      2. 用 System.out.println 代替日志系统（Java）
+      3. 用 @Disabled 让失败的测试消失（Java）
+      4. 用 it.skip / describe.skip / test.skip / xit / xdescribe 让前端测试静默
 
-    这三条的共同点是：它们都能让 mvn test 变绿，但护栏的实际强度是零。
+    这些做法的共同点是：它们都能让测试变绿，但护栏的实际强度是零。
 #>
 $projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $projectRoot
@@ -19,6 +20,20 @@ if (-not (Test-Path $srcDir)) {
 $sources = @(Get-ChildItem $srcDir -Recurse -Filter '*.java' -File)
 if ($sources.Count -eq 0) {
     Write-Host 'No java sources found - nothing to guard' -ForegroundColor Red
+    exit 1
+}
+
+$frontendDir = Join-Path $projectRoot 'frontend'
+if (-not (Test-Path $frontendDir)) {
+    Write-Host "frontend directory not found: $frontendDir" -ForegroundColor Red
+    exit 1
+}
+
+$frontendSources = @(Get-ChildItem $frontendDir -Recurse -File |
+    Where-Object { $_.Extension -eq '.ts' -or $_.Extension -eq '.tsx' } |
+    Where-Object { $_.FullName -notmatch '\\(node_modules|\.next|dist)\\' })
+if ($frontendSources.Count -eq 0) {
+    Write-Host 'No frontend sources found - nothing to guard' -ForegroundColor Red
     exit 1
 }
 
@@ -44,6 +59,23 @@ foreach ($file in $sources) {
     }
 }
 
+foreach ($file in $frontendSources) {
+    $rel = $file.FullName.Replace($projectRoot + '\', '')
+    $lines = [IO.File]::ReadAllLines($file.FullName)
+
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        $lineNo = $i + 1
+        $text = $lines[$i]
+
+        if ($text -cmatch 'TODO|FIXME|XXX') {
+            [void]$violations.Add("${rel}:${lineNo}  [占位标记] $($text.Trim())")
+        }
+        if ($text -cmatch '(it|describe|test)\.skip|\bxit\b|\bxdescribe\b') {
+            [void]$violations.Add("${rel}:${lineNo}  [禁止跳过测试] $($text.Trim())")
+        }
+    }
+}
+
 if ($violations.Count -gt 0) {
     Write-Host "Static guard FAILED - $($violations.Count) violation(s):" -ForegroundColor Red
     foreach ($v in $violations) {
@@ -52,5 +84,5 @@ if ($violations.Count -gt 0) {
     exit 1
 }
 
-Write-Host "Static guard passed ($($sources.Count) file(s) scanned)" -ForegroundColor Green
+Write-Host "Static guard passed (Java: $($sources.Count) file(s), frontend: $($frontendSources.Count) file(s) scanned)" -ForegroundColor Green
 exit 0

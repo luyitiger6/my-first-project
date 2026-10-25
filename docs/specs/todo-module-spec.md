@@ -4,7 +4,7 @@
 |---|---|
 | 版本 | v1.2.1 |
 | 状态 | 目标契约（待评审） |
-| 适用模块 | `backend` 的 `com.luyi.myfirst`（Todo / TodoService / TodoController）+ `frontend/src/api.ts`、`App.vue` |
+| 适用模块 | `backend` 的 `com.luyi.myfirst`（Todo / TodoService / TodoController）+ `frontend/lib/api.ts`、`components/TodoApp.tsx` |
 | 基线 | 当前实现：内存存储、`POST /{id}/complete`；无更新端点、无扩展字段、无并发保护 |
 | 命名约定 | JSON 字段一律 lowerCamelCase，前后端逐字一致 |
 

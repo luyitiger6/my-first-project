@@ -33,9 +33,9 @@ powershell -File harness\run-all.ps1
 mvn -f backend/pom.xml spring-boot:run
 # 浏览器 / curl 访问 http://localhost:8989/api/todos
 
-# 3. 启动前端（开发代理 /api → 8989）
-cd frontend; npm install; npm run dev
-# 浏览器访问 http://localhost:5173
+# 3. 启动前端（同源代理 /api → 8989）
+cd frontend; npm ci; npm run dev
+# 浏览器访问 http://localhost:3000
 
 # 4. 提一个新需求（会生成规格，不写代码）
 #    在 AI 工具里执行：/opsx:propose 增加按完成状态过滤的查询
@@ -75,7 +75,7 @@ harness/     六道闸门：submodule → compile → test → static-guard → 
 scaffold/    工作区身份改名脚本（分发出去后第一步执行）
 .agents/     两个技能：systematic-debugging、verification-before-completion
 backend/     [submodule] 独立仓库：Spring Boot 后端（Todo 领域，Maven 项目根）
-frontend/    [submodule] 独立仓库：Vue 3 前端（Todo 界面，npm 项目根）
+frontend/    [submodule] 独立仓库：Next.js 16 前端（Todo 界面 + 同源 API 代理，npm 项目根）
 .gitmodules  两个子模块的 URL（使用者可替换，工作区改名不触碰）
 AGENTS.md    AI 的入口契约，先读这个
 ```
@@ -84,7 +84,7 @@ AGENTS.md    AI 的入口契约，先读这个
 
 - JDK 17+（本机 25 已验证可用）
 - Maven 3.9+
-- Node.js 20.19+（前端构建 + `openspec` CLI + 工作区改名脚本需要）
+- Node.js 20.19+（前端构建、`openspec` CLI 与工作区改名脚本需要；Next.js 16 的最低要求为 20.9.0）
 - Git 2.x（子模块需要；新克隆用 `--recurse-submodules`）
 - 可访问两个子模块远程仓库的网络与凭据（首次初始化子模块时使用）
 
@@ -97,4 +97,4 @@ npm registry 提示：如默认源访问慢，可切换镜像（本机验证可�
 - **工作区身份与应用身份分离**：工作区改名只改两份文档，不进入子模块；应用身份改名在各自仓库内完成。
 - **不接数据库/缓存**：Harness 要求可重复，外部依赖越少抖动越小。接入后再把「起容器」补进闸门。
 - **业务极简**：Todo 只是用来承载护栏的载体，不需要它复杂。
-- **红线只有三条**：TODO 占位、`System.out`、`@Disabled`。由真实事故驱动增补，不预先设想。
+- **红线四条**：`TODO` 占位、`System.out`、`@Disabled`，以及前端跳过写法（`it.skip` 等）。由真实事故驱动增补，不预先设想。

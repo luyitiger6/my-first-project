@@ -30,7 +30,7 @@
 1. **先规格后代码**：任何超过「改个拼写」的改动，必须先在 `openspec/changes/<change-id>/` 里有 proposal 与 tasks。没有 change 的编码视为越权。
 2. **Spec 不能由实现者单方面修改**：实现过程中发现规格有误，应修改 proposal 并说明理由，不能悄悄把 spec 改成代码的样子。
 3. **完成判定只看退出码**：`harness\run-all.ps1` 返回 0 才算完成。AI 的自我评价、代码行数、注释完整性都不构成完成证据。
-4. **禁止伪造绿灯**：不许 `@Disabled`、不许注释掉断言、不许 `-DskipTests`、不许留 `TODO/FIXME` 交付。第三道闸门会直接拦截。
+4. **禁止伪造绿灯**：不许 `@Disabled`、不许 `it.skip` 等跳过写法、不许注释掉断言、不许 `-DskipTests`、不许留 `TODO/FIXME` 交付。第三道闸门会直接拦截。
 5. **验收标准不能由实现者自己解释**：spec 里的 `Scenario` 就是验收标准，解释权归 spec，不归写代码的人。
 6. **子模块边界**：`backend/`、`frontend/` 的改动必须先在对应子模块仓库内提交并推送，再回工作区提交新的 gitlink。工作区提交只包含自有文件、`.gitmodules` 与两个 gitlink；Harness 只读，不自动暂存、提交或推送任何仓库。
 
@@ -84,13 +84,16 @@ ai-workspace/
 │       │   ├── domain/              Todo / TodoService
 │       │   └── web/                 TodoController
 │       └── test/java/com/luyi/myfirst/  单元测试 + 容器装配契约测试
-├── frontend/ [submodule]      独立仓库：Vue 3 + Vite + TypeScript（npm 项目根）
+├── frontend/ [submodule]      独立仓库：Next.js 16 App Router + React 19 + TypeScript（npm 项目根）
 │   ├── package.json           前端脚本（dev/build/test）与依赖
-│   └── src/
-│       ├── main.ts             入口（最小挂载）
-│       ├── api.ts              Todo API fetch 封装（/api/todos）
-│       ├── App.vue             Todo 界面（列表 / 新增 / 完成）
-│       └── App.spec.ts         组件测试（vitest + jsdom，mock api）
+│   ├── Dockerfile             多阶段镜像（deps → builder → runner，非 root 运行）
+│   ├── app/
+│   │   ├── layout.tsx          根布局（语言、标题、全局样式）
+│   │   ├── page.tsx            首页（挂载 TodoApp）
+│   │   └── api/[...path]/route.ts  同源 API 代理（运行期 BACKEND_URL）
+│   ├── components/TodoApp.tsx  Todo 界面（列表 / 新增 / 完成）
+│   ├── lib/api.ts              Todo API fetch 封装（/api/todos）
+│   └── vitest.config.ts        测试配置（vitest + jsdom）
 ├── openspec/                  【工件层】
 │   ├── config.yaml              OpenSpec 配置（schema: spec-driven）
 │   ├── specs/                   当前真相：已归档能力的需求描述
@@ -131,8 +134,8 @@ ai-workspace/
 | 只查改名 | `powershell -File harness\checks\05-scaffold-check.ps1` |
 | 工作区改名 | `node scaffold/rename.mjs --name <新 slug> --display "<新展示名>"`（只改 AGENTS.md / README.md，改名后跑一键验收） |
 | 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（访问 `http://localhost:8989/api/todos`） |
-| 前端开发 | `cd frontend; npm run dev`（开发代理 /api → 8989） |
-| 前端构建 | `cd frontend; npm run build` |
+| 前端开发 | `cd frontend; npm run dev`（访问 `http://localhost:3000`，`/api` 由 Route Handler 代理到 8989） |
+| 前端构建 | `cd frontend; npm run build`（产物含 `.next/standalone`） |
 | 前端测试 | `cd frontend; npm run test` |
 | 新建变更 | `/opsx:propose <想法>` |
 | 实施变更 | `/opsx:apply` |
@@ -151,7 +154,7 @@ ai-workspace/
 ## 9. 已知边界
 
 - 本骨架**不连接任何外部中间件**，保证 `mvn test` 在任何机器上可重复执行。接入数据库/缓存后，应把「起容器」也纳入 Harness，否则护栏会出现空洞。
-- 静态红线目前只有三条，由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
+- 静态红线目前四条：Java 的 TODO 占位、`System.out`、`@Disabled`，以及前端的 TODO 占位与跳过写法；由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
 - `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。
 - 子模块初始化需要访问两个远程仓库（网络与凭据）。00 闸门本身不联网、不自动初始化：未就绪时以退出码 1 失败并打印 `git submodule update --init --recursive`，这是护栏行为而非环境故障。
 - 应用身份（Java 包名、Maven artifactId、前端包名）的改名职责在 `backend` / `frontend` 各自仓库内；工作区改名只改 `AGENTS.md` 与 `README.md`，不改 `.gitmodules`，也不改写子模块 URL。

@@ -17,7 +17,7 @@
 
 **Non-Goals:**
 
-- 不引入 Server Actions、Route Handler 代理层、SSR 数据预取或缓存策略；Todo 数据仍在客户端拉取。
+- 不引入 Server Actions、SSR 数据预取或缓存策略；Todo 数据仍在客户端拉取，服务端只保留 API 代理。
 - 不改后端接口、不加 CORS 配置、不动 `backend` 子模块与 `.gitmodules`。
 - 不接入 ESLint、Prettier、UI 组件库、状态管理库、认证与数据库。
 - 不在 Harness 内执行 `docker build`（见 Risks）。
