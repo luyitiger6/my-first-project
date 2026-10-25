@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: AIWorkSpace 顶层工作区（Spec + Harness + Skills 编排）
+title: AI 编码工程化装配根（Submodule + Harness + OpenSpec）
 scope:
     - README.md
     - AGENTS.md

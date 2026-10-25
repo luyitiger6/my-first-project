@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: harness
+title: CI 总闸门编排器（Harness）
+scope:
+    - harness/
+source_files: []
+depends_on: []
+related_to: []

@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-10-25T12:31:33Z"
+exported_at: "2026-10-25T13:02:08Z"
 modules:
     "":
-        dir_name: AIWorkSpace 顶层工作区（Spec + Harness + Skills 编排）
-        title: AIWorkSpace 顶层工作区（Spec + Harness + Skills 编排）
+        dir_name: AI 编码工程化装配根（Submodule + Harness + OpenSpec）
+        title: AI 编码工程化装配根（Submodule + Harness + OpenSpec）
         scope:
             - README.md
             - AGENTS.md
@@ -31,7 +31,6 @@ modules:
         depends_on: []
         related_to:
             - path: frontend
-            - path: harness
     frontend:
         dir_name: Next.js 前端应用（Todo 示例）
         title: Next.js 前端应用（Todo 示例）
@@ -42,21 +41,18 @@ modules:
         depends_on: []
         related_to:
             - path: backend
-            - path: harness
     harness:
-        dir_name: CI 闸门与构建编排 (Harness)
-        title: CI 闸门与构建编排 (Harness)
+        dir_name: CI 总闸门编排器（Harness）
+        title: CI 总闸门编排器（Harness）
         scope:
             - harness/
         source_files: []
         children: []
         depends_on: []
-        related_to:
-            - path: backend
-            - path: frontend
+        related_to: []
     openspec:
-        dir_name: OpenSpec 变更与能力规范仓库
-        title: OpenSpec 变更与能力规范仓库
+        dir_name: OpenSpec 变更与能力规格管理
+        title: OpenSpec 变更与能力规格管理
         scope:
             - openspec/
         source_files: []
