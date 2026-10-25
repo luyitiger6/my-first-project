@@ -6,10 +6,12 @@
 
 ## 1. 这个项目是什么
 
-一个 Spring Boot 3.5.5 / Java 17 的最小工程。它的业务功能（待办事项）刻意做得极简，
-真正要沉淀的是**「AI 编码如何被约束」这件事如何变成可执行、可验证、可追溯的骨架**。
+**AIWorkSpace** 是一个顶层工作区：自身只沉淀**「AI 编码如何被约束」这件事如何变成可执行、可验证、可追溯的骨架**，
+前端与后端则作为两个独立 git 仓库，以 **git submodule** 挂载在 `frontend/`、`backend/`，各自保留构建身份、提交历史与发布节奏。
 
-一句话：**这个仓库的价值不在 backend/，在护栏。**
+工作区的业务功能（待办事项）刻意做得极简，真正要沉淀的是护栏本身。
+
+一句话：**这个仓库的价值不在 backend/ 与 frontend/ 的代码，在护栏；也不在「管住两个应用」，在「让边界可验证」。**
 
 ## 2. 三层分工
 
@@ -21,17 +23,23 @@
 
 三层是**乘法关系**：任何一层失效，整体归零。写再多文档、装再多技能，都替代不了一次真实的编译测试。
 
-## 3. 五条硬规则
+`backend/` 与 `frontend/` 不属于这三层，它们是被编排的两个独立仓库：工作区只用 gitlink 锁定它们的提交，不跟踪其文件内容。
+
+## 3. 六条硬规则
 
 1. **先规格后代码**：任何超过「改个拼写」的改动，必须先在 `openspec/changes/<change-id>/` 里有 proposal 与 tasks。没有 change 的编码视为越权。
 2. **Spec 不能由实现者单方面修改**：实现过程中发现规格有误，应修改 proposal 并说明理由，不能悄悄把 spec 改成代码的样子。
 3. **完成判定只看退出码**：`harness\run-all.ps1` 返回 0 才算完成。AI 的自我评价、代码行数、注释完整性都不构成完成证据。
 4. **禁止伪造绿灯**：不许 `@Disabled`、不许注释掉断言、不许 `-DskipTests`、不许留 `TODO/FIXME` 交付。第三道闸门会直接拦截。
 5. **验收标准不能由实现者自己解释**：spec 里的 `Scenario` 就是验收标准，解释权归 spec，不归写代码的人。
+6. **子模块边界**：`backend/`、`frontend/` 的改动必须先在对应子模块仓库内提交并推送，再回工作区提交新的 gitlink。工作区提交只包含自有文件、`.gitmodules` 与两个 gitlink；Harness 只读，不自动暂存、提交或推送任何仓库。
 
 ## 4. 标准工作流
 
 ```
+⓪ 初始化（仅新克隆）
+                git clone --recurse-submodules <工作区地址>
+                或已有克隆：git submodule update --init --recursive
 ① 探索（可选）  /opsx:explore
 ② 定规格        /opsx:propose <你的想法>
                 ↓  产出 openspec/changes/<change-id>/
@@ -46,6 +54,8 @@
 ```
 
 **第 ② 步是整条链路里唯一不可省略的人工节点。** 其余环节可以自动化，唯独「想做的东西对不对」不能让 AI 自己拍板。
+
+子模块未初始化时，00 闸门会让验收在编译之前失败——这是设计行为，不是环境故障。
 
 ## 5. 技能触发规则
 
@@ -62,10 +72,11 @@
 ## 6. 目录地图
 
 ```
-my-first-project/
+ai-workspace/
 ├── AGENTS.md                  ← 你正在读的文件
 ├── README.md                  人看的快速上手
-├── backend/                   Spring Boot 3.5.5 / Java 17（Maven 项目根）
+├── .gitmodules                两个子模块的 URL（使用者可替换；工作区改名不碰）
+├── backend/  [submodule]      独立仓库：Spring Boot 3.5.5 / Java 17（Maven 项目根）
 │   ├── pom.xml                Maven 构建文件
 │   └── src/
 │       ├── main/java/com/luyi/myfirst/
@@ -73,7 +84,7 @@ my-first-project/
 │       │   ├── domain/              Todo / TodoService
 │       │   └── web/                 TodoController
 │       └── test/java/com/luyi/myfirst/  单元测试 + 容器装配契约测试
-├── frontend/                  Vue 3 + Vite + TypeScript（npm 项目根）
+├── frontend/ [submodule]      独立仓库：Vue 3 + Vite + TypeScript（npm 项目根）
 │   ├── package.json           前端脚本（dev/build/test）与依赖
 │   └── src/
 │       ├── main.ts             入口（最小挂载）
@@ -88,13 +99,14 @@ my-first-project/
 ├── harness/                   【能力层】
 │   ├── run-all.ps1              总闸门，返回 0 或 1
 │   └── checks/
+│       ├── 00-submodule-check.ps1   子模块已初始化且 HEAD 与 gitlink 一致
 │       ├── 01-compile.ps1       能不能编译
 │       ├── 02-test.ps1          行为对不对 + 容器能不能装配
 │       ├── 03-static-guard.ps1  有没有伪造绿灯
 │       ├── 04-frontend.ps1      前端：npm ci → build → test
-│       └── 05-scaffold-check.ps1 模板改名演练 + 残留扫描
-├── scaffold/                  【模板改名】
-│   └── rename.mjs              分发后第一步执行：替换模板身份标识
+│       └── 05-scaffold-check.ps1 工作区改名演练 + 残留扫描 + .gitmodules 完整性
+├── scaffold/                  【工作区改名】
+│   └── rename.mjs              分发后第一步执行：替换工作区展示名与 slug
 ├── .agents/skills/            【行为层】自研技能编写真源（source of truth）
 │   ├── systematic-debugging/    四阶段根因法
 │   └── verification-before-completion/  先证后宣布
@@ -107,13 +119,17 @@ my-first-project/
 
 | 目的 | 命令 |
 |---|---|
+| 初始化子模块 | `git submodule update --init --recursive`（新克隆也可 `git clone --recurse-submodules <工作区地址>`） |
+| 子模块状态 | `git submodule status`（行首 `-` 表示未初始化） |
+| 替换子模块地址 | `git submodule set-url backend <新地址>`（`frontend` 同理），随后 `git submodule sync` |
 | 一键验收 | `powershell -File harness\run-all.ps1` |
+| 只查子模块 | `powershell -File harness\checks\00-submodule-check.ps1` |
 | 只编译 | `powershell -File harness\checks\01-compile.ps1` |
 | 只跑测试 | `powershell -File harness\checks\02-test.ps1` |
 | 只查红线 | `powershell -File harness\checks\03-static-guard.ps1` |
 | 只查前端 | `powershell -File harness\checks\04-frontend.ps1` |
 | 只查改名 | `powershell -File harness\checks\05-scaffold-check.ps1` |
-| 模板改名 | `node scaffold/rename.mjs --name <新项目名> --package <新包名>`（改名后跑一键验收） |
+| 工作区改名 | `node scaffold/rename.mjs --name <新 slug> --display "<新展示名>"`（只改 AGENTS.md / README.md，改名后跑一键验收） |
 | 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（访问 `http://localhost:8989/api/todos`） |
 | 前端开发 | `cd frontend; npm run dev`（开发代理 /api → 8989） |
 | 前端构建 | `cd frontend; npm run build` |
@@ -137,3 +153,5 @@ my-first-project/
 - 本骨架**不连接任何外部中间件**，保证 `mvn test` 在任何机器上可重复执行。接入数据库/缓存后，应把「起容器」也纳入 Harness，否则护栏会出现空洞。
 - 静态红线目前只有三条，由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
 - `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。
+- 子模块初始化需要访问两个远程仓库（网络与凭据）。00 闸门本身不联网、不自动初始化：未就绪时以退出码 1 失败并打印 `git submodule update --init --recursive`，这是护栏行为而非环境故障。
+- 应用身份（Java 包名、Maven artifactId、前端包名）的改名职责在 `backend` / `frontend` 各自仓库内；工作区改名只改 `AGENTS.md` 与 `README.md`，不改 `.gitmodules`，也不改写子模块 URL。
