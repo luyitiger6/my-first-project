@@ -1,0 +1,65 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-10-25T12:31:33Z"
+modules:
+    "":
+        dir_name: AIWorkSpace 顶层工作区（Spec + Harness + Skills 编排）
+        title: AIWorkSpace 顶层工作区（Spec + Harness + Skills 编排）
+        scope:
+            - README.md
+            - AGENTS.md
+            - .gitignore
+            - .gitmodules
+        source_files: []
+        children:
+            - backend
+            - frontend
+            - harness
+            - openspec
+        depends_on: []
+        related_to: []
+    backend:
+        dir_name: Spring Boot Todo API 后端骨架
+        title: Spring Boot Todo API 后端骨架
+        scope:
+            - backend/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: frontend
+            - path: harness
+    frontend:
+        dir_name: Next.js 前端应用（Todo 示例）
+        title: Next.js 前端应用（Todo 示例）
+        scope:
+            - frontend/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: backend
+            - path: harness
+    harness:
+        dir_name: CI 闸门与构建编排 (Harness)
+        title: CI 闸门与构建编排 (Harness)
+        scope:
+            - harness/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: backend
+            - path: frontend
+    openspec:
+        dir_name: OpenSpec 变更与能力规范仓库
+        title: OpenSpec 变更与能力规范仓库
+        scope:
+            - openspec/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

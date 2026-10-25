@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Harness 总闸门：子模块 -> 编译 -> 测试 -> 静态红线 -> 前端 -> 改名，任一失败立即返回非 0。
+    Harness 总闸门：子模块 -> 编译 -> 测试 -> 静态红线 -> 前端 -> 改名 -> 迁移，任一失败立即返回非 0。
 
     执行顺序按 checks/ 文件名排序：
       00-submodule-check  子模块已初始化且与父仓库 gitlink 一致
@@ -9,6 +9,7 @@
       03-static-guard     伪造绿灯红线
       04-frontend         前端安装 / 构建 / 测试
       05-scaffold-check   工作区改名演练 + 旧身份残留扫描
+      06-flyway           既有 127.0.0.1:8806 MySQL 8 + 专用 schema 迁移
 
 .DESCRIPTION
     这套脚本存在的唯一目的是「拥有否决权」。

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-为 AI 会话项目提供可审计的数据库结构基线与迁移验收：核心表由版本化迁移建立，Harness 在隔离的 MySQL 实例上验证迁移可执行、结构正确且可重复执行。
+为 AI 会话项目提供可审计的数据库结构基线与迁移验收：核心表由版本化迁移建立，Harness 在既有 MySQL 8 实例的专用 schema 上验证迁移可执行、结构正确且可重复执行。
 
 ## ADDED Requirements
 
@@ -66,16 +66,16 @@
 
 ### Requirement: Flyway 闸门纳入 Harness
 
-Harness SHALL 提供独立的 Flyway 闸门，在一次性 MySQL 8 实例上执行迁移并校验结构；Docker 不可用或迁移失败时 MUST 以非 0 退出码结束，且 MUST NOT 静默跳过。
+Harness SHALL 提供独立的 Flyway 闸门，在既有 MySQL 8 实例的专用 schema 上执行迁移并校验结构；数据库不可达、凭据缺失或迁移失败时 MUST 以非 0 退出码结束，且 MUST NOT 静默跳过。
 
 #### Scenario: 闸门通过
 
-- **WHEN** 运行 `harness\run-all.ps1` 且 Docker 与 MySQL 8 镜像可用
-- **THEN** Flyway 闸门启动临时实例、执行迁移、校验结构与幂等，并以退出码 0 结束
+- **WHEN** 运行 `harness\run-all.ps1` 且 `127.0.0.1:8806` 的 MySQL 8 可连接、凭据可用
+- **THEN** Flyway 闸门重建专用 schema `ai_chat_gate`、执行迁移、校验结构与幂等，并以退出码 0 结束
 
-#### Scenario: Docker 不可用即失败
+#### Scenario: 数据库不可达即失败
 
-- **WHEN** Docker 守护进程不可用
+- **WHEN** `127.0.0.1:8806` 不可达，或未提供可用凭据
 - **THEN** Flyway 闸门以非 0 退出码结束并输出明确原因，整体验收判定失败
 
 #### Scenario: 迁移缺陷被拦截
@@ -83,10 +83,10 @@ Harness SHALL 提供独立的 Flyway 闸门，在一次性 MySQL 8 实例上执�
 - **WHEN** 迁移脚本存在语法错误或缺少核心表
 - **THEN** Flyway 闸门以非 0 退出码结束并指出失败原因
 
-#### Scenario: 临时实例不残留
+#### Scenario: 不触碰既有业务库与容器
 
 - **WHEN** Flyway 闸门执行结束，无论成功或失败
-- **THEN** 本次创建的 MySQL 容器已被删除，不占用端口与磁盘
+- **THEN** 未创建或删除任何容器，`green-note` 业务库的表集合保持不变，闸门只改专用 schema `ai_chat_gate`
 
 ### Requirement: 后端运行期不依赖数据库
 

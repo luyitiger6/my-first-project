@@ -427,7 +427,8 @@ CREATE TABLE usage_records (
 - 大表加列、加索引使用 online DDL 或外部工具，必须在维护窗口评估锁表时间。
 - 数据回填分批提交，禁止一条 SQL 更新全表；回填脚本与结构迁移分开。
 - 生产迁移由发布流水线在应用启动前执行，不依赖 `spring.flyway` 自动运行。
-- CI/本地用 `06-flyway.ps1` 在一次性 MySQL 8 实例上执行迁移并断言结构；迁移失败即整体验收失败。
+- CI/本地用 `06-flyway.ps1` 连接 `127.0.0.1:8806` 的既有 MySQL 8 实例，在专用 schema `ai_chat_gate` 上执行迁移并断言结构；不新建/删除容器，不触碰 `green-note` 业务库；迁移失败即整体验收失败。
+- 当前既有实例为 MySQL 8.3；Flyway 11.7.2 官方已测试到 MySQL 8.1，会打印升级警告，但迁移与结构断言已实际通过。
 
 ## 11. JPA 映射约定
 
@@ -514,10 +515,10 @@ LIMIT ?;
 
 | 规范要求 | 验收方式 |
 |---|---|
-| 迁移可在空库执行 | `06-flyway.ps1` 启动临时 MySQL 8 并迁移成功 |
-| 重复执行幂等 | 同一实例再次迁移，退出码 0 |
+| 迁移可在空库执行 | `06-flyway.ps1` 连接既有 8806 MySQL 8，重建专用 schema 并迁移成功 |
+| 重复执行幂等 | 同一专用 schema 再次迁移，退出码 0 |
 | 四张核心表存在 | `information_schema.tables` 断言 |
 | 关键唯一键/索引/CHECK 存在 | `information_schema.statistics` / `table_constraints` 断言 |
 | 迁移失败会红 | 临时错误迁移，闸门退出码非 0 |
-| 容器不残留 | 执行后 `docker ps -a` 无本次容器 |
+| 不触碰业务库与容器 | `green-note` 表集合不变，执行前后容器列表一致 |
 | 运行期不依赖数据库 | 未启动 MySQL 时 `01-compile`、`02-test`、应用启动均通过 |

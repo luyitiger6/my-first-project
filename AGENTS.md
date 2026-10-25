@@ -107,7 +107,8 @@ ai-workspace/
 │       ├── 02-test.ps1          行为对不对 + 容器能不能装配
 │       ├── 03-static-guard.ps1  有没有伪造绿灯
 │       ├── 04-frontend.ps1      前端：npm ci → build → test
-│       └── 05-scaffold-check.ps1 工作区改名演练 + 残留扫描 + .gitmodules 完整性
+│       ├── 05-scaffold-check.ps1 工作区改名演练 + 残留扫描 + .gitmodules 完整性
+│       └── 06-flyway.ps1         Flyway 迁移：8806 既有 MySQL 8 + 专用 schema `ai_chat_gate`
 ├── scaffold/                  【工作区改名】
 │   └── rename.mjs              分发后第一步执行：替换工作区展示名与 slug
 ├── .agents/skills/            【行为层】自研技能编写真源（source of truth）
@@ -132,6 +133,9 @@ ai-workspace/
 | 只查红线 | `powershell -File harness\checks\03-static-guard.ps1` |
 | 只查前端 | `powershell -File harness\checks\04-frontend.ps1` |
 | 只查改名 | `powershell -File harness\checks\05-scaffold-check.ps1` |
+| 只查迁移 | `powershell -File harness\checks\06-flyway.ps1`（默认连 `127.0.0.1:8806` 的 `ai_chat_gate`） |
+| 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
+| Flyway 凭据 | 设置 `FLYWAY_DB_PASSWORD`；未设置时若 8806 由 Docker 容器发布，闸门会从容器环境读取 root 密码 |
 | 工作区改名 | `node scaffold/rename.mjs --name <新 slug> --display "<新展示名>"`（只改 AGENTS.md / README.md，改名后跑一键验收） |
 | 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（访问 `http://localhost:8989/api/todos`） |
 | 前端开发 | `cd frontend; npm run dev`（访问 `http://localhost:3000`，`/api` 由 Route Handler 代理到 8989） |
@@ -151,9 +155,12 @@ ai-workspace/
 
 `run-all.ps1` 按文件名排序执行，遇错即停。不需要改总控脚本。
 
+`06-flyway.ps1` 也遵守同一约定：它不新建或删除容器，只复用 `127.0.0.1:8806` 的既有 MySQL 8，在专用 schema `ai_chat_gate` 上执行迁移；`green-note` 业务库不在它的操作范围内。
+
 ## 9. 已知边界
 
-- 本骨架**不连接任何外部中间件**，保证 `mvn test` 在任何机器上可重复执行。接入数据库/缓存后，应把「起容器」也纳入 Harness，否则护栏会出现空洞。
+- 运行期**不连接任何外部中间件**，保证 `mvn test` 与后端启动不依赖数据库。Harness 的 `06-flyway` 是唯一例外：它复用 `127.0.0.1:8806` 上的既有 MySQL 8 实例，在专用 schema `ai_chat_gate` 上验证迁移；不新建/删除容器，不触碰 `green-note` 业务库。数据库不可达或凭据缺失时以非 0 退出码失败。
+- `06-flyway` 连接的既有实例当前为 MySQL 8.3；Flyway 11.7.2 会提示 8.3 高于其已测试上限 8.1，但迁移与结构断言已实际通过。升级 Flyway 或在 8.0/8.1 上复验前，保留这条提示。
 - 静态红线目前四条：Java 的 TODO 占位、`System.out`、`@Disabled`，以及前端的 TODO 占位与跳过写法；由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
 - `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。
 - 子模块初始化需要访问两个远程仓库（网络与凭据）。00 闸门本身不联网、不自动初始化：未就绪时以退出码 1 失败并打印 `git submodule update --init --recursive`，这是护栏行为而非环境故障。

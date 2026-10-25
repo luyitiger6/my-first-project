@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: ""
+title: AIWorkSpace 顶层工作区（Spec + Harness + Skills 编排）
+scope:
+    - README.md
+    - AGENTS.md
+    - .gitignore
+    - .gitmodules
+source_files: []
+depends_on: []
+related_to: []

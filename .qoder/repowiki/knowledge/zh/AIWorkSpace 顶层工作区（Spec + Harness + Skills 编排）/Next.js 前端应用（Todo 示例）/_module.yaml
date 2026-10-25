@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: frontend
+title: Next.js 前端应用（Todo 示例）
+scope:
+    - frontend/
+source_files: []
+depends_on: []
+related_to:
+    - path: backend
+    - path: harness
