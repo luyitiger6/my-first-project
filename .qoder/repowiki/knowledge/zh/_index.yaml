@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-10-25T18:01:07Z"
+exported_at: "2026-10-26T09:32:12Z"
 modules:
     "":
-        dir_name: AI 编码工程装配根（Submodule + Harness + OpenSpec）
-        title: AI 编码工程装配根（Submodule + Harness + OpenSpec）
+        dir_name: AI 编码工程装配根（Git Submodule + OpenSpec + Harness）
+        title: AI 编码工程装配根（Git Submodule + OpenSpec + Harness）
         scope:
             - README.md
             - AGENTS.md
@@ -42,8 +42,8 @@ modules:
         related_to:
             - path: backend
     harness:
-        dir_name: CI 总闸门编排器（Harness）
-        title: CI 总闸门编排器（Harness）
+        dir_name: CI 总闸门编排（Harness）
+        title: CI 总闸门编排（Harness）
         scope:
             - harness/
         source_files: []
