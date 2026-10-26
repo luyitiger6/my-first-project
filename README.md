@@ -27,7 +27,7 @@ git clone --recurse-submodules <工作区仓库地址>
 git submodule update --init --recursive
 
 # 1. 验收当前代码是否健康（应该是 ALL CHECKS PASSED）
-#    00–06 全部执行；06 复用 127.0.0.1:8806 的既有 MySQL 8
+#    跑完整条闸门链；06 复用 127.0.0.1:8806 的既有 MySQL 8
 powershell -File harness\run-all.ps1
 
 # 只跑迁移闸门（仍使用同一 8806 实例与 ai_chat_gate schema）
@@ -59,7 +59,7 @@ node scaffold/rename.mjs --name <新 slug> --display "<新展示名>"
 - `--display`：展示名，去空白后 1..60 字符
 - 只改 `AGENTS.md` 与 `README.md`；不进入 `backend/`、`frontend/`，不改 `.gitmodules`
 - 应用身份（Java 包名 / Maven artifactId / 前端包名）属于子模块，应在各自仓库内改名；脚本收到 `--package` 会直接拒绝
-- 改名后运行 `powershell -File harness\run-all.ps1` 验收——七道闸门（00–06）含「改名演练 + 残留扫描」，模板态与已改名态都能跑
+- 改名后运行 `powershell -File harness\run-all.ps1` 验收——闸门链含「改名演练 + 残留扫描」，模板态与已改名态都能跑
 - 已改名仓库重复执行会被拒绝（需要 git 还原后再试）
 
 ## 工作流
@@ -75,11 +75,11 @@ propose（定规格）→ 人工审阅 → apply（实施）→ harness（验收
 
 ```
 openspec/    规格与变更（proposal / specs / design / tasks / archive）
-harness/     七道闸门：submodule → compile → test → static-guard → frontend → scaffold-check → flyway
+harness/     闸门链：submodule → compile → test → static-guard → frontend → scaffold-check → flyway → doc-consistency
 scaffold/    工作区身份改名脚本（分发出去后第一步执行）
 .agents/     两个技能：systematic-debugging、verification-before-completion
 backend/     [submodule] 独立仓库：Spring Boot 后端（Todo 领域，Maven 项目根）
-frontend/    [submodule] 独立仓库：Next.js 16 前端（Todo 界面 + 同源 API 代理，npm 项目根）
+frontend/    [submodule] 独立仓库：Next.js 16 前端（wanderchain 首页 + 同源 API 代理，npm 项目根）
 .gitmodules  两个子模块的 URL（使用者可替换，工作区改名不触碰）
 AGENTS.md    AI 的入口契约，先读这个
 ```

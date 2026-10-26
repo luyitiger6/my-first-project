@@ -1,5 +1,5 @@
 ﻿<#
-    闸门 3/5：静态红线
+    闸门 03-static-guard：静态红线
     拦截 AI 编码里最常见的「假通过」：
       1. 留 TODO / FIXME / XXX 占位就宣布完成（Java 与前端）
       2. 用 System.out.println 代替日志系统（Java）

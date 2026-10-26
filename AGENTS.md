@@ -85,15 +85,23 @@ ai-workspace/
 │       │   └── web/                 TodoController
 │       └── test/java/com/luyi/myfirst/  单元测试 + 容器装配契约测试
 ├── frontend/ [submodule]      独立仓库：Next.js 16 App Router + React 19 + TypeScript（npm 项目根）
-│   ├── package.json           前端脚本（dev/build/test）与依赖
+│   ├── package.json           前端脚本（dev/build/start/test）与依赖
 │   ├── Dockerfile             多阶段镜像（deps → builder → runner，非 root 运行）
 │   ├── app/
-│   │   ├── layout.tsx          根布局（语言、标题、全局样式）
-│   │   ├── page.tsx            首页（挂载 TodoApp）
+│   │   ├── layout.tsx          根布局（语言、标题、全局样式、AuthProvider）
+│   │   ├── page.tsx            首页（城市筛选 + 五个区块）
+│   │   ├── login/ register/    Mock 登录与注册
+│   │   ├── community/ attractions/  板块占位页
 │   │   └── api/[...path]/route.ts  同源 API 代理（运行期 BACKEND_URL）
-│   ├── components/TodoApp.tsx  Todo 界面（列表 / 新增 / 完成）
-│   ├── lib/api.ts              Todo API fetch 封装（/api/todos）
-│   └── vitest.config.ts        测试配置（vitest + jsdom）
+│   ├── components/
+│   │   ├── home/               功能导航、城市入口、AI 助手与三类内容区块
+│   │   ├── auth/               Mock 认证 Provider、表单与账号菜单
+│   │   └── site/               页头、页脚与占位页
+│   ├── lib/
+│   │   ├── home/               类型契约、城市白名单、Mock 数据与仓储
+│   │   └── auth/               Mock 注册 / 登录 / 会话
+│   ├── vitest.config.ts        测试配置（vitest + jsdom）
+│   └── vitest.setup.ts         jest-dom 断言扩展
 ├── openspec/                  【工件层】
 │   ├── config.yaml              OpenSpec 配置（schema: spec-driven）
 │   ├── specs/                   当前真相：已归档能力的需求描述
@@ -108,16 +116,21 @@ ai-workspace/
 │       ├── 03-static-guard.ps1  有没有伪造绿灯
 │       ├── 04-frontend.ps1      前端：npm ci → build → test
 │       ├── 05-scaffold-check.ps1 工作区改名演练 + 残留扫描 + .gitmodules 完整性
-│       └── 06-flyway.ps1         Flyway 迁移：8806 既有 MySQL 8 + 专用 schema `ai_chat_gate`
+│       ├── 06-flyway.ps1         Flyway 迁移：8806 既有 MySQL 8 + 专用 schema `ai_chat_gate`
+│       └── 07-doc-consistency.ps1 文档闸门清单与技术栈描述是否跟得上仓库现状
 ├── scaffold/                  【工作区改名】
 │   └── rename.mjs              分发后第一步执行：替换工作区展示名与 slug
-├── .agents/skills/            【行为层】自研技能编写真源（source of truth）
+├── .agents/skills/            【行为层】自研技能编写真源（source of truth），同目录也存放 openspec init 生成的 openspec-* 技能
 │   ├── systematic-debugging/    四阶段根因法
 │   └── verification-before-completion/  先证后宣布
 └── .claude/ .qoder/ .opencode/ 各 AI 工具适配层：openspec-* 技能与 commands 由 openspec init 生成；
                                  上述两个自研技能在此为分发副本，内容与真源逐字节一致。
                                  修订顺序固定为「先改 .agents/skills/ 真源 → 再同步三处副本」，禁止直接改副本。
 ```
+
+<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-flyway 07-doc-consistency -->
+
+上面这行标记是**闸门清单的机器可读副本**：新增或删除闸门时同步更新，`07-doc-consistency.ps1` 会把它与 `harness/checks/*.ps1` 的实际文件比对，不一致直接退出码 1。
 
 ## 7. 命令速查
 
@@ -141,6 +154,7 @@ ai-workspace/
 | 前端开发 | `cd frontend; npm run dev`（访问 `http://localhost:3000`，`/api` 由 Route Handler 代理到 8989） |
 | 前端构建 | `cd frontend; npm run build`（产物含 `.next/standalone`） |
 | 前端测试 | `cd frontend; npm run test` |
+| 前端生产启动 | `cd frontend; npm run build; npm run start`（先构建再以生产模式启动） |
 | 新建变更 | `/opsx:propose <想法>` |
 | 实施变更 | `/opsx:apply` |
 | 归档变更 | `/opsx:archive` |
@@ -154,6 +168,8 @@ ai-workspace/
 - 不做任何交互式提问（CI 与 agent 环境无法应答）
 
 `run-all.ps1` 按文件名排序执行，遇错即停。不需要改总控脚本。
+
+新增或删除闸门后，同步修改 §6 下的 `<!-- harness-checks: ... -->` 标记；`07-doc-consistency.ps1` 会把标记与实际文件集合比对，忘了改就会直接拦截。
 
 `06-flyway.ps1` 也遵守同一约定：它不新建或删除容器，只复用 `127.0.0.1:8806` 的既有 MySQL 8，在专用 schema `ai_chat_gate` 上执行迁移；`green-note` 业务库不在它的操作范围内。
 
