@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-10-26T22:01:08Z"
+exported_at: "2026-10-26T23:01:27Z"
 modules:
     "":
-        dir_name: AI 编码工程装配点（Todo 示例工作区）
-        title: AI 编码工程装配点（Todo 示例工作区）
+        dir_name: AI 编码工程装配点（Todo 示例聚合根）
+        title: AI 编码工程装配点（Todo 示例聚合根）
         scope:
             - README.md
             - AGENTS.md

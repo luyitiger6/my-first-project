@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: AI 编码工程装配点（Todo 示例工作区）
+title: AI 编码工程装配点（Todo 示例聚合根）
 scope:
     - README.md
     - AGENTS.md

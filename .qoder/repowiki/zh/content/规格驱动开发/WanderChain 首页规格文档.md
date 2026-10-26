@@ -1,3 +1,5 @@
+基于我的分析，我现在了解了响应式图片优化的变更内容。让我更新 WanderChain 首页规格文档：
+
 # WanderChain 首页规格文档
 
 <cite>
@@ -26,6 +28,11 @@
 - [frontend/components/home/city-switcher.tsx](file://frontend/components/home/city-switcher.tsx)
 - [frontend/app/community/page.tsx](file://frontend/app/community/page.tsx)
 - [frontend/app/attractions/page.tsx](file://frontend/app/attractions/page.tsx)
+- [frontend/lib/image-loader.ts](file://frontend/lib/image-loader.ts)
+- [frontend/lib/image-loader.test.ts](file://frontend/lib/image-loader.test.ts)
+- [frontend/next.config.ts](file://frontend/next.config.ts)
+- [frontend/components/home/editor-picks.module.css](file://frontend/components/home/editor-picks.module.css)
+- [frontend/components/home/hot-attractions.module.css](file://frontend/components/home/hot-attractions.module.css)
 </cite>
 
 ## 更新摘要
@@ -36,6 +43,7 @@
 - **新增九个规格场景（S15-S17）**：Tab 键正向循环、Shift+Tab 反向循环、背景滚动锁定行为
 - 更新首页聚合器以使用新的 Hero 组件
 - 完善类型定义和验收标准
+- **新增响应式图片优化系统**：自定义 next/image loader、srcset 生成、sizes 属性计算，针对编辑推荐和热门景点区块进行图片性能优化
 
 ## 目录
 1. [引言](#引言)
@@ -64,6 +72,7 @@ WanderChain 首页由一个页面级路由和多个可复用区块组成：
 - 区块组件：功能导航、城市切换、编辑推荐、热门帖子、热门景点分别位于 `components/home/*`。
 - 共享 Hook：`useSectionData` 统一封装加载、就绪、错误三态。
 - **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭、遮罩点击关闭，以及完整的键盘导航支持。
+- **响应式图片优化**：自定义 image loader、srcset 生成、sizes 属性计算，针对封面图进行性能优化。
 - 占位页：`/community` 与 `/attractions` 为板块建设中的占位页面。
 
 ```mermaid
@@ -82,6 +91,9 @@ HotPosts --> UseSection
 HotAttractions --> UseSection
 AiAssistant --> FocusTrap["焦点陷阱<br/>Tab/Shift+Tab 循环"]
 AiAssistant --> ScrollLock["滚动锁定<br/>body.style.overflow"]
+EditorPicks --> ImageOptimization["图片优化<br/>image-loader.ts"]
+HotAttractions --> ImageOptimization
+ImageOptimization --> NextConfig["Next.js 配置<br/>next.config.ts"]
 ```
 
 **图表来源**
@@ -89,11 +101,13 @@ AiAssistant --> ScrollLock["滚动锁定<br/>body.style.overflow"]
 - [frontend/components/home/hero.tsx:1-93](file://frontend/components/home/hero.tsx#L1-L93)
 - [frontend/components/home/feature-nav.tsx:1-116](file://frontend/components/home/feature-nav.tsx#L1-L116)
 - [frontend/components/home/city-switcher.tsx:1-74](file://frontend/components/home/city-switcher.tsx#L1-L74)
-- [frontend/components/home/editor-picks.tsx:1-62](file://frontend/components/home/editor-picks.tsx#L1-L62)
+- [frontend/components/home/editor-picks.tsx:1-66](file://frontend/components/home/editor-picks.tsx#L1-L66)
 - [frontend/components/home/hot-posts.tsx:1-59](file://frontend/components/home/hot-posts.tsx#L1-L59)
-- [frontend/components/home/hot-attractions.tsx:1-66](file://frontend/components/home/hot-attractions.tsx#L1-L66)
+- [frontend/components/home/hot-attractions.tsx:1-70](file://frontend/components/home/hot-attractions.tsx#L1-L70)
 - [frontend/components/home/use-section-data.ts:1-44](file://frontend/components/home/use-section-data.ts#L1-L44)
 - [frontend/components/home/ai-assistant.tsx:1-212](file://frontend/components/home/ai-assistant.tsx#L1-L212)
+- [frontend/lib/image-loader.ts:1-20](file://frontend/lib/image-loader.ts#L1-L20)
+- [frontend/next.config.ts:1-14](file://frontend/next.config.ts#L1-L14)
 
 **章节来源**
 - [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
@@ -106,6 +120,7 @@ AiAssistant --> ScrollLock["滚动锁定<br/>body.style.overflow"]
 - **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。**新增完整无障碍支持**：焦点陷阱（Tab/Shift+Tab 循环）、背景滚动锁定、键盘导航支持。
 - 城市切换：根据 URL `?city=` 渲染选中项，点击时替换查询参数，保持其他查询键不变。
 - 内容区块：编辑推荐、热门帖子、热门景点均通过 `mockRepository` 获取数据，并按各自排序与过滤规则展示。
+- **响应式图片优化系统**：自定义 next/image loader 将宽度档位直接写入 Unsplash CDN 参数，结合 srcset 和 sizes 属性实现智能图片加载。
 
 **章节来源**
 - [frontend/components/home/hero.tsx:10-44](file://frontend/components/home/hero.tsx#L10-L44)
@@ -114,6 +129,7 @@ AiAssistant --> ScrollLock["滚动锁定<br/>body.style.overflow"]
 - [frontend/components/home/feature-nav.tsx:50-115](file://frontend/components/home/feature-nav.tsx#L50-L115)
 - [frontend/components/home/ai-assistant.tsx:41-120](file://frontend/components/home/ai-assistant.tsx#L41-L120)
 - [frontend/components/home/city-switcher.tsx:13-31](file://frontend/components/home/city-switcher.tsx#L13-L31)
+- [frontend/lib/image-loader.ts:1-20](file://frontend/lib/image-loader.ts#L1-L20)
 
 ## 架构总览
 WanderChain 首页采用"页面装配 + 区块消费 + Mock 仓储"的分层结构。当前阶段不依赖真实后端，所有数据契约以类型与 Mock 数据固定，后续替换为真实 API 时，组件与测试无需重写。
@@ -139,6 +155,11 @@ subgraph "数据层"
 Hook["use-section-data.ts"]
 Repo["Mock 仓储 repository.ts契约"]
 end
+subgraph "图片优化层"
+Loader["自定义 image loader<br/>image-loader.ts"]
+Config["Next.js 配置<br/>next.config.ts"]
+CDN["Unsplash CDN"]
+end
 Page --> Hero
 Page --> Nav
 Page --> City
@@ -151,6 +172,10 @@ Picks --> Hook
 Posts --> Hook
 Attractions --> Hook
 Hook --> Repo
+Picks --> Loader
+Attractions --> Loader
+Loader --> Config
+Config --> CDN
 ```
 
 **图表来源**
@@ -163,6 +188,8 @@ Hook --> Repo
 - [frontend/components/home/hot-posts.tsx:11-12](file://frontend/components/home/hot-posts.tsx#L11-L12)
 - [frontend/components/home/hot-attractions.tsx:11-12](file://frontend/components/home/hot-attractions.tsx#L11-L12)
 - [frontend/components/home/use-section-data.ts:15-42](file://frontend/components/home/use-section-data.ts#L15-L42)
+- [frontend/lib/image-loader.ts:1-20](file://frontend/lib/image-loader.ts#L1-L20)
+- [frontend/next.config.ts:1-14](file://frontend/next.config.ts#L1-L14)
 
 ## 详细组件分析
 
@@ -299,6 +326,60 @@ AiAssistantProvider <.. FocusManagement : "焦点控制"
 - [frontend/components/home/ai-assistant.tsx:41-120](file://frontend/components/home/ai-assistant.tsx#L41-L120)
 - [frontend/components/home/ai-assistant.tsx:178-211](file://frontend/components/home/ai-assistant.tsx#L178-L211)
 
+### 响应式图片优化系统（新增）
+WanderChain 首页实现了完整的响应式图片优化系统，专门针对编辑推荐和热门景点区块的封面图进行性能优化。该系统基于 next/image 组件，通过自定义 loader 和精确的 sizes 属性计算，实现智能图片加载。
+
+**核心组件：**
+
+1. **自定义 Image Loader** (`lib/image-loader.ts`)：
+   - 将 next/image 计算的宽度档位直接写入 Unsplash CDN 的 `w` 参数
+   - 自动设置质量参数 `q`（默认 70）和格式优化 `auto=format`
+   - 对非绝对 URL 进行安全处理，避免 URL 解析错误
+
+2. **Sizes 属性计算**：
+   - 编辑推荐：`(max-width: 640px) calc(100vw - 64px), (max-width: 900px) calc(50vw - 50px), (min-width: 1160px) 347px, calc(33.33vw - 40px)`
+   - 热门景点：`(max-width: 720px) calc(50vw - 40px), (max-width: 1080px) calc(33.33vw - 38px), (min-width: 1160px) 204px, calc(20vw - 29px)`
+
+3. **CSS 适配**：
+   - 编辑推荐：3列网格（桌面）→ 2列（平板）→ 1列（移动）
+   - 热门景点：5列网格（桌面）→ 3列（平板）→ 2列（移动）
+
+```mermaid
+flowchart TD
+User["用户访问页面"] --> Browser["浏览器解析 sizes 属性"]
+Browser --> Calc["计算目标图片尺寸"]
+Calc --> Loader["调用自定义 image loader"]
+Loader --> Unsplash["Unsplash CDN 生成优化图片"]
+Unsplash --> Response["返回最佳尺寸图片"]
+Response --> Display["渲染到页面"]
+subgraph "编辑器精选 sizes 计算"
+EP1["< 640px: 100vw - 64px"]
+EP2["< 900px: 50vw - 50px"]
+EP3["> 1160px: 347px"]
+EP4["默认: 33.33vw - 40px"]
+end
+subgraph "热门景点 sizes 计算"
+HA1["< 720px: 50vw - 40px"]
+HA2["< 1080px: 33.33vw - 38px"]
+HA3["> 1160px: 204px"]
+HA4["默认: 20vw - 29px"]
+end
+```
+
+**图表来源**
+- [frontend/lib/image-loader.ts:8-18](file://frontend/lib/image-loader.ts#L8-L18)
+- [frontend/components/home/editor-picks.tsx:40-49](file://frontend/components/home/editor-picks.tsx#L40-L49)
+- [frontend/components/home/hot-attractions.tsx:45-54](file://frontend/components/home/hot-attractions.tsx#L45-L54)
+- [frontend/components/home/editor-picks.module.css:68-78](file://frontend/components/home/editor-picks.module.css#L68-L78)
+- [frontend/components/home/hot-attractions.module.css:54-64](file://frontend/components/home/hot-attractions.module.css#L54-L64)
+
+**章节来源**
+- [frontend/lib/image-loader.ts:1-20](file://frontend/lib/image-loader.ts#L1-L20)
+- [frontend/lib/image-loader.test.ts:1-24](file://frontend/lib/image-loader.test.ts#L1-L24)
+- [frontend/next.config.ts:6-10](file://frontend/next.config.ts#L6-L10)
+- [frontend/components/home/editor-picks.tsx:40-49](file://frontend/components/home/editor-picks.tsx#L40-L49)
+- [frontend/components/home/hot-attractions.tsx:45-54](file://frontend/components/home/hot-attractions.tsx#L45-L54)
+
 ### 区块数据加载三态
 所有数据区块共用 `useSectionData`，将异步数据源包装为 loading、error、ready 三种状态。组件只关心最终渲染结果，从而在 Mock 与真实 API 之间平滑切换。
 
@@ -320,7 +401,7 @@ Error --> RenderError["渲染错误提示"]
 - [frontend/components/home/use-section-data.ts:1-44](file://frontend/components/home/use-section-data.ts#L1-L44)
 
 ### 编辑推荐区块
-编辑推荐按 `sort_order` 升序、并列时按 `id` 升序排序，并仅展示当前城市与全城通用的精选。空态文案不报错，加载与错误态沿用区块三态。
+编辑推荐按 `sort_order` 升序、并列时按 `id` 升序排序，并仅展示当前城市与全城通用的精选。空态文案不报错，加载与错误态沿用区块三态。**已集成响应式图片优化**，使用精确的 sizes 属性和自定义 image loader 实现最佳加载性能。
 
 ```mermaid
 flowchart TD
@@ -330,15 +411,19 @@ Sort --> Filter["过滤非当前城市与非 all 的条目"]
 Filter --> Empty{"是否有数据？"}
 Empty --> |否| ShowEmpty["显示空态文案"]
 Empty --> |是| RenderCards["渲染封面、标题、城市、编辑署名、摘要"]
+RenderCards --> ImageOpt["应用响应式图片优化"]
+ImageOpt --> Sizes["计算 sizes 属性"]
+Sizes --> Loader["调用自定义 image loader"]
 ```
 
 **图表来源**
 - [frontend/components/home/editor-picks.tsx:10-61](file://frontend/components/home/editor-picks.tsx#L10-L61)
-- [homepage-u6-editor-picks.md:10-54](file://docs/specs/wanderchain/homepage-u6-editor-picks.md#L10-L54)
+- [frontend/components/home/editor-picks.tsx:40-49](file://frontend/components/home/editor-picks.tsx#L40-L49)
+- [frontend/lib/image-loader.ts:8-18](file://frontend/lib/image-loader.ts#L8-L18)
 
 **章节来源**
 - [homepage-u6-editor-picks.md:10-54](file://docs/specs/wanderchain/homepage-u6-editor-picks.md#L10-L54)
-- [frontend/components/home/editor-picks.tsx:1-62](file://frontend/components/home/editor-picks.tsx#L1-L62)
+- [frontend/components/home/editor-picks.tsx:1-66](file://frontend/components/home/editor-picks.tsx#L1-L66)
 
 ### 热门帖子区块
 热门帖子最多展示 10 条已发布帖子，三级排序为评论数降序 → 浏览数降序 → 发布时间降序。草稿与已删除帖子一律排除。
@@ -354,27 +439,31 @@ Limit --> Render["渲染序号、标题、作者、评论数、浏览数、发�
 
 **图表来源**
 - [frontend/components/home/hot-posts.tsx:11-58](file://frontend/components/home/hot-posts.tsx#L11-L58)
-- [homepage-u7-hot-posts.md:10-56](file://docs/specs/wanderchain/homepage-u7-hot-posts.md#L10-L56)
 
 **章节来源**
 - [homepage-u7-hot-posts.md:10-56](file://docs/specs/wanderchain/homepage-u7-hot-posts.md#L10-L56)
 - [frontend/components/home/hot-posts.tsx:1-59](file://frontend/components/home/hot-posts.tsx#L1-L59)
 
 ### 热门景点区块
-热门景点按浏览量与发布时间排序，展示封面、名称、城市与评分、浏览数。空态与错误态沿用通用区块状态。
+热门景点按浏览量与发布时间排序，展示封面、名称、城市与评分、浏览数。空态与错误态沿用通用区块状态。**已集成响应式图片优化**，使用精确的 sizes 属性和自定义 image loader 实现最佳加载性能。
 
 ```mermaid
 flowchart TD
 Start["HotAttractions(city)"] --> Fetch["mockRepository.listHotAttractions({ city })"]
 Fetch --> Sort["按浏览数与发布时间排序"]
 Sort --> Render["渲染封面、名称、城市、评分、浏览数"]
+Render --> ImageOpt["应用响应式图片优化"]
+ImageOpt --> Sizes["计算 sizes 属性"]
+Sizes --> Loader["调用自定义 image loader"]
 ```
 
 **图表来源**
 - [frontend/components/home/hot-attractions.tsx:11-65](file://frontend/components/home/hot-attractions.tsx#L11-L65)
+- [frontend/components/home/hot-attractions.tsx:45-54](file://frontend/components/home/hot-attractions.tsx#L45-L54)
+- [frontend/lib/image-loader.ts:8-18](file://frontend/lib/image-loader.ts#L8-L18)
 
 **章节来源**
-- [frontend/components/home/hot-attractions.tsx:1-66](file://frontend/components/home/hot-attractions.tsx#L1-L66)
+- [frontend/components/home/hot-attractions.tsx:1-70](file://frontend/components/home/hot-attractions.tsx#L1-L70)
 
 ### 契约与 Mock 数据层
 U0 明确类型定义、城市白名单、Mock 数据规模与 `HomeRepository` 接口边界。它是其余区块的地基，组件与单元测试应通过替换 `mockRepository` 来验证未来真实 API 的兼容性。
@@ -394,6 +483,7 @@ WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据
 - Hero 依赖：数据契约常量（CITIES、LIMITS），无外部状态。
 - 区块依赖：`useSectionData`、`mockRepository`、城市名称格式化。
 - **AI 助手依赖**：Provider 上下文，被功能导航与站点头部触发。**新增无障碍依赖**：焦点管理、键盘事件监听、滚动控制。
+- **图片优化依赖**：next/image 组件、自定义 image loader、Next.js 配置。
 - 契约依赖：U0 是 U2/U3/U4/U6/U7 的基础，但 U0 不反向依赖任何 UI 组件。
 
 ```mermaid
@@ -410,6 +500,9 @@ U2 --> U7
 U2 --> U8
 Hero["Hero 首屏"] --> U0
 Accessibility["无障碍功能"] --> U4
+ImageOpt["图片优化系统"] --> U6
+ImageOpt --> U8
+Loader["image-loader.ts"] --> Config["next.config.ts"]
 ```
 
 **图表来源**
@@ -418,6 +511,8 @@ Accessibility["无障碍功能"] --> U4
 - [homepage-u4-ai-assistant.md:33-38](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md#L33-L38)
 - [homepage-u6-editor-picks.md:35-40](file://docs/specs/wanderchain/homepage-u6-editor-picks.md#L35-L40)
 - [homepage-u7-hot-posts.md:36-41](file://docs/specs/wanderchain/homepage-u7-hot-posts.md#L36-L41)
+- [frontend/lib/image-loader.ts:1-20](file://frontend/lib/image-loader.ts#L1-L20)
+- [frontend/next.config.ts:1-14](file://frontend/next.config.ts#L1-L14)
 
 **章节来源**
 - [homepage-u0-contract-mock.md:34-40](file://docs/specs/wanderchain/homepage-u0-contract-mock.md#L34-L40)
@@ -431,7 +526,11 @@ Accessibility["无障碍功能"] --> U4
 - **Hero 组件优化**：独立的 Hero 组件减少页面组件复杂度，支持静态渲染和无客户端依赖。
 - **三态加载**：`useSectionData` 统一管理 loading/error/ready，减少重复请求与竞态条件。
 - **城市参数稳定**：首页对 `searchParams` 做单值归一，避免数组参数导致的不必要重渲染。
-- **图片懒加载**：封面图使用 `loading="lazy"`，降低首屏带宽压力。
+- **响应式图片优化**：
+  - 自定义 image loader 直接将宽度参数传递给 Unsplash CDN，避免经过 Next.js 的 `/ _next/image` 端点
+  - 精确的 sizes 属性计算确保浏览器选择最优图片尺寸
+  - 懒加载和异步解码提升首屏性能
+  - CSS aspect-ratio 和 object-fit 确保图片在不同屏幕尺寸下的显示效果
 - **可替换数据层**：类型与 `ListResult<T>` 契约使 Mock 与真实 API 可互换，组件与测试无需改动。
 - **无障碍性能优化**：AI 助手模态框使用运行期查询而非缓存的可聚焦元素列表，避免内存泄漏和性能问题。
 
@@ -444,6 +543,11 @@ Accessibility["无障碍功能"] --> U4
   - 焦点异常：确认焦点陷阱正常工作（Tab/Shift+Tab 循环）；检查关闭按钮初始焦点设置。
   - 滚动穿透：确认 `document.body.style.overflow` 设置为 `hidden`；检查组件卸载时的清理函数。
   - 键盘导航失效：检查 `keydown` 事件监听是否正确注册和清理。
+- **图片优化问题**：
+  - 图片未优化：确认 next.config.ts 中已配置自定义 loader；检查 image-loader.ts 是否正确导出。
+  - 图片尺寸不正确：检查 sizes 属性是否与 CSS 网格布局匹配；确认 width/height 属性设置合理。
+  - CDN 请求失败：检查图片 URL 是否为有效的 https URL；确认 Unsplash CDN 可访问。
+  - 性能问题：检查是否正确使用 loading="lazy" 和 decoding="async"；确认 sizes 属性计算准确。
 - 面板无法关闭：确认遮罩点击、关闭按钮与 Esc 事件监听未被阻止；检查焦点归还逻辑。
 - 城市切换无效：确认 URL 查询参数格式为 `?city=slug`，且 `parseCity` 能识别该 slug。
 - 区块为空：检查 Mock 数据是否包含对应城市的条目；确认编辑器精选与帖子的状态过滤逻辑。
@@ -456,8 +560,10 @@ Accessibility["无障碍功能"] --> U4
 - [frontend/components/home/ai-assistant.tsx:60-75](file://frontend/components/home/ai-assistant.tsx#L60-L75)
 - [frontend/components/home/ai-assistant.tsx:86-122](file://frontend/components/home/ai-assistant.tsx#L86-L122)
 - [frontend/components/home/city-switcher.tsx:17-31](file://frontend/components/home/city-switcher.tsx#L17-L31)
+- [frontend/lib/image-loader.ts:8-18](file://frontend/lib/image-loader.ts#L8-L18)
+- [frontend/next.config.ts:6-10](file://frontend/next.config.ts#L6-L10)
 
 ## 结论
-WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**新增的独立 Hero 首屏组件**进一步提升了代码的可维护性和组件复用性。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载与无障碍设计提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
+WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**新增的独立 Hero 首屏组件**进一步提升了代码的可维护性和组件复用性。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**新增的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
 
 [本节为总结性内容，不直接分析具体文件]
