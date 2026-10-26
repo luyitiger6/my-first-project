@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: AI 编码工程化装配根（Submodule + Harness + OpenSpec）
+title: AI 编码工程装配根（Submodule + Harness + OpenSpec）
 scope:
     - README.md
     - AGENTS.md

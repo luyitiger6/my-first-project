@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: openspec
-title: OpenSpec 变更与能力规格管理
+title: OpenSpec 结构化变更与能力规格管理
 scope:
     - openspec/
 source_files: []
