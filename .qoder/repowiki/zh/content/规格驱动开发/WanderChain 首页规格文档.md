@@ -6,15 +6,20 @@
 - [homepage-hero.md](file://docs/specs/wanderchain/homepage-hero.md)
 - [homepage-u1-mock-auth.md](file://docs/specs/wanderchain/homepage-u1-mock-auth.md)
 - [homepage-u2-skeleton.md](file://docs/specs/wanderchain/homepage-u2-skeleton.md)
+- [homepage-u4-ai-assistant.md](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md)
 - [homepage-u5-city-switcher.md](file://docs/specs/wanderchain/homepage-u5-city-switcher.md)
 - [homepage-u8-hot-attractions.md](file://docs/specs/wanderchain/homepage-u8-hot-attractions.md)
 - [frontend/app/page.tsx](file://frontend/app/page.tsx)
+- [frontend/app/layout.tsx](file://frontend/app/layout.tsx)
 - [frontend/components/home/hero.tsx](file://frontend/components/home/hero.tsx)
 - [frontend/components/home/hero.module.css](file://frontend/components/home/hero.module.css)
 - [frontend/components/home/hero.test.tsx](file://frontend/components/home/hero.test.tsx)
 - [frontend/components/home/use-section-data.ts](file://frontend/components/home/use-section-data.ts)
 - [frontend/components/home/feature-nav.tsx](file://frontend/components/home/feature-nav.tsx)
 - [frontend/components/home/ai-assistant.tsx](file://frontend/components/home/ai-assistant.tsx)
+- [frontend/components/home/ai-assistant.module.css](file://frontend/components/home/ai-assistant.module.css)
+- [frontend/components/home/ai-assistant.test.tsx](file://frontend/components/home/ai-assistant.test.tsx)
+- [frontend/components/site/site-header.tsx](file://frontend/components/site/site-header.tsx)
 - [frontend/components/home/editor-picks.tsx](file://frontend/components/home/editor-picks.tsx)
 - [frontend/components/home/hot-posts.tsx](file://frontend/components/home/hot-posts.tsx)
 - [frontend/components/home/hot-attractions.tsx](file://frontend/components/home/hot-attractions.tsx)
@@ -27,6 +32,8 @@
 **所做更改**
 - 新增独立的 Hero 首屏组件规格与实现
 - 增强 Mock 认证、骨架结构、城市切换器、热门景点规格文档
+- **新增 AI 助手模态框无障碍功能增强**：焦点陷阱、背景滚动锁定、完整键盘导航支持
+- **新增九个规格场景（S15-S17）**：Tab 键正向循环、Shift+Tab 反向循环、背景滚动锁定行为
 - 更新首页聚合器以使用新的 Hero 组件
 - 完善类型定义和验收标准
 
@@ -56,7 +63,7 @@ WanderChain 首页由一个页面级路由和多个可复用区块组成：
 - Hero 首屏：独立的 `HomeHero` 组件，包含品牌标识、主标题、CTA 按钮和统计面板。
 - 区块组件：功能导航、城市切换、编辑推荐、热门帖子、热门景点分别位于 `components/home/*`。
 - 共享 Hook：`useSectionData` 统一封装加载、就绪、错误三态。
-- 占位面板：AI 助手通过上下文 Provider 暴露打开/关闭能力，供多处触发。
+- **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭、遮罩点击关闭，以及完整的键盘导航支持。
 - 占位页：`/community` 与 `/attractions` 为板块建设中的占位页面。
 
 ```mermaid
@@ -73,6 +80,8 @@ FeatureNav --> AiAssistant["AI 助手面板<br/>ai-assistant.tsx"]
 EditorPicks --> UseSection["区块数据钩子<br/>use-section-data.ts"]
 HotPosts --> UseSection
 HotAttractions --> UseSection
+AiAssistant --> FocusTrap["焦点陷阱<br/>Tab/Shift+Tab 循环"]
+AiAssistant --> ScrollLock["滚动锁定<br/>body.style.overflow"]
 ```
 
 **图表来源**
@@ -84,7 +93,7 @@ HotAttractions --> UseSection
 - [frontend/components/home/hot-posts.tsx:1-59](file://frontend/components/home/hot-posts.tsx#L1-L59)
 - [frontend/components/home/hot-attractions.tsx:1-66](file://frontend/components/home/hot-attractions.tsx#L1-L66)
 - [frontend/components/home/use-section-data.ts:1-44](file://frontend/components/home/use-section-data.ts#L1-L44)
-- [frontend/components/home/ai-assistant.tsx:1-157](file://frontend/components/home/ai-assistant.tsx#L1-L157)
+- [frontend/components/home/ai-assistant.tsx:1-212](file://frontend/components/home/ai-assistant.tsx#L1-L212)
 
 **章节来源**
 - [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
@@ -94,7 +103,7 @@ HotAttractions --> UseSection
 - 首页聚合器：解析 `searchParams`，调用 `parseCity` 得到当前城市，并将城市与查询参数透传给各区块。Hero 区域展示本期统计上限，区块按"功能入口 → 城市入口 → 内容列表"顺序渲染。
 - 区块数据钩子：`useSectionData` 将异步数据源包装为 `{loading, error, ready}` 三态，避免重复拉取并处理组件卸载后的状态更新。
 - 功能导航：包含旅游社区、景点攻略两个链接卡片，以及 AI 助手按钮；后两者分别跳转到占位页或唤起同一面板。
-- AI 助手：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。
+- **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。**新增完整无障碍支持**：焦点陷阱（Tab/Shift+Tab 循环）、背景滚动锁定、键盘导航支持。
 - 城市切换：根据 URL `?city=` 渲染选中项，点击时替换查询参数，保持其他查询键不变。
 - 内容区块：编辑推荐、热门帖子、热门景点均通过 `mockRepository` 获取数据，并按各自排序与过滤规则展示。
 
@@ -113,6 +122,7 @@ WanderChain 首页采用"页面装配 + 区块消费 + Mock 仓储"的分层结�
 graph TB
 subgraph "页面层"
 Page["首页 page.tsx"]
+Layout["根布局 layout.tsx"]
 end
 subgraph "交互层"
 Hero["Hero 首屏 hero.tsx"]
@@ -135,6 +145,7 @@ Page --> City
 Page --> Picks
 Page --> Posts
 Page --> Attractions
+Layout --> AI
 Nav --> AI
 Picks --> Hook
 Posts --> Hook
@@ -144,6 +155,7 @@ Hook --> Repo
 
 **图表来源**
 - [frontend/app/page.tsx:37-63](file://frontend/app/page.tsx#L37-L63)
+- [frontend/app/layout.tsx:25-29](file://frontend/app/layout.tsx#L25-L29)
 - [frontend/components/home/hero.tsx:46-92](file://frontend/components/home/hero.tsx#L46-L92)
 - [frontend/components/home/feature-nav.tsx:71-115](file://frontend/components/home/feature-nav.tsx#L71-L115)
 - [frontend/components/home/city-switcher.tsx:13-31](file://frontend/components/home/city-switcher.tsx#L13-L31)
@@ -238,8 +250,14 @@ Panel --> End
 - [frontend/app/community/page.tsx:1-18](file://frontend/app/community/page.tsx#L1-L18)
 - [frontend/app/attractions/page.tsx:1-18](file://frontend/app/attractions/page.tsx#L1-L18)
 
-### AI 助手面板与无障碍
-AI 助手是纯前端占位：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。U4 规格强制"打开与关闭期间不得出现 fetch/XHR"，测试需 mock 全局 `fetch` 并断言调用次数为 0。
+### AI 助手模态框与无障碍增强（已更新）
+AI 助手是纯前端占位：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。**已增强完整无障碍功能**：焦点陷阱、背景滚动锁定、键盘导航支持。
+
+**新增无障碍特性：**
+- **焦点陷阱**：Tab 键在面板内正向循环，Shift+Tab 反向循环
+- **背景滚动锁定**：打开期间 `document.body.style.overflow = 'hidden'`，关闭后恢复原值
+- **键盘导航**：Esc 关闭、Tab/Shift+Tab 循环、运行期查询可聚焦元素
+- **焦点管理**：打开时自动聚焦关闭按钮，关闭后焦点归还触发元素
 
 ```mermaid
 classDiagram
@@ -247,25 +265,39 @@ class AiAssistantProvider {
 +boolean isOpen
 +open() void
 +close() void
++focusTrap() void
++scrollLock() void
 }
 class AiAssistantTrigger {
 +variant : "header" | "floating"
 }
-class FeatureNav {
-+open() void
+class KeyboardNavigation {
++handleTabKey() void
++handleShiftTabKey() void
++handleEscapeKey() void
 }
-AiAssistantProvider <.. FeatureNav : "通过 useAiAssistant 调用 open"
+class FocusManagement {
++restoreFocusRef : HTMLElement
++closeButtonRef : HTMLButtonElement
++panelRef : HTMLElement
+}
+AiAssistantProvider <.. AiAssistantTrigger : "通过 useAiAssistant 调用 open"
+AiAssistantProvider <.. KeyboardNavigation : "键盘事件监听"
+AiAssistantProvider <.. FocusManagement : "焦点控制"
 ```
 
 **图表来源**
 - [frontend/components/home/ai-assistant.tsx:14-28](file://frontend/components/home/ai-assistant.tsx#L14-L28)
 - [frontend/components/home/ai-assistant.tsx:41-120](file://frontend/components/home/ai-assistant.tsx#L41-L120)
 - [frontend/components/home/ai-assistant.tsx:123-156](file://frontend/components/home/ai-assistant.tsx#L123-L156)
+- [frontend/components/home/ai-assistant.tsx:178-211](file://frontend/components/home/ai-assistant.tsx#L178-L211)
 - [frontend/components/home/feature-nav.tsx:71-115](file://frontend/components/home/feature-nav.tsx#L71-L115)
 
 **章节来源**
 - [homepage-u4-ai-assistant.md:10-52](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md#L10-L52)
+- [homepage-u4-ai-assistant.md:97-110](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md#L97-L110)
 - [frontend/components/home/ai-assistant.tsx:41-120](file://frontend/components/home/ai-assistant.tsx#L41-L120)
+- [frontend/components/home/ai-assistant.tsx:178-211](file://frontend/components/home/ai-assistant.tsx#L178-L211)
 
 ### 区块数据加载三态
 所有数据区块共用 `useSectionData`，将异步数据源包装为 loading、error、ready 三种状态。组件只关心最终渲染结果，从而在 Mock 与真实 API 之间平滑切换。
@@ -361,7 +393,7 @@ WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据
 - 页面依赖：城市解析、区块组件、站点头尾。
 - Hero 依赖：数据契约常量（CITIES、LIMITS），无外部状态。
 - 区块依赖：`useSectionData`、`mockRepository`、城市名称格式化。
-- AI 助手依赖：Provider 上下文，被功能导航与站点头部触发。
+- **AI 助手依赖**：Provider 上下文，被功能导航与站点头部触发。**新增无障碍依赖**：焦点管理、键盘事件监听、滚动控制。
 - 契约依赖：U0 是 U2/U3/U4/U6/U7 的基础，但 U0 不反向依赖任何 UI 组件。
 
 ```mermaid
@@ -377,6 +409,7 @@ U2 --> U6
 U2 --> U7
 U2 --> U8
 Hero["Hero 首屏"] --> U0
+Accessibility["无障碍功能"] --> U4
 ```
 
 **图表来源**
@@ -400,12 +433,17 @@ Hero["Hero 首屏"] --> U0
 - **城市参数稳定**：首页对 `searchParams` 做单值归一，避免数组参数导致的不必要重渲染。
 - **图片懒加载**：封面图使用 `loading="lazy"`，降低首屏带宽压力。
 - **可替换数据层**：类型与 `ListResult<T>` 契约使 Mock 与真实 API 可互换，组件与测试无需改动。
+- **无障碍性能优化**：AI 助手模态框使用运行期查询而非缓存的可聚焦元素列表，避免内存泄漏和性能问题。
 
 [本节为通用指导，不直接分析具体文件]
 
 ## 故障排查指南
 - **Hero 组件问题**：检查 `stats` prop 是否合法（长度=4、顺序正确、值为非负整数）；确认组件未被误标记为 Client Component。
-- AI 助手面板未打开：检查是否包裹在 `AiAssistantProvider` 内；确认触发按钮调用了 `open()` 而非跳转。
+- **AI 助手模态框问题**：
+  - 面板未打开：检查是否包裹在 `AiAssistantProvider` 内；确认触发按钮调用了 `open()` 而非跳转。
+  - 焦点异常：确认焦点陷阱正常工作（Tab/Shift+Tab 循环）；检查关闭按钮初始焦点设置。
+  - 滚动穿透：确认 `document.body.style.overflow` 设置为 `hidden`；检查组件卸载时的清理函数。
+  - 键盘导航失效：检查 `keydown` 事件监听是否正确注册和清理。
 - 面板无法关闭：确认遮罩点击、关闭按钮与 Esc 事件监听未被阻止；检查焦点归还逻辑。
 - 城市切换无效：确认 URL 查询参数格式为 `?city=slug`，且 `parseCity` 能识别该 slug。
 - 区块为空：检查 Mock 数据是否包含对应城市的条目；确认编辑器精选与帖子的状态过滤逻辑。
@@ -414,10 +452,12 @@ Hero["Hero 首屏"] --> U0
 **章节来源**
 - [homepage-hero.md:79-87](file://docs/specs/wanderchain/homepage-hero.md#L79-L87)
 - [homepage-u4-ai-assistant.md:40-52](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md#L40-L52)
+- [homepage-u4-ai-assistant.md:97-110](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md#L97-L110)
 - [frontend/components/home/ai-assistant.tsx:60-75](file://frontend/components/home/ai-assistant.tsx#L60-L75)
+- [frontend/components/home/ai-assistant.tsx:86-122](file://frontend/components/home/ai-assistant.tsx#L86-L122)
 - [frontend/components/home/city-switcher.tsx:17-31](file://frontend/components/home/city-switcher.tsx#L17-L31)
 
 ## 结论
-WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**新增的独立 Hero 首屏组件**进一步提升了代码的可维护性和组件复用性。架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载与无障碍设计提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
+WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**新增的独立 Hero 首屏组件**进一步提升了代码的可维护性和组件复用性。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载与无障碍设计提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
 
 [本节为总结性内容，不直接分析具体文件]
