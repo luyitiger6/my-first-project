@@ -159,20 +159,20 @@ export interface HomeHeroProps {
 - [ ] 首屏存在且仅存在 1 个 `h1`，`id="hero-title"`，文案与 §1.1 一致
 - [ ] 眉标、导语、城市提示行三段文本与 §1.1 逐字一致
 - [ ] 统计面板为 `aside`，`aria-labelledby="hero-aside-title"`，标题为「本期一览」
-- [ ] 统计面板四项顺序为 城市入口 → 编辑推荐 → 热门帖子 → 热门景点
+- [x] 统计面板四项顺序为 城市入口 → 编辑推荐 → 热门帖子 → 热门景点
 
 ### 4.2 交互
 
-- [ ] 主 CTA `href="/community"`，次 CTA `href="/attractions"`
-- [ ] 文本锚点 `href="#cities"`，且页面中存在 `id="cities"` 元素
+- [x] 主 CTA `href="/community"`，次 CTA `href="/attractions"`
+- [x] 文本锚点 `href="#cities"`，且页面中存在 `id="cities"` 元素
 - [ ] 键盘 Tab 顺序 = 视觉顺序；所有可交互元素有可见焦点环
 - [ ] 点击任一入口不出现控制台报错
 
 ### 4.3 数据
 
-- [ ] 默认四项数值分别等于 `CITIES.length`、`EDITOR_PICKS_LIMIT`、`HOT_POSTS_LIMIT`、`HOT_ATTRACTIONS_LIMIT`
-- [ ] 传入合法 `stats` 时按传入值渲染，且传入数组未被修改
-- [ ] 传入 `[]` / 3 项 / 5 项 / 含负数或小数时回退默认四项，无异常、无 `console.error`
+- [x] 默认四项数值分别等于 `CITIES.length`、`EDITOR_PICKS_LIMIT`、`HOT_POSTS_LIMIT`、`HOT_ATTRACTIONS_LIMIT`
+- [x] 传入合法 `stats` 时按传入值渲染，且传入数组未被修改
+- [x] 传入 `[]` / 3 项 / 5 项 / 含负数或小数时回退默认四项，无异常、无 `console.error`
 
 ### 4.4 响应式与无障碍
 
@@ -183,11 +183,11 @@ export interface HomeHeroProps {
 
 ### 4.5 工程
 
-- [ ] 组件文件内无 `'use client'`、无 `useState` / `useEffect`
-- [ ] `page.tsx` 中 hero 内联 JSX 已移除，改为 `<HomeHero />`，页面可见内容不变
-- [ ] hero 专属样式迁入 `hero.module.css`；`home.module.css` 中不再有 `.hero` 系列类
-- [ ] 新增 `components/home/hero.test.tsx`，覆盖 S1–S4、S6
-- [ ] `npx vitest run components/home/hero.test.tsx app/page.test.tsx` 全绿
+- [x] 组件文件内无 `'use client'`、无 `useState` / `useEffect`
+- [x] `page.tsx` 中 hero 内联 JSX 已移除，改为 `<HomeHero />`，页面可见内容不变
+- [x] hero 专属样式迁入 `hero.module.css`；`home.module.css` 中不再有 `.hero` 系列类
+- [x] 新增 `components/home/hero.test.tsx`，覆盖 S1–S4、S6
+- [x] `npx vitest run components/home/hero.test.tsx app/page.test.tsx` 全绿
 - [ ] `npm run build` 通过（TypeScript 类型检查 + RSC 边界检查）
 - [ ] 无 `TODO` / `FIXME` / `.skip`，未被 `03-static-guard` 拦截
 - [ ] `powershell -File harness\run-all.ps1` 退出码 0
@@ -261,8 +261,8 @@ const nextConfig: NextConfig = {
 |---|---|---|---|
 | 1 | Tailwind + shadcn/ui | 未安装，用 CSS Modules | 直接照做会与现有 8 个组件样式体系割裂 |
 | 2 | `next/image` | 零使用，hero 无图 | 当前无适用对象；本条为未来约束 |
-| 3 | hero 是独立单元 | 内联在 `page.tsx` | 本单元的实际工作 = 抽取 + 补测试 |
-| 4 | 有 Requirement 作为真相 | 主 spec 无 hero 条目 | 本文档停留在草稿层；转正需另立 change |
+| 3 | hero 是独立单元 | 已抽出为 `components/home/hero.tsx` + `hero.module.css`（2026-10-27） | 一致；`page.tsx` 仅剩 `<HomeHero />` |
+| 4 | 有 Requirement 作为真相 | change `extract-home-hero` 已补 ADDED「首页主视觉」，待归档后进入主 spec | 归档前真相仍以 delta 形式存在，本文档不直接改写主 spec |
 
 ---
 

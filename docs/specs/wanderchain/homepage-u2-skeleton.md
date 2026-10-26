@@ -213,7 +213,7 @@ function useSectionData<T>(
 
 ### 4.4 工程
 
-- [ ] `app/page.tsx` 内不再残留 hero 内联 JSX（已抽为 `<HomeHero />`）
+- [x] `app/page.tsx` 内不再残留 hero 内联 JSX（已抽为 `<HomeHero />`，2026-10-27 完成）
 - [ ] `page.tsx` 不直接 import `mock-data`
 - [ ] `app/page.test.tsx` 覆盖 S1、S2、S6、S7
 - [ ] `npx vitest run app/page.test.tsx` 全绿
@@ -272,7 +272,7 @@ function useSectionData<T>(
 
 | # | 本文档要求 | 仓库现状 | 影响 |
 |---|---|---|---|
-| 1 | hero 为独立单元 | **内联在 `page.tsx` 47–97 行** | 本单元验收项「已抽为 `<HomeHero />`」当前未满足 |
+| 1 | hero 为独立单元 | 已抽出为 `components/home/hero.tsx`（2026-10-27），`page.tsx` 仅剩 `<HomeHero />` | 本单元验收项「已抽为 `<HomeHero />`」已满足 |
 | 2 | 错误边界只兜 render 期异常 | 已如此；异步失败由 `useSectionData` 处理 | 两套机制并存，勿混用 |
 | 3 | 区块锚点用于测试 | 已用 `data-section` | 一致 |
 | 4 | Tailwind 骨架 | CSS Modules + `wc-*` | 换栈会改所有区块容器的包装方式 |
