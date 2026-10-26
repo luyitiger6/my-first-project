@@ -3,14 +3,26 @@
 <cite>
 **本文引用的文件**   
 - [openspec/config.yaml](file://openspec/config.yaml)
-- [openspec/changes/add-db-baseline-and-flyway-gate/.openspec.yaml](file://openspec/changes/add-db-baseline-and-flyway-gate/.openspec.yaml)
-- [openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml](file://openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/proposal.md](file://openspec/changes/archive/2026-10-27-extract-home-hero/proposal.md)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/design.md](file://openspec/changes/archive/2026-10-27-extract-home-hero/design.md)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md](file://openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md](file://openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md)
+- [openspec/specs/wanderchain-homepage/spec.md](file://openspec/specs/wanderchain-homepage/spec.md)
+- [frontend/app/page.tsx](file://frontend/app/page.tsx)
 - [.agents/skills/openspec-propose/SKILL.md](file://.agents/skills/openspec-propose/SKILL.md)
 - [.agents/skills/openspec-explore/SKILL.md](file://.agents/skills/openspec-explore/SKILL.md)
 - [.agents/skills/openspec-apply-change/SKILL.md](file://.agents/skills/openspec-apply-change/SKILL.md)
 - [.agents/skills/openspec-archive-change/SKILL.md](file://.agents/skills/openspec-archive-change/SKILL.md)
 - [.agents/skills/openspec-sync-specs/SKILL.md](file://.agents/skills/openspec-sync-specs/SKILL.md)
 </cite>
+
+## 更新摘要
+**已进行的更改**   
+- 新增“归档变更示例：extract-home-hero”章节，展示已完成并归档的首页主视觉组件抽取变更
+- 更新“变更元数据”与“规格存储位置”部分，引用新的归档变更作为实际案例
+- 补充前端实现状态说明，展示 `app/page.tsx` 中已引入 `HomeHero` 组件的实际落地情况
+- 在“架构总览”和“详细组件分析”中增加归档后变更的生命周期示意
 
 ## 目录
 1. [引言](#引言)
@@ -27,12 +39,14 @@
 ## 引言
 本指南面向希望在本仓库中使用 OpenSpec 进行“规格驱动”开发的开发者。OpenSpec 通过 `openspec/` 目录组织变更提案、规格说明和归档记录，配合 CLI 完成从立项、审阅、实现到归档的全流程管理。仓库中已包含一个基于 `spec-driven` 工作流的项目示例，以及一套 Agent Skill 文档，用于指导如何调用 OpenSpec CLI 完成提议、探索、实现、同步和归档等操作。
 
+本次更新重点反映已归档变更 `extract-home-hero`：该变更将首页主视觉从 `app/page.tsx` 的内联 JSX 抽取为独立 Server Component `components/home/hero.tsx`，并通过 delta spec 向 `wanderchain-homepage` 能力补入“首页主视觉”需求，最终归档至 `openspec/changes/archive/2026-10-27-extract-home-hero/`。
+
 ## 项目结构
 仓库中与 OpenSpec 直接相关的根级目录是 `openspec/`，其典型子目录如下：
 - `openspec/config.yaml`：项目级 OpenSpec 配置，声明工作流 schema、上下文语言与规则提示等。
-- `openspec/specs/`：主规格（main specs）存放位置，按能力路径组织，例如 `workspace-layout`、`workspace-scaffold`、`skill-distribution`、`frontend-nextjs`。
+- `openspec/specs/`：主规格（main specs）存放位置，按能力路径组织，例如 `workspace-layout`、`workspace-scaffold`、`skill-distribution`、`frontend-nextjs`、`wanderchain-homepage`。
 - `openspec/changes/`：活跃变更目录，每个变更是一个以短横线命名的小目录，内部包含 `.openspec.yaml`、`proposal.md`、`design.md`、`tasks.md` 以及 `specs/<capability-path>/spec.md` 等工件。
-- `openspec/changes/archive/`：已归档变更目录，通常以 `YYYY-MM-DD-<change-name>` 形式命名。
+- `openspec/changes/archive/`：已归档变更目录，通常以 `YYYY-MM-DD-<change-name>` 形式命名；`extract-home-hero` 即归档于 `2026-10-27-extract-home-hero`。
 
 ```mermaid
 graph TB
@@ -44,15 +58,18 @@ Changes --> ChangeMeta[".openspec.yaml<br/>变更元数据"]
 Changes --> Artifacts["proposal.md / design.md / tasks.md<br/>变更工件"]
 Changes --> DeltaSpecs["specs/<capability>/spec.md<br/>差异规格"]
 ORoot --> Archive["changes/archive/<date>-<name>/<br/>归档变更"]
+Archive --> ExtractHero["2026-10-27-extract-home-hero/<br/>首页主视觉抽取归档"]
 ```
 
 **图示来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml#L1-L3)
 - [.agents/skills/openspec-propose/SKILL.md:17-24](file://.agents/skills/openspec-propose/SKILL.md#L17-L24)
 - [.agents/skills/openspec-archive-change/SKILL.md:176-184](file://.agents/skills/openspec-archive-change/SKILL.md#L176-L184)
 
 **章节来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml#L1-L3)
 - [.agents/skills/openspec-propose/SKILL.md:17-24](file://.agents/skills/openspec-propose/SKILL.md#L17-L24)
 - [.agents/skills/openspec-archive-change/SKILL.md:176-184](file://.agents/skills/openspec-archive-change/SKILL.md#L176-L184)
 
@@ -72,7 +89,7 @@ OpenSpec 在本仓库中的核心组件包括：
 - [.agents/skills/openspec-sync-specs/SKILL.md:86-177](file://.agents/skills/openspec-sync-specs/SKILL.md#L86-L177)
 
 ## 架构总览
-下图展示 OpenSpec 在仓库中的整体协作关系：开发者通过 CLI 创建变更、编写工件；CLI 根据 schema 生成并校验工件；差异规格可以同步到主规格；实现完成后归档变更。
+下图展示 OpenSpec 在仓库中的整体协作关系：开发者通过 CLI 创建变更、编写工件；CLI 根据 schema 生成并校验工件；差异规格可以同步到主规格；实现完成后归档变更。`extract-home-hero` 展示了从活跃变更到归档变更的完整生命周期。
 
 ```mermaid
 sequenceDiagram
@@ -81,19 +98,19 @@ participant CLI as "OpenSpec CLI"
 participant Change as "变更目录<br/>openspec/changes/<name>"
 participant Specs as "主规格<br/>openspec/specs"
 participant Archive as "归档目录<br/>changes/archive"
-Dev->>CLI : "openspec new change <name>"
+Dev->>CLI : "openspec new change extract-home-hero"
 CLI-->>Change : "创建 .openspec.yaml 与工件骨架"
-Dev->>CLI : "openspec status --change <name>"
+Dev->>CLI : "openspec status --change extract-home-hero"
 CLI-->>Dev : "返回工件状态与依赖图"
-Dev->>CLI : "openspec instructions <artifact-id> --change <name>"
+Dev->>CLI : "openspec instructions <artifact-id> --change extract-home-hero"
 CLI-->>Dev : "返回模板、规则与输出路径"
 Dev->>Change : "编写 proposal/design/tasks/delta spec"
-Dev->>CLI : "openspec sync specs --change <name>"
-CLI->>Specs : "将 delta spec 合并为 main spec"
+Dev->>CLI : "openspec sync specs --change extract-home-hero"
+CLI->>Specs : "将 delta spec 合并为 wanderchain-homepage 主规格"
 Dev->>CLI : "openspec apply (由 skill 驱动)"
-CLI-->>Dev : "按 tasks 推进实现"
-Dev->>CLI : "openspec archive --change <name>"
-CLI->>Archive : "移动变更目录并生成归档名称"
+CLI-->>Dev : "按 tasks 推进实现，修改 frontend/app/page.tsx 与 components/home/hero.*"
+Dev->>CLI : "openspec archive --change extract-home-hero"
+CLI->>Archive : "移动变更目录为 2026-10-27-extract-home-hero"
 ```
 
 **图示来源**
@@ -119,28 +136,68 @@ CLI->>Archive : "移动变更目录并生成归档名称"
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
 
 ### 变更元数据：`.openspec.yaml`
-每个变更目录下都有一个 `.openspec.yaml`，用于声明变更的基本元信息。仓库中已有两个示例：
-- 活跃变更：`openspec/changes/add-db-baseline-and-flyway-gate/.openspec.yaml`
-- 归档变更：`openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml`
+每个变更目录下都有一个 `.openspec.yaml`，用于声明变更的基本元信息。仓库中既有活跃变更示例，也有归档变更示例：
+- 归档变更示例：`openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml`
+- 其他归档变更示例：`openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml`
 
-这两个文件都包含：
+这些文件都包含：
 - `schema: spec-driven`
 - `created: YYYY-MM-DD`
 
-在实际项目中，你可能还需要根据工作流扩展字段，例如：
+对于 `extract-home-hero`，归档后的元数据表明该变更已于 2026-10-27 创建并完成归档，不再处于活跃状态。在实际项目中，你可能还需要根据工作流扩展字段，例如：
 - `skip_specs`：跳过某些工件（如 delta spec）。
 - `retire_capabilities`：允许在归档时移除整个能力的主规格。
 
 **章节来源**
-- [openspec/changes/add-db-baseline-and-flyway-gate/.openspec.yaml:1-3](file://openspec/changes/add-db-baseline-and-flyway-gate/.openspec.yaml#L1-L3)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml#L1-L3)
 - [openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml#L1-L3)
 - [.agents/skills/openspec-archive-change/SKILL.md:122-124](file://.agents/skills/openspec-archive-change/SKILL.md#L122-L124)
+
+### 归档变更示例：extract-home-hero
+`extract-home-hero` 是一个已归档的前端结构重构变更，核心目标是把首页主视觉从 `app/page.tsx` 的内联 JSX 抽取为独立组件，并把行为写进 `wanderchain-homepage` 能力的规格层。
+
+该变更的关键工件如下：
+- `.openspec.yaml`：声明 `schema: spec-driven` 与 `created: 2026-10-27`。
+- `proposal.md`：说明为什么需要抽取主视觉、变更范围、影响面、是否破坏向后兼容等。
+- `design.md`：记录设计决策，包括抽成 Server Component、沿用 CSS Modules、`stats` 非法整组回退、样式迁走不留别名、不接收 `city`、用 DOM 结构比对证明视觉零变化等。
+- `tasks.md`：列出组件与样式落位、页面接线与清理、测试、规格与文档同步、验收等任务，全部勾选表示已实现。
+- `specs/wanderchain-homepage/spec.md`：delta spec，新增“首页主视觉” Requirement 与多个 Scenario。
+
+归档后，`openspec/specs/wanderchain-homepage/spec.md` 中已经出现“Requirement: 首页主视觉”及其场景，说明 delta spec 已成功同步到主规格。
+
+```mermaid
+flowchart TD
+A["extract-home-hero 变更创建"] --> B["proposal.md 说明 Why / What / Capabilities / Impact"]
+B --> C["design.md 记录 D1–D6 等设计决策"]
+C --> D["tasks.md 拆分为组件、页面、测试、规格、验收任务"]
+D --> E["specs/wanderchain-homepage/spec.md 新增 ADDED Requirements"]
+E --> F["openspec sync specs 同步到主规格"]
+F --> G["frontend/app/page.tsx 改为渲染 HomeHero 组件"]
+G --> H["openspec archive 归档为 2026-10-27-extract-home-hero"]
+```
+
+**图示来源**
+- [openspec/changes/archive/2026-10-27-extract-home-hero/proposal.md:1-40](file://openspec/changes/archive/2026-10-27-extract-home-hero/proposal.md#L1-L40)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/design.md:1-76](file://openspec/changes/archive/2026-10-27-extract-home-hero/design.md#L1-L76)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md:1-37](file://openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md#L1-L37)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md:1-36](file://openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md#L1-L36)
+- [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
+
+**章节来源**
+- [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml#L1-L3)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/proposal.md:1-40](file://openspec/changes/archive/2026-10-27-extract-home-hero/proposal.md#L1-L40)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/design.md:1-76](file://openspec/changes/archive/2026-10-27-extract-home-hero/design.md#L1-L76)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md:1-37](file://openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md#L1-L37)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md:1-36](file://openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md#L1-L36)
+- [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
 
 ### 规格存储位置与差异规格
 - 主规格位于 `openspec/specs/<capability-path>/spec.md`。
 - 差异规格位于变更目录下的 `openspec/changes/<name>/specs/<capability-path>/spec.md`。
 - 差异规格使用 `ADDED Requirements`、`MODIFIED Requirements`、`REMOVED Requirements`、`RENAMED Requirements` 等章节描述变更意图。
 - 通过 `openspec sync specs` 或归档流程，差异规格会被智能合并到主规格中。
+
+`extract-home-hero` 的 delta spec 仅包含 `ADDED Requirements`，新增“首页主视觉” Requirement，并在归档后出现在 `openspec/specs/wanderchain-homepage/spec.md` 末尾。
 
 ```mermaid
 flowchart TD
@@ -169,14 +226,16 @@ Validate --> Done(["结束：主规格已更新"])
 6. **实现任务**：通过 skill 驱动的 apply 流程逐步完成 tasks。
 7. **归档变更**：使用 `openspec archive --change "<name>"`，归档目录名遵循 `YYYY-MM-DD-<change-name>` 规则。
 
+`extract-home-hero` 的 `tasks.md` 展示了完整的任务拆解与验收步骤，包括组件与样式落位、页面接线、DOM 结构比对测试、规格文档同步以及 `harness\run-all.ps1` 与 `openspec validate` 验收。
+
 ```mermaid
 flowchart TD
-A["openspec new change <name>"] --> B["openspec status --change <name>"]
-B --> C["openspec instructions <artifact-id> --change <name>"]
+A["openspec new change extract-home-hero"] --> B["openspec status --change extract-home-hero"]
+B --> C["openspec instructions <artifact-id> --change extract-home-hero"]
 C --> D["编写 proposal / design / tasks / delta spec"]
-D --> E["openspec sync specs --change <name>"]
-E --> F["实现 tasks"]
-F --> G["openspec archive --change <name>"]
+D --> E["openspec sync specs --change extract-home-hero"]
+E --> F["实现 tasks：hero.tsx、hero.module.css、hero.test.tsx、page.tsx 调整"]
+F --> G["openspec archive --change extract-home-hero"]
 ```
 
 **图示来源**
@@ -196,6 +255,8 @@ F --> G["openspec archive --change <name>"]
 - 如果主规格不存在，则只允许应用 ADDED requirements，并创建新的主规格。
 - 如果 delta 只包含 REMOVED requirements，且变更未声明 `retire_capabilities: true`，则归档时会报错；若已声明，则可视为已退休。
 - 同步后需验证主规格格式，确保没有残留 delta 专用章节头。
+
+`extract-home-hero` 的 delta spec 仅新增“首页主视觉”，因此同步后主规格末尾追加了该 Requirement 与对应 Scenario，而既有 Purpose 与其余 Requirement 保持不变。
 
 ```mermaid
 flowchart TD
@@ -225,14 +286,16 @@ apply 流程由 skill 驱动，核心步骤包括：
 - 按任务顺序实现代码，并在 tasks 中标记 `- [ ]` 为 `- [x]`。
 - 遇到阻塞、歧义或超出规格范围的需求时暂停，建议更新工件。
 
+`extract-home-hero` 的 tasks 明确区分了“组件与样式落位”“页面接线与清理”“测试”“规格与文档同步”“验收”五个阶段，其中测试阶段特别强调用 DOM 结构比对证明“视觉零变化”，这是结构重构类变更的重要质量保障。
+
 ```mermaid
 sequenceDiagram
 participant Dev as "开发者"
 participant Skill as "apply skill"
 participant CLI as "OpenSpec CLI"
 Dev->>Skill : "openspec apply"
-Skill->>CLI : "openspec status --change <name> --json"
-Skill->>CLI : "openspec instructions apply --change <name> --json"
+Skill->>CLI : "openspec status --change extract-home-hero --json"
+Skill->>CLI : "openspec instructions apply --change extract-home-hero --json"
 CLI-->>Skill : "contextFiles / tasks / instruction"
 Skill->>Dev : "显示进度与剩余任务"
 loop 直到完成或阻塞
@@ -257,9 +320,11 @@ Skill-->>Dev : "实现完成或暂停原因"
 - 可选择先同步再归档，或直接归档。
 - 归档目标目录为 `openspec/changes/archive/YYYY-MM-DD-<change-name>`。
 
+`extract-home-hero` 归档后的目录名为 `2026-10-27-extract-home-hero`，符合日期前缀命名规范；其 delta spec 已在归档前同步到 `openspec/specs/wanderchain-homepage/spec.md`。
+
 ```mermaid
 flowchart TD
-A["选择变更"] --> B["openspec status --change <name> --json"]
+A["选择变更"] --> B["openspec status --change extract-home-hero --json"]
 B --> C["检查工件状态"]
 C --> D["openspec list --json 检查任务状态"]
 D --> E{"delta spec 是否需要同步？"}
@@ -267,7 +332,7 @@ E --> |是| F["执行 openspec sync specs"]
 E --> |否| G["跳过同步"]
 F --> H["验证主规格"]
 G --> H
-H --> I["移动到 changes/archive/YYYY-MM-DD-<name>"]
+H --> I["移动到 changes/archive/2026-10-27-extract-home-hero"]
 I --> J["输出归档摘要"]
 ```
 
@@ -285,6 +350,8 @@ OpenSpec 在本仓库中的依赖关系可以概括为：
 - `openspec/specs/<capability>/spec.md` 是主规格，由 delta spec 同步而来。
 - Agent Skill 文档定义了 CLI 命令的标准调用顺序与错误处理策略。
 
+`extract-home-hero` 进一步体现了“规格先行、实现跟进、归档固化”的依赖链：delta spec 定义“首页主视觉”契约，`tasks.md` 驱动前端组件与样式迁移，`frontend/app/page.tsx` 消费 `HomeHero` 组件，最终归档变更并保留主规格作为真相层。
+
 ```mermaid
 graph LR
 Config["openspec/config.yaml"] --> Schema["schema: spec-driven"]
@@ -297,15 +364,21 @@ Delta --> MainSpec["openspec/specs/<capability>/spec.md"]
 Skills["Agent Skill 文档"] --> CLI["OpenSpec CLI 命令"]
 CLI --> ChangeDir
 CLI --> MainSpec
+ExtractHero["extract-home-hero 归档变更"] --> FrontendPage["frontend/app/page.tsx"]
+FrontendPage --> HeroComponent["components/home/hero.tsx"]
 ```
 
 **图示来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md:1-37](file://openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md#L1-L37)
+- [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
 - [.agents/skills/openspec-propose/SKILL.md:17-24](file://.agents/skills/openspec-propose/SKILL.md#L17-L24)
 - [.agents/skills/openspec-sync-specs/SKILL.md:86-177](file://.agents/skills/openspec-sync-specs/SKILL.md#L86-L177)
 
 **章节来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md:1-37](file://openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md#L1-L37)
+- [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
 - [.agents/skills/openspec-propose/SKILL.md:17-24](file://.agents/skills/openspec-propose/SKILL.md#L17-L24)
 - [.agents/skills/openspec-sync-specs/SKILL.md:86-177](file://.agents/skills/openspec-sync-specs/SKILL.md#L86-L177)
 
@@ -316,6 +389,7 @@ CLI --> MainSpec
 - **明确变更边界**：在 `proposal.md` 中清晰说明范围、不在范围项与假设。
 - **任务可追踪**：在 `tasks.md` 中将大任务拆分为可独立完成的子任务，便于 apply 流程跟踪进度。
 - **归档命名规范**：归档目录建议使用 `YYYY-MM-DD-<change-name>`，避免日期重复或命名冲突。
+- **结构重构需证明视觉零变化**：参考 `extract-home-hero` 的 DOM 结构比对思路，在不改变用户可见行为的前提下降低回归风险。
 
 [本节为通用建议，不直接分析具体文件]
 
@@ -326,6 +400,7 @@ CLI --> MainSpec
 - **工件缺失导致阻塞**：使用 `openspec status --change "<name>" --json` 查看 `applyRequires` 与 `artifacts.requires`，然后按依赖顺序创建缺失工件。
 - **delta spec 无法同步**：如果主规格不存在，只有 ADDED requirements 可被应用；如果 delta 只包含 REMOVED requirements，需要确认变更是否声明 `retire_capabilities: true`。
 - **归档时报错**：检查工件是否全部完成、任务是否全部勾选、delta spec 是否已同步到主规格。
+- **归档后仍看到活跃变更**：确认变更目录是否已从 `openspec/changes/<name>` 移动到 `openspec/changes/archive/YYYY-MM-DD-<name>`；`extract-home-hero` 已归档至 `2026-10-27-extract-home-hero`。
 
 **章节来源**
 - [.agents/skills/openspec-explore/SKILL.md:19-30](file://.agents/skills/openspec-explore/SKILL.md#L19-L30)
@@ -334,7 +409,7 @@ CLI --> MainSpec
 - [.agents/skills/openspec-sync-specs/SKILL.md:108-171](file://.agents/skills/openspec-sync-specs/SKILL.md#L108-L171)
 
 ## 结论
-OpenSpec 在本仓库中以 `spec-driven` 工作流为核心，通过 `openspec/config.yaml` 与 `.openspec.yaml` 管理项目与变更配置，通过 `openspec/changes` 与 `openspec/specs` 管理变更工件与主规格，并通过 Agent Skill 文档标准化 CLI 调用流程。推荐开发者按照“创建变更 → 编写工件 → 同步规格 → 实现任务 → 归档变更”的顺序开展工作，以保持规格与实现的持续一致。
+OpenSpec 在本仓库中以 `spec-driven` 工作流为核心，通过 `openspec/config.yaml` 与 `.openspec.yaml` 管理项目与变更配置，通过 `openspec/changes` 与 `openspec/specs` 管理变更工件与主规格，并通过 Agent Skill 文档标准化 CLI 调用流程。`extract-home-hero` 展示了从提案、设计、任务拆解、delta spec 同步到归档的完整闭环，同时体现了“规格先行、实现跟进、归档固化”的最佳实践。推荐开发者按照“创建变更 → 编写工件 → 同步规格 → 实现任务 → 归档变更”的顺序开展工作，以保持规格与实现的持续一致。
 
 [本节为总结性内容，不直接分析具体文件]
 
@@ -362,8 +437,9 @@ OpenSpec 在本仓库中以 `spec-driven` 工作流为核心，通过 `openspec/
 - 变更元数据：`.openspec.yaml`
   - 关键字段：`schema`、`created`
   - 可选字段：`skip_specs`、`retire_capabilities`
+- 归档变更示例：`openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml`
+  - 体现归档后变更的元数据形态，可用于对比活跃变更与归档变更的差异。
 
 **章节来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
-- [openspec/changes/add-db-baseline-and-flyway-gate/.openspec.yaml:1-3](file://openspec/changes/add-db-baseline-and-flyway-gate/.openspec.yaml#L1-L3)
-- [openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml#L1-L3)
+- [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml#L1-L3)

@@ -3,12 +3,15 @@
 <cite>
 **本文引用的文件**   
 - [README.md](file://README.md)
-- [homepage-u0-contract-mock.md](file://docs/specs/wanderchain/homepage-u0-contract-mock.md)
-- [homepage-u3-feature-nav.md](file://docs/specs/wanderchain/homepage-u3-feature-nav.md)
-- [homepage-u4-ai-assistant.md](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md)
-- [homepage-u6-editor-picks.md](file://docs/specs/wanderchain/homepage-u6-editor-picks.md)
-- [homepage-u7-hot-posts.md](file://docs/specs/wanderchain/homepage-u7-hot-posts.md)
+- [homepage-hero.md](file://docs/specs/wanderchain/homepage-hero.md)
+- [homepage-u1-mock-auth.md](file://docs/specs/wanderchain/homepage-u1-mock-auth.md)
+- [homepage-u2-skeleton.md](file://docs/specs/wanderchain/homepage-u2-skeleton.md)
+- [homepage-u5-city-switcher.md](file://docs/specs/wanderchain/homepage-u5-city-switcher.md)
+- [homepage-u8-hot-attractions.md](file://docs/specs/wanderchain/homepage-u8-hot-attractions.md)
 - [frontend/app/page.tsx](file://frontend/app/page.tsx)
+- [frontend/components/home/hero.tsx](file://frontend/components/home/hero.tsx)
+- [frontend/components/home/hero.module.css](file://frontend/components/home/hero.module.css)
+- [frontend/components/home/hero.test.tsx](file://frontend/components/home/hero.test.tsx)
 - [frontend/components/home/use-section-data.ts](file://frontend/components/home/use-section-data.ts)
 - [frontend/components/home/feature-nav.tsx](file://frontend/components/home/feature-nav.tsx)
 - [frontend/components/home/ai-assistant.tsx](file://frontend/components/home/ai-assistant.tsx)
@@ -19,6 +22,13 @@
 - [frontend/app/community/page.tsx](file://frontend/app/community/page.tsx)
 - [frontend/app/attractions/page.tsx](file://frontend/app/attractions/page.tsx)
 </cite>
+
+## 更新摘要
+**所做更改**
+- 新增独立的 Hero 首屏组件规格与实现
+- 增强 Mock 认证、骨架结构、城市切换器、热门景点规格文档
+- 更新首页聚合器以使用新的 Hero 组件
+- 完善类型定义和验收标准
 
 ## 目录
 1. [引言](#引言)
@@ -32,9 +42,9 @@
 9. [结论](#结论)
 
 ## 引言
-本规格文档聚焦 WanderChain 首页能力，围绕“城市旅行指南”的入口、导航、内容与交互契约进行说明。当前实现以 Next.js 前端为主，后端接口尚未接入；所有数据通过 Mock 仓储提供，确保 UI 与业务逻辑可在零网络请求下独立开发与验收。
+本规格文档聚焦 WanderChain 首页能力，围绕"城市旅行指南"的入口、导航、内容与交互契约进行说明。当前实现以 Next.js 前端为主，后端接口尚未接入；所有数据通过 Mock 仓储提供，确保 UI 与业务逻辑可在零网络请求下独立开发与验收。
 
-该仓库采用“规格 + 护栏 + 技能”三层工作区模式：`openspec/` 定义意图与主规格，`harness/` 用闸门链保证构建、迁移与一致性，`.agents/skills/` 固化 AI 编码方法。WanderChain 首页属于 `wanderchain-homepage` 能力，其子单元契约位于 `docs/specs/wanderchain/`。
+该仓库采用"规格 + 护栏 + 技能"三层工作区模式：`openspec/` 定义意图与主规格，`harness/` 用闸门链保证构建、迁移与一致性，`.agents/skills/` 固化 AI 编码方法。WanderChain 首页属于 `wanderchain-homepage` 能力，其子单元契约位于 `docs/specs/wanderchain/`。
 
 **章节来源**
 - [README.md:1-111](file://README.md#L1-L111)
@@ -43,6 +53,7 @@
 WanderChain 首页由一个页面级路由和多个可复用区块组成：
 
 - 页面层：`frontend/app/page.tsx` 作为首页入口，负责解析 URL 城市参数、组装 Hero 区域与区块容器。
+- Hero 首屏：独立的 `HomeHero` 组件，包含品牌标识、主标题、CTA 按钮和统计面板。
 - 区块组件：功能导航、城市切换、编辑推荐、热门帖子、热门景点分别位于 `components/home/*`。
 - 共享 Hook：`useSectionData` 统一封装加载、就绪、错误三态。
 - 占位面板：AI 助手通过上下文 Provider 暴露打开/关闭能力，供多处触发。
@@ -52,6 +63,7 @@ WanderChain 首页由一个页面级路由和多个可复用区块组成：
 graph TB
 Home["首页<br/>frontend/app/page.tsx"] --> Header["站点头部<br/>SiteHeader"]
 Home --> Footer["站点底部<br/>SiteFooter"]
+Home --> Hero["Hero 首屏<br/>hero.tsx"]
 Home --> FeatureNav["功能导航<br/>feature-nav.tsx"]
 Home --> CitySwitcher["城市切换<br/>city-switcher.tsx"]
 Home --> EditorPicks["编辑推荐<br/>editor-picks.tsx"]
@@ -64,7 +76,8 @@ HotAttractions --> UseSection
 ```
 
 **图表来源**
-- [frontend/app/page.tsx:1-126](file://frontend/app/page.tsx#L1-L126)
+- [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
+- [frontend/components/home/hero.tsx:1-93](file://frontend/components/home/hero.tsx#L1-L93)
 - [frontend/components/home/feature-nav.tsx:1-116](file://frontend/components/home/feature-nav.tsx#L1-L116)
 - [frontend/components/home/city-switcher.tsx:1-74](file://frontend/components/home/city-switcher.tsx#L1-L74)
 - [frontend/components/home/editor-picks.tsx:1-62](file://frontend/components/home/editor-picks.tsx#L1-L62)
@@ -74,10 +87,11 @@ HotAttractions --> UseSection
 - [frontend/components/home/ai-assistant.tsx:1-157](file://frontend/components/home/ai-assistant.tsx#L1-L157)
 
 **章节来源**
-- [frontend/app/page.tsx:1-126](file://frontend/app/page.tsx#L1-L126)
+- [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
 
 ## 核心组件
-- 首页聚合器：解析 `searchParams`，调用 `parseCity` 得到当前城市，并将城市与查询参数透传给各区块。Hero 区域展示本期统计上限，区块按“功能入口 → 城市入口 → 内容列表”顺序渲染。
+- **Hero 首屏组件**：独立的 `HomeHero` 组件，包含眉标、主标题、导语、CTA 按钮和统计面板，支持自定义统计数据展示。
+- 首页聚合器：解析 `searchParams`，调用 `parseCity` 得到当前城市，并将城市与查询参数透传给各区块。Hero 区域展示本期统计上限，区块按"功能入口 → 城市入口 → 内容列表"顺序渲染。
 - 区块数据钩子：`useSectionData` 将异步数据源包装为 `{loading, error, ready}` 三态，避免重复拉取并处理组件卸载后的状态更新。
 - 功能导航：包含旅游社区、景点攻略两个链接卡片，以及 AI 助手按钮；后两者分别跳转到占位页或唤起同一面板。
 - AI 助手：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。
@@ -85,14 +99,15 @@ HotAttractions --> UseSection
 - 内容区块：编辑推荐、热门帖子、热门景点均通过 `mockRepository` 获取数据，并按各自排序与过滤规则展示。
 
 **章节来源**
-- [frontend/app/page.tsx:24-40](file://frontend/app/page.tsx#L24-L40)
+- [frontend/components/home/hero.tsx:10-44](file://frontend/components/home/hero.tsx#L10-L44)
+- [frontend/app/page.tsx:32-35](file://frontend/app/page.tsx#L32-L35)
 - [frontend/components/home/use-section-data.ts:6-43](file://frontend/components/home/use-section-data.ts#L6-L43)
 - [frontend/components/home/feature-nav.tsx:50-115](file://frontend/components/home/feature-nav.tsx#L50-L115)
 - [frontend/components/home/ai-assistant.tsx:41-120](file://frontend/components/home/ai-assistant.tsx#L41-L120)
 - [frontend/components/home/city-switcher.tsx:13-31](file://frontend/components/home/city-switcher.tsx#L13-L31)
 
 ## 架构总览
-WanderChain 首页采用“页面装配 + 区块消费 + Mock 仓储”的分层结构。当前阶段不依赖真实后端，所有数据契约以类型与 Mock 数据固定，后续替换为真实 API 时，组件与测试无需重写。
+WanderChain 首页采用"页面装配 + 区块消费 + Mock 仓储"的分层结构。当前阶段不依赖真实后端，所有数据契约以类型与 Mock 数据固定，后续替换为真实 API 时，组件与测试无需重写。
 
 ```mermaid
 graph TB
@@ -100,6 +115,7 @@ subgraph "页面层"
 Page["首页 page.tsx"]
 end
 subgraph "交互层"
+Hero["Hero 首屏 hero.tsx"]
 Nav["功能导航 feature-nav.tsx"]
 City["城市切换 city-switcher.tsx"]
 AI["AI 助手 ai-assistant.tsx"]
@@ -113,6 +129,7 @@ subgraph "数据层"
 Hook["use-section-data.ts"]
 Repo["Mock 仓储 repository.ts契约"]
 end
+Page --> Hero
 Page --> Nav
 Page --> City
 Page --> Picks
@@ -126,7 +143,8 @@ Hook --> Repo
 ```
 
 **图表来源**
-- [frontend/app/page.tsx:37-118](file://frontend/app/page.tsx#L37-L118)
+- [frontend/app/page.tsx:37-63](file://frontend/app/page.tsx#L37-L63)
+- [frontend/components/home/hero.tsx:46-92](file://frontend/components/home/hero.tsx#L46-L92)
 - [frontend/components/home/feature-nav.tsx:71-115](file://frontend/components/home/feature-nav.tsx#L71-L115)
 - [frontend/components/home/city-switcher.tsx:13-31](file://frontend/components/home/city-switcher.tsx#L13-L31)
 - [frontend/components/home/editor-picks.tsx:10-12](file://frontend/components/home/editor-picks.tsx#L10-L12)
@@ -136,17 +154,47 @@ Hook --> Repo
 
 ## 详细组件分析
 
+### Hero 首屏组件（新增）
+Hero 首屏是独立的 React Server Component，包含品牌标识、主标题、导语、CTA 按钮和统计面板。组件支持通过 `stats` prop 自定义右侧统计面板的数据，默认值来自数据契约常量。
+
+```mermaid
+flowchart TD
+Start["HomeHero 组件"] --> Resolve["resolveStats(stats)"]
+Resolve --> Valid{"stats 合法？"}
+Valid --> |否| Default["使用默认统计数据"]
+Valid --> |是| Custom["使用传入统计数据"]
+Default --> Render["渲染首屏内容"]
+Custom --> Render
+Render --> Eyebrow["显示眉标 'wanderchain · 城市旅行指南'"]
+Render --> Title["显示 h1 主标题"]
+Render --> Lead["显示导语段落"]
+Render --> Actions["显示三个 CTA 按钮"]
+Render --> Stats["显示统计面板"]
+```
+
+**图表来源**
+- [frontend/components/home/hero.tsx:34-44](file://frontend/components/home/hero.tsx#L34-L44)
+- [frontend/components/home/hero.tsx:46-92](file://frontend/components/home/hero.tsx#L46-L92)
+
+**章节来源**
+- [homepage-hero.md:1-286](file://docs/specs/wanderchain/homepage-hero.md#L1-L286)
+- [frontend/components/home/hero.tsx:1-93](file://frontend/components/home/hero.tsx#L1-L93)
+- [frontend/components/home/hero.module.css:1-107](file://frontend/components/home/hero.module.css#L1-L107)
+- [frontend/components/home/hero.test.tsx:1-122](file://frontend/components/home/hero.test.tsx#L1-L122)
+
 ### 首页聚合器与城市参数流
-首页是数据与交互的装配点：它从 Next.js 的 `searchParams` 中读取城市，使用 `parseCity` 做非法值归一化，再构造稳定查询对象传递给城市切换与内容区块。Hero 区域展示城市数量与各区块上限，强调“本地 Mock 契约，未来接口替换不重写界面”。
+首页是数据与交互的装配点：它从 Next.js 的 `searchParams` 中读取城市，使用 `parseCity` 做非法值归一化，再构造稳定查询对象传递给城市切换与内容区块。Hero 区域展示城市数量与各区块上限，强调"本地 Mock 契约，未来接口替换不重写界面"。
 
 ```mermaid
 sequenceDiagram
 participant Browser as "浏览器"
 participant Page as "首页 page.tsx"
+participant Hero as "Hero 首屏"
 participant CityHook as "parseCity / cities"
 participant Switcher as "城市切换 city-switcher.tsx"
 participant Blocks as "内容区块"
 Browser->>Page : 访问首页并携带 ?city=...
+Page->>Hero : 渲染 HomeHero 组件
 Page->>CityHook : parseCity(params.city)
 CityHook-->>Page : 返回有效城市 slug
 Page->>Switcher : 传入 activeCity 与 query
@@ -156,14 +204,13 @@ Page->>Blocks : 传入 city 并刷新区块数据
 ```
 
 **图表来源**
-- [frontend/app/page.tsx:24-40](file://frontend/app/page.tsx#L24-L40)
-- [frontend/app/page.tsx:104-118](file://frontend/app/page.tsx#L104-L118)
+- [frontend/app/page.tsx:32-35](file://frontend/app/page.tsx#L32-L35)
+- [frontend/app/page.tsx:42-63](file://frontend/app/page.tsx#L42-L63)
 - [frontend/components/home/city-switcher.tsx:13-31](file://frontend/components/home/city-switcher.tsx#L13-L31)
 
 **章节来源**
-- [frontend/app/page.tsx:24-40](file://frontend/app/page.tsx#L24-L40)
-- [frontend/app/page.tsx:42-96](file://frontend/app/page.tsx#L42-L96)
-- [frontend/app/page.tsx:99-118](file://frontend/app/page.tsx#L99-L118)
+- [frontend/app/page.tsx:32-35](file://frontend/app/page.tsx#L32-L35)
+- [frontend/app/page.tsx:42-63](file://frontend/app/page.tsx#L42-L63)
 
 ### 功能导航与 AI 助手入口
 功能导航承载三个平台入口：旅游社区、景点攻略、AI 助手。前两者为路由跳转，后者通过 `useAiAssistant().open()` 唤起同一面板。U3 规格要求移动端纵向排列，且 `/community`、`/attractions` 必须存在占位页。
@@ -192,7 +239,7 @@ Panel --> End
 - [frontend/app/attractions/page.tsx:1-18](file://frontend/app/attractions/page.tsx#L1-L18)
 
 ### AI 助手面板与无障碍
-AI 助手是纯前端占位：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。U4 规格强制“打开与关闭期间不得出现 fetch/XHR”，测试需 mock 全局 `fetch` 并断言调用次数为 0。
+AI 助手是纯前端占位：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。U4 规格强制"打开与关闭期间不得出现 fetch/XHR"，测试需 mock 全局 `fetch` 并断言调用次数为 0。
 
 ```mermaid
 classDiagram
@@ -309,9 +356,10 @@ U0 明确类型定义、城市白名单、Mock 数据规模与 `HomeRepository` 
 - [homepage-u0-contract-mock.md:10-53](file://docs/specs/wanderchain/homepage-u0-contract-mock.md#L10-L53)
 
 ## 依赖关系分析
-WanderChain 首页的依赖关系遵循“页面装配 → 区块消费 → 数据契约”的单向依赖，避免循环耦合：
+WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据契约"的单向依赖，避免循环耦合：
 
 - 页面依赖：城市解析、区块组件、站点头尾。
+- Hero 依赖：数据契约常量（CITIES、LIMITS），无外部状态。
 - 区块依赖：`useSectionData`、`mockRepository`、城市名称格式化。
 - AI 助手依赖：Provider 上下文，被功能导航与站点头部触发。
 - 契约依赖：U0 是 U2/U3/U4/U6/U7 的基础，但 U0 不反向依赖任何 UI 组件。
@@ -328,6 +376,7 @@ U2 --> U5["U5 城市切换"]
 U2 --> U6
 U2 --> U7
 U2 --> U8
+Hero["Hero 首屏"] --> U0
 ```
 
 **图表来源**
@@ -345,15 +394,17 @@ U2 --> U8
 - [homepage-u7-hot-posts.md:36-41](file://docs/specs/wanderchain/homepage-u7-hot-posts.md#L36-L41)
 
 ## 性能与可维护性
-- 零网络请求：当前所有区块通过 Mock 仓储提供数据，避免首屏阻塞与跨域问题；真实 API 接入时只需替换数据源。
-- 三态加载：`useSectionData` 统一管理 loading/error/ready，减少重复请求与竞态条件。
-- 城市参数稳定：首页对 `searchParams` 做单值归一，避免数组参数导致的不必要重渲染。
-- 图片懒加载：封面图使用 `loading="lazy"`，降低首屏带宽压力。
-- 可替换数据层：类型与 `ListResult<T>` 契约使 Mock 与真实 API 可互换，组件与测试无需改动。
+- **零网络请求**：当前所有区块通过 Mock 仓储提供数据，避免首屏阻塞与跨域问题；真实 API 接入时只需替换数据源。
+- **Hero 组件优化**：独立的 Hero 组件减少页面组件复杂度，支持静态渲染和无客户端依赖。
+- **三态加载**：`useSectionData` 统一管理 loading/error/ready，减少重复请求与竞态条件。
+- **城市参数稳定**：首页对 `searchParams` 做单值归一，避免数组参数导致的不必要重渲染。
+- **图片懒加载**：封面图使用 `loading="lazy"`，降低首屏带宽压力。
+- **可替换数据层**：类型与 `ListResult<T>` 契约使 Mock 与真实 API 可互换，组件与测试无需改动。
 
 [本节为通用指导，不直接分析具体文件]
 
 ## 故障排查指南
+- **Hero 组件问题**：检查 `stats` prop 是否合法（长度=4、顺序正确、值为非负整数）；确认组件未被误标记为 Client Component。
 - AI 助手面板未打开：检查是否包裹在 `AiAssistantProvider` 内；确认触发按钮调用了 `open()` 而非跳转。
 - 面板无法关闭：确认遮罩点击、关闭按钮与 Esc 事件监听未被阻止；检查焦点归还逻辑。
 - 城市切换无效：确认 URL 查询参数格式为 `?city=slug`，且 `parseCity` 能识别该 slug。
@@ -361,11 +412,12 @@ U2 --> U8
 - 网络请求异常：当前实现不应发起任何请求；若出现 fetch/XHR，优先检查是否误接真实 API 或未正确替换 `mockRepository`。
 
 **章节来源**
+- [homepage-hero.md:79-87](file://docs/specs/wanderchain/homepage-hero.md#L79-L87)
 - [homepage-u4-ai-assistant.md:40-52](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md#L40-L52)
 - [frontend/components/home/ai-assistant.tsx:60-75](file://frontend/components/home/ai-assistant.tsx#L60-L75)
 - [frontend/components/home/city-switcher.tsx:17-31](file://frontend/components/home/city-switcher.tsx#L17-L31)
 
 ## 结论
-WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。架构上坚持“UI 与数据解耦、Mock 与真实 API 可替换”，并通过三态加载与无障碍设计提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
+WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**新增的独立 Hero 首屏组件**进一步提升了代码的可维护性和组件复用性。架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载与无障碍设计提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
 
 [本节为总结性内容，不直接分析具体文件]
