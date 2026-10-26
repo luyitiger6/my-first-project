@@ -5,48 +5,281 @@
 | 单元编号 | U4 |
 | 归属能力 | `wanderchain-homepage` |
 | 对应主 spec | `### Requirement: AI 助手入口` — [spec.md](../../../openspec/specs/wanderchain-homepage/spec.md) |
-| 规格层级 | 人读契约（`docs/specs/`，草稿层）。行为真相以主 spec 为准，冲突时按主 spec 验收 |
+| 规格层级 | 人读契约（`docs/specs/`，草稿层）。行为真相以主 spec 为准 |
+| 单元性质 | 纯前端占位：只有开关与焦点管理，**零网络请求** |
 
-## 1. 边界
+---
 
-**包含**
+## 1. 模块边界
 
-- 两个入口：右下角悬浮按钮、顶部入口，打开**同一个**占位面板
-- 面板文案说明真实对话能力即将上线
-- 三条关闭路径：关闭按钮、Esc、点击遮罩
-- 焦点管理：打开时焦点移入面板，关闭后归还触发按钮
-- 无障碍：图标按钮具备可读名称（窄屏隐藏文字时仍需 `aria-label`）
+### 1.1 包含
 
-**不包含**
+| # | 能力 | 落点 |
+|---|---|---|
+| 1 | 全局开关上下文：`isOpen` / `open` / `close` | `AiAssistantProvider` |
+| 2 | 上下文读取，Provider 外使用时抛错 | `useAiAssistant` |
+| 3 | 两个触发器：顶栏行内、右下角悬浮 | `AiAssistantTrigger variant="header" \| "floating"` |
+| 4 | 模态面板：遮罩 + `role="dialog"` + `aria-modal="true"` | 同文件 |
+| 5 | 三种关闭方式：Esc、点遮罩、点关闭按钮 / 「知道了」 | 同文件 |
+| 6 | 焦点管理：打开时聚焦关闭按钮，关闭后焦点归还触发元素 | `restoreFocusRef` |
+| 7 | 面板内容：`即将上线` 徽标、标题、说明、三条能力清单、免责说明 | 静态文案 |
+| 8 | 触发按钮的无障碍属性：`aria-haspopup="dialog"` + `aria-expanded` | 两个触发器 |
 
-- 真实对话能力、流式输出、SSE
-- 会话历史、多轮上下文、模型选择
-- 后端 AI 接口与配额计量（另立项）
+### 1.2 不包含
 
-## 2. 数据依赖
+| 排除项 | 归属 |
+|---|---|
+| 任何真实对话、流式响应、消息历史 | 未立项（需真实 LLM API） |
+| 输入框、发送按钮、附件上传 | 未立项 |
+| 会话持久化、多轮上下文 | 未立项 |
+| 焦点陷阱（Tab 循环限制在面板内） | **当前缺失**，见 5.5 |
+| 面板内的行程 / 预算等实际功能 | 未立项（仅文案列出） |
+
+### 1.3 数据来源
 
 | 依赖项 | 形态 | 说明 |
 |---|---|---|
-| 面板开关状态 | 静态（客户端内存） | 纯 React 状态，无持久化 |
-| 后端 API | **无** | 本期**强制零网络请求**：打开与关闭期间不得出现 fetch/XHR |
+| 面板全部文案 | **静态**（组件内字面量） | 不取数、不受城市影响 |
+| 开关状态 | React 本地状态 | 不持久化，刷新后回到关闭 |
+| 对话接口 | **需要 API（本期未接）** | 接入时须新增 U? 单元，不得在本单元内夹带 |
 
-## 3. 与其他单元的依赖
+### 1.4 与其他单元的关系
 
-- **依赖**：无。纯前端单元，可完全独立开发与测试。
+- **依赖**：无（不依赖 U0 数据层）。仅依赖 React 与自身上下文
 - **被依赖**：
-  - U3 —— AI 助手卡片复用同一面板
-  - U2 —— 悬浮按钮与 Provider 由首页骨架挂载
+  - U2 `layout.tsx` —— 包裹全站并挂载 `<AiAssistantTrigger variant="floating" />`
+  - U3 功能导航 —— 第三张卡调用 `open()`
+  - `SiteHeader` —— 挂载 `<AiAssistantTrigger variant="header" />`
+- **结论**：U4 是最早可开工的单元之一，但**必须先于 U3 完成**
 
-## 4. 验收清单
+---
 
-- [ ] 点击右下角悬浮按钮后，占位面板打开并说明真实对话能力即将上线
-- [ ] 点击顶部 AI 助手入口打开的是同一个占位面板
-- [ ] 点击关闭按钮、按 Esc、点击遮罩三种方式均能关闭面板
-- [ ] 打开并关闭面板的整个过程中，不发生任何 fetch 或 XHR 请求
-- [ ] 打开时焦点进入面板，关闭后焦点回到触发按钮
-- [ ] 窄屏下按钮文字隐藏时，仍可通过无障碍名称识别该按钮
+## 2. 核心场景
 
-## 5. 实现位置
+### 2.1 正常路径
 
-- `frontend/components/home/ai-assistant.tsx` + `ai-assistant.module.css`
-- 测试：`ai-assistant.test.tsx`（mock 全局 `fetch` 并断言调用次数为 0）
+**S1 · 初始关闭**
+- When 页面加载完成
+- Then DOM 中不存在 `[role="dialog"]`，两个触发器的 `aria-expanded` 均为 `false`
+
+**S2 · 悬浮按钮打开**
+- When 点击右下角悬浮按钮
+- Then 面板出现：`role="dialog"`、`aria-modal="true"`、`aria-labelledby="ai-assistant-title"`
+- And 两个触发器的 `aria-expanded` 同步变为 `true`
+- And URL 不变化、不新增历史记录
+
+**S3 · 顶栏按钮打开**
+- When 点击顶栏「AI 助手」
+- Then 打开同一个面板（与 S2 共享状态，不产生第二份实例）
+
+**S4 · Esc 关闭并归还焦点**
+- When 面板打开且焦点在面板内，按 `Esc`
+- Then 面板关闭并从 DOM 移除
+- And 焦点回到**打开前**的元素（悬浮按钮或顶栏按钮或 U3 的 AI 卡）
+
+**S5 · 遮罩点击关闭**
+- When 点击面板外的半透明遮罩
+- Then 面板关闭，焦点同上归还
+
+**S6 · 面板内点击不关闭**
+- When 点击面板内部（标题、说明、能力清单空白处）
+- Then 面板保持打开（事件被 `stopPropagation` 拦下）
+
+**S7 · 点按钮关闭**
+- When 点击右上角「×」或底部「知道了」
+- Then 面板关闭，焦点归还
+
+**S8 · 打开时自动聚焦**
+- When 面板打开
+- Then 焦点落在关闭按钮（`aria-label="关闭 AI 助手"`）
+- And 屏幕阅读器会朗读对话框标题「AI 旅行助手」
+
+### 2.2 异常路径
+
+**S9 · 上下文缺失**
+- When `useAiAssistant()` 在 `AiAssistantProvider` 之外调用
+- Then 抛出 `useAiAssistant 必须在 AiAssistantProvider 内使用`
+- And 不允许返回默认空实现
+
+**S10 · 重复打开**
+- When 面板已打开时再次调用 `open()`
+- Then 不产生第二个面板、不叠加遮罩，`isOpen` 保持 `true`
+
+**S11 · 关闭后再打开**
+- When 关闭后再次打开
+- Then 焦点恢复链重新记录，`restoreFocusRef` 指向最新一次触发元素，不残留旧引用
+
+**S12 · 触发元素已从 DOM 移除**
+- When 关闭时记录的触发元素已不存在
+- Then 焦点归还静默跳过，不抛错
+
+**S13 · 服务端渲染**
+- When 在无 `document` 的环境执行 `open()`
+- Then `restoreFocusRef` 置 `null`，不抛 `ReferenceError`
+- And 面板只在客户端交互后出现，SSR 首屏无遮罩
+
+**S14 · 窄屏悬浮按钮**
+- When 视口 320px
+- Then 悬浮按钮可点击、`aria-label="打开 AI 助手"` 仍存在
+- And 即使隐藏「AI 助手」文字，也不能变成无名按钮
+
+---
+
+## 3. 数据结构
+
+### 3.1 类型定义
+
+```ts
+interface AiAssistantContextValue {
+  isOpen: boolean
+  open: () => void
+  close: () => void
+}
+
+export function useAiAssistant(): AiAssistantContextValue
+```
+
+### 3.2 组件 Props
+
+| 组件 | Props | 类型 | 约束 |
+|---|---|---|---|
+| `AiAssistantProvider` | `children` | `ReactNode` | 必须包裹需要触发器的全部内容；全站只允许一处 |
+| `AiAssistantTrigger` | `variant` | `'header' \| 'floating'` | 闭集 2 值；`floating` 由根布局挂载，`header` 由顶栏挂载 |
+| `useAiAssistant` | — | — | 必须在 Provider 内；否则抛错 |
+
+### 3.3 触发器契约
+
+| variant | 元素 | 必填属性 | 文案 |
+|---|---|---|---|
+| `header` | `<button type="button">` | `aria-haspopup="dialog"`、`aria-expanded={isOpen}`、`data-testid="ai-header"` | 图标 + 「AI 助手」 |
+| `floating` | `<button type="button">` | 同上 + `aria-label="打开 AI 助手"`、`data-testid="ai-floating"` | 图标 + 「AI 助手」（窄屏仅图标） |
+
+### 3.4 面板契约
+
+| 项 | 值 | 约束 |
+|---|---|---|
+| 容器 | `<div data-testid="ai-overlay" onClick={close}>` | 遮罩层，点击关闭 |
+| 对话框 | `<section role="dialog" aria-modal="true" aria-labelledby="ai-assistant-title">` | 内部点击 `stopPropagation` |
+| 标题 | `<h2 id="ai-assistant-title">AI 旅行助手</h2>` | id 必须与 `aria-labelledby` 一致；不得用 `h1` |
+| 关闭按钮 | `aria-label="关闭 AI 助手"` | 打开后作为初始焦点 |
+| 能力清单 | 3 个 `<li>` | 纯文案，不可点击 |
+| 免责说明 | 「当前是纯前端占位入口，不会发送任何请求。」 | 必须保留，防止误解 |
+
+---
+
+## 4. ACCEPTANCE CHECKLIST
+
+### 4.1 开关
+
+- [ ] 初始无 `[role="dialog"]`，两触发器 `aria-expanded="false"`
+- [ ] 顶栏与悬浮两个触发器打开同一个面板
+- [ ] 面板打开时两触发器 `aria-expanded` 均为 `true`
+- [ ] 重复调用 `open()` 不叠加面板
+- [ ] 关闭后 `[role="dialog"]` 从 DOM 移除
+
+### 4.2 关闭方式
+
+- [ ] 按 `Esc` 可关闭
+- [ ] 点击遮罩可关闭
+- [ ] 点击「×」可关闭
+- [ ] 点击「知道了」可关闭
+- [ ] 点击面板内部不关闭
+
+### 4.3 焦点与无障碍
+
+- [ ] 打开后焦点落在关闭按钮
+- [ ] 关闭后焦点回到打开它的元素
+- [ ] 触发元素已移除时焦点归还静默跳过
+- [ ] 对话框有 `aria-modal="true"` 与正确 `aria-labelledby`
+- [ ] 悬浮按钮在窄屏隐藏文字后仍有 `aria-label`
+- [ ] 面板内无 `h1`
+
+### 4.4 工程
+
+- [ ] 全单元零网络请求（`grep -r "fetch(" components/home/ai-assistant.tsx` 无结果）
+- [ ] 无 Provider 时 `useAiAssistant` 抛错
+- [ ] 面板文案与 §3.4 一致（含免责说明）
+- [ ] `ai-assistant.test.tsx` 覆盖 S1–S5、S7、S9
+- [ ] `npx vitest run components/home/ai-assistant.test.tsx` 全绿
+- [ ] `npm run build` 通过
+- [ ] 无 `TODO` / `FIXME`，未被 `03-static-guard` 拦截
+- [ ] `powershell -File harness\run-all.ps1` 退出码 0
+
+---
+
+## 5. 技术约束
+
+### 5.1 React + Next.js App Router
+
+- 文件首行 `'use client'`（含 `useState` / `useEffect` / 事件）
+- `Esc` 监听必须在 `useEffect` 内 `addEventListener`，并在清理函数中 `removeEventListener`
+- 焦点处理只能用 ref + `focus()`，不得引入 `react-focus-lock` 等额外依赖（若引入须单独立项）
+- 上下文用 `createContext` + `useCallback` + `useMemo`，不引入状态库
+- Provider 必须挂在根布局，且 **`{children}` 在面板之前**渲染，保证 `open()` 的调用方是已挂载元素
+
+### 5.2 Tailwind CSS + shadcn/ui
+
+**⚠ 现状：无 Tailwind、无 shadcn/ui**，面板为手写 `overlay` / `panel` CSS Module。
+
+若引入后，本单元是**收益最大**的替换点：
+
+| 现状 | 目标 |
+|---|---|
+| 手写遮罩 + `role="dialog"` + `stopPropagation` | `Dialog` + `DialogContent`（Radix 自带遮罩与点击外部关闭） |
+| 手写 `Esc` 监听 | Radix 内置，可删除自写监听 |
+| 手写焦点归还 | Radix 内置 `onCloseAutoFocus` |
+| **无焦点陷阱** | **Radix 自带**，补齐当前缺口 |
+| 「×」按钮 | `DialogClose` + `Button variant="ghost" size="icon"` |
+
+约束：换用 `Dialog` 后，`aria-expanded` 需改用 `DialogTrigger` 的 `data-state` 或显式保留状态；测试中 `getByTestId('ai-overlay')` 需同步改为 `getByRole('dialog')`。
+
+### 5.3 响应式（mobile-first）
+
+| 断点 | 面板 |
+|---|---|
+| 默认（320–767px） | 底部抽屉式：贴底、通栏、上圆角，最大高 `85vh` 内部滚动 |
+| `≥768px` | 居中卡片：最大宽 `480px`，上下留白 `24px` |
+
+- 悬浮按钮：`≥768px` 显示「AI 助手」文字 + 图标；窄屏仅图标（必须保留 `aria-label`）
+- 悬浮按钮需避让安全区（`padding-bottom: env(safe-area-inset-bottom)`）
+- 面板打开时不得引起页面横向滚动
+
+### 5.4 图片（next/image）
+
+**本单元无位图**。约束：
+
+- 图标（火花）为内联 SVG，`aria-hidden="true" focusable="false"`
+- 不得为面板加插图或背景图；若后续需要，走 `next/image` 并注册域名
+
+### 5.5 与现状的差异（含已知缺口）
+
+| # | 本文档要求 | 仓库现状 | 影响 |
+|---|---|---|---|
+| 1 | 模态对话框应限制 Tab 在面板内 | **当前无焦点陷阱**：Tab 可跑到面板后的页面 | 键盘用户可能在遮罩后迷失；换 Radix `Dialog` 可一次性解决 |
+| 2 | 打开时锁定页面滚动 | **未实现**：`body` 未被锁，遮罩后仍可滚动 | 移动端体验瑕疵 |
+| 3 | Tailwind + shadcn | 手写 CSS Module | 换栈后 3 处自写逻辑可删 |
+| 4 | 零网络请求 | 已满足，面板文案含免责声明 | 一致 |
+| 5 | 焦点归还 | 已实现（`restoreFocusRef`） | 一致 |
+
+> 第 1、2 条属于**已识别但未修**的缺口。若本单元要重做，必须先决定是「自写补齐」还是「引入 shadcn Dialog」；两条路线的验收项不同，不可混着做完再判断。
+
+---
+
+## 附录：实现位置与验收命令
+
+| 项 | 路径 |
+|---|---|
+| 组件（Provider / Trigger / 面板） | `frontend/components/home/ai-assistant.tsx` |
+| 样式 | `frontend/components/home/ai-assistant.module.css` |
+| 挂载（Provider + 悬浮） | `frontend/app/layout.tsx` |
+| 挂载（顶栏触发器） | `frontend/components/site/site-header.tsx` |
+| 调用方 | `frontend/components/home/feature-nav.tsx`（第三张卡） |
+| 测试 | `frontend/components/home/ai-assistant.test.tsx` |
+
+```powershell
+cd frontend
+npx vitest run components/home/ai-assistant.test.tsx
+npm run build
+cd ..
+powershell -File harness\run-all.ps1
+```
