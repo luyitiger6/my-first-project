@@ -117,7 +117,8 @@ ai-workspace/
 │       ├── 04-frontend.ps1      前端：npm ci → build → test
 │       ├── 05-scaffold-check.ps1 工作区改名演练 + 残留扫描 + .gitmodules 完整性
 │       ├── 06-flyway.ps1         Flyway 迁移：8806 既有 MySQL 8 + 专用 schema `ai_chat_gate`
-│       └── 07-doc-consistency.ps1 文档闸门清单与技术栈描述是否跟得上仓库现状
+│       ├── 07-doc-consistency.ps1 文档闸门清单与技术栈描述是否跟得上仓库现状
+│       └── 08-spec-doc-breakpoints.ps1 单元文档声明的断点与实际 CSS 媒体查询一致
 ├── scaffold/                  【工作区改名】
 │   └── rename.mjs              分发后第一步执行：替换工作区展示名与 slug
 ├── .agents/skills/            【行为层】自研技能编写真源（source of truth），同目录也存放 openspec init 生成的 openspec-* 技能
@@ -128,7 +129,7 @@ ai-workspace/
                                  修订顺序固定为「先改 .agents/skills/ 真源 → 再同步三处副本」，禁止直接改副本。
 ```
 
-<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-flyway 07-doc-consistency -->
+<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-flyway 07-doc-consistency 08-spec-doc-breakpoints -->
 
 上面这行标记是**闸门清单的机器可读副本**：新增或删除闸门时同步更新，`07-doc-consistency.ps1` 会把它与 `harness/checks/*.ps1` 的实际文件比对，不一致直接退出码 1。
 
@@ -147,6 +148,7 @@ ai-workspace/
 | 只查前端 | `powershell -File harness\checks\04-frontend.ps1` |
 | 只查改名 | `powershell -File harness\checks\05-scaffold-check.ps1` |
 | 只查迁移 | `powershell -File harness\checks\06-flyway.ps1`（默认连 `127.0.0.1:8806` 的 `ai_chat_gate`） |
+| 只查文档断点 | `powershell -File harness\checks\08-spec-doc-breakpoints.ps1` |
 | 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
 | Flyway 凭据 | 设置 `FLYWAY_DB_PASSWORD`；未设置时若 8806 由 Docker 容器发布，闸门会从容器环境读取 root 密码 |
 | 工作区改名 | `node scaffold/rename.mjs --name <新 slug> --display "<新展示名>"`（只改 AGENTS.md / README.md，改名后跑一键验收） |

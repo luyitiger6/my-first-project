@@ -210,7 +210,7 @@ interface Attraction {
 - [ ] 封面 `loading="lazy"` + `decoding="async"`
 - [ ] `.cover` 含 `height: auto`（防 `aspect-ratio` 被宽高属性顶死）
 - [ ] 图片失败时占位不塌陷
-- [ ] 320px 单列、无横向滚动；≥640px 两列；≥1024px 三列
+- [ ] 320px 视口无横向滚动；> 1080px 五列、≤ 1080px 三列、≤ 720px 两列
 
 ### 4.5 工程
 
@@ -248,26 +248,28 @@ interface Attraction {
 
 约束：U6 与 U8 卡片结构相似但比例与字段不同，**禁止**为了复用而把两者塞进一个万能卡组件；如需复用，须显式参数化 `aspect` 与 `metaRender`，并在两处验收清单里同时更新。
 
-### 5.3 响应式（mobile-first）
+### 5.3 响应式（desktop-first）
 
-| 断点 | 列数 | 间距 |
-|---|---|---|
-| 默认（320–639px） | 1 | `16px` |
-| `≥640px` | 2 | `20px` |
-| `≥1024px` | 3 | `24px` |
+真相源：`frontend/components/home/hot-attractions.module.css`（下方断点须与该文件的 `@media` 一致，由 `harness/checks/08-spec-doc-breakpoints.ps1` 校验）
 
-- 与 U6 的列数断点不同（U6 用 768px 起两列）。**不要**为「统一」而改动本单元的断点，除非两处同时验收
+| 视口 | 列数 |
+|---|---|
+| `> 1080px` | 5 |
+| `≤ 1080px` | 3 |
+| `≤ 720px` | 2 |
+
+- 实现是 desktop-first：默认五列，用累进的 `max-width` 逐级收窄；间距恒为 `16px`，不随断点变化
+- 与 U6 的列数断点不同（U6 以 900px 为界，本单元以 1080px 为界）。**不要**为「统一」而改动本单元的断点，除非两处同时验收
 - 卡片 `min-width: 0`，防长名称撑破网格
 - 封面容器 `aspect-ratio: 1 / 1` + `overflow: hidden` + `object-fit: cover`
 
 ### 5.4 图片（next/image）
 
-**⚠ 现状：使用原生 `<img>`**（`width={600} height={600} loading="lazy"`），未接入 `next/image`。
+**现状：已接入 `next/image` + 自定义 loader**（`frontend/lib/image-loader.ts`，与 U6 共用同一份实现）。loader 把档位宽度写进图片来源的 `w` 参数，请求直连图片 CDN，不经过 `/_next/image`，因此**不需要** `images.remotePatterns`。
 
-目标约束：
+约束：
 
-- 换 `next/image` 后与 U6 共用同一套 `sizes` 策略：`(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw`
-- 依赖 `next.config.ts` 的 `images.remotePatterns` 已注册 `images.unsplash.com`（当前**未注册**，见 5.5）
+- 封面必须带 `sizes` 与多档 `srcset`；`sizes` 按双层 `.wc-container` 的真实内容宽推导，见 §4.4
 - 首屏以下保持 `loading="lazy"`，不得加 `priority`
 - `alt` 必须为「<名称>封面」；封面承载内容语义，不可置空
 - **历史坑**：`width`/`height` 属性 + CSS `aspect-ratio` 并存时，必须保留 `.cover { height: auto }`，否则 600×600 属性会把容器高度顶死，1:1 比例失效
@@ -276,9 +278,9 @@ interface Attraction {
 
 | # | 本文档要求 | 仓库现状 | 影响 |
 |---|---|---|---|
-| 1 | `next/image` | 原生 `<img>` + 600×600 | 无格式/尺寸优化 |
-| 2 | 域名注册 | `next.config.ts` 无 `images` 段 | 直接改 `Image` 会运行期报错 |
-| 3 | 列数断点 640 起两列 | CSS Module 现状一致 | 一致；但与 U6（768）不同，勿盲目统一 |
+| 1 | `next/image` + 按档位出图 | 已接入（`lib/image-loader.ts` + `images.loader = 'custom'`） | 已解决 |
+| 2 | 域名注册 | 不适用 | 自定义 loader 直连 CDN，不经过 `/_next/image` |
+| 3 | 默认五列、`≤ 1080px` 三列、`≤ 720px` 两列 | 与 `hot-attractions.module.css` 一致 | 已核对；与 U6（以 900px 为界）不同，勿盲目统一 |
 | 4 | 卡片可点击 | 不可点（无详情页） | 与 spec 一致 |
 | 5 | 评分只读 | 纯文本，无交互 | 一致 |
 

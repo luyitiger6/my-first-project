@@ -189,7 +189,7 @@ interface ListResult<T> { items: T[]; total: number }
 - [ ] 封面走 `next/image`，带多档 `srcset`；`sizes` 为 `(max-width: 640px) calc(100vw - 64px), (max-width: 900px) calc(50vw - 50px), (min-width: 1160px) 347px, calc(33.33vw - 40px)`
 - [ ] 封面 `loading="lazy"` + `decoding="async"`，且 `.cover` 含 `height: auto`（防 `aspect-ratio` 失效）
 - [ ] 图片加载失败时占位不塌陷
-- [ ] 320px 单列、无横向滚动；≥768px 两列；≥1024px 三列
+- [ ] 320px 视口无横向滚动；> 900px 三列、≤ 900px 两列、≤ 640px 单列
 
 ### 4.4 工程
 
@@ -229,43 +229,37 @@ interface ListResult<T> { items: T[]; total: number }
 
 约束：卡片当前不可点击，**不得**套 `Card` 的 hover 抬升效果制造可点暗示；若将来加详情页，须同时补 `Link` 与 `aria-label`。
 
-### 5.3 响应式（mobile-first）
+### 5.3 响应式（desktop-first）
 
-| 断点 | 列数 | 间距 |
-|---|---|---|
-| 默认（320–767px） | 1 | `16px` |
-| `≥768px` | 2 | `20px` |
-| `≥1024px` | 3 | `24px` |
+真相源：`frontend/components/home/editor-picks.module.css`（下方断点须与该文件的 `@media` 一致，由 `harness/checks/08-spec-doc-breakpoints.ps1` 校验）
 
-- 断点只放大列数，不改变卡片内部结构
+| 视口 | 列数 |
+|---|---|
+| `> 900px` | 3 |
+| `≤ 900px` | 2 |
+| `≤ 640px` | 1 |
+
+- 实现是 desktop-first：默认三列，用累进的 `max-width` 逐级收窄；间距恒为 `20px`，不随断点变化
 - 卡片作为 grid item 需 `min-width: 0`，防长标题撑破
 - 封面容器用 `aspect-ratio: 4/3` + `overflow: hidden`，图片 `object-fit: cover`
 
 ### 5.4 图片（next/image）
 
-**⚠ 现状：使用原生 `<img>`**（`width={900} height={675} loading="lazy"`），未接入 `next/image`。
+**现状：已接入 `next/image` + 自定义 loader**（`frontend/lib/image-loader.ts`）。loader 把档位宽度写进图片来源的 `w` 参数，请求直连图片 CDN，不经过 `/_next/image`，因此**不需要** `images.remotePatterns`；`next.config.ts` 只声明 `images.loader = 'custom'` 与 `loaderFile`。
 
-目标约束：
+约束：
 
-- 换 `next/image` 后可用 `fill` + `sizes="(min-width:1024px) 33vw, (min-width:768px) 50vw, 100vw"`
-- 必须先在 `next.config.ts` 注册源站：
-
-```ts
-images: {
-  remotePatterns: [{ protocol: 'https', hostname: 'images.unsplash.com' }],
-}
-```
-
+- 封面必须带 `sizes` 与多档 `srcset`；`sizes` 按双层 `.wc-container` 的真实内容宽推导，见 §4.3
 - 首屏以下卡片保持 `loading="lazy"`；不得给全部卡片加 `priority`
 - `alt` 规则不变：`"<标题>封面"`；纯装饰封面才允许 `alt=""`（当前封面承载内容语义，不可置空）
-- **历史坑**：给 `<img>` 同时写 `width` + `height` 且 CSS 用 `aspect-ratio` 时，必须保留 `.cover { height: auto }`，否则图片比例会被宽高属性顶死（已发生过一次失真事故）
+- **历史坑**：给图片同时写 `width` + `height` 且 CSS 用 `aspect-ratio` 时，必须保留 `.cover { height: auto }`，否则图片比例会被宽高属性顶死（已发生过一次失真事故）
 
 ### 5.5 与现状的差异
 
 | # | 本文档要求 | 仓库现状 | 影响 |
 |---|---|---|---|
-| 1 | `next/image` | 原生 `<img>` | 无自动格式转换与尺寸优化 |
-| 2 | 图片域名注册 | `next.config.ts` 无 `images` 段 | 直接改 `Image` 会在运行期报域名未配置 |
+| 1 | `next/image` + 按档位出图 | 已接入（`lib/image-loader.ts` + `images.loader = 'custom'`） | 已解决；来源域名无需注册 `remotePatterns` |
+| 2 | 图片域名注册 | 不适用 | 自定义 loader 直连 CDN，不经过 `/_next/image` |
 | 3 | Tailwind + shadcn | CSS Modules 手写 | 换栈需重做 4:3 封面容器 |
 | 4 | 「共 N 条」 | 未展示（`total` 未使用） | 与 `ListResult.total` 的语义存在未消费字段 |
 | 5 | 卡片可点击 | 不可点（无详情页） | 与 spec 一致，勿擅自加链接 |
