@@ -19,11 +19,12 @@
 | 1 | 全局开关上下文：`isOpen` / `open` / `close` | `AiAssistantProvider` |
 | 2 | 上下文读取，Provider 外使用时抛错 | `useAiAssistant` |
 | 3 | 两个触发器：顶栏行内、右下角悬浮 | `AiAssistantTrigger variant="header" \| "floating"` |
-| 4 | 模态面板：遮罩 + `role="dialog"` + `aria-modal="true"` | 同文件 |
+| 4 | 模态面板：遮罩 + `role="dialog"` + `aria-modal="true"` + Tab 焦点陷阱 | 同文件 |
 | 5 | 三种关闭方式：Esc、点遮罩、点关闭按钮 / 「知道了」 | 同文件 |
-| 6 | 焦点管理：打开时聚焦关闭按钮，关闭后焦点归还触发元素 | `restoreFocusRef` |
+| 6 | 焦点管理：打开时聚焦关闭按钮、Tab / Shift+Tab 在面板内循环、关闭后焦点归还触发元素 | `restoreFocusRef` / `panelRef` |
 | 7 | 面板内容：`即将上线` 徽标、标题、说明、三条能力清单、免责说明 | 静态文案 |
 | 8 | 触发按钮的无障碍属性：`aria-haspopup="dialog"` + `aria-expanded` | 两个触发器 |
+| 9 | 背景滚动锁：打开期间 `body` 不可滚动，关闭或卸载时恢复原值 | 同文件 |
 
 ### 1.2 不包含
 
@@ -32,7 +33,6 @@
 | 任何真实对话、流式响应、消息历史 | 未立项（需真实 LLM API） |
 | 输入框、发送按钮、附件上传 | 未立项 |
 | 会话持久化、多轮上下文 | 未立项 |
-| 焦点陷阱（Tab 循环限制在面板内） | **当前缺失**，见 5.5 |
 | 面板内的行程 / 预算等实际功能 | 未立项（仅文案列出） |
 
 ### 1.3 数据来源
@@ -93,6 +93,21 @@
 - When 面板打开
 - Then 焦点落在关闭按钮（`aria-label="关闭 AI 助手"`）
 - And 屏幕阅读器会朗读对话框标题「AI 旅行助手」
+
+**S15 · Tab 在面板内正向循环**
+- When 面板打开且焦点在最后一个可聚焦元素（「知道了」）
+- Then 按 `Tab` 后焦点回到第一个（关闭按钮）
+- And 焦点不跑到遮罩后的页面
+
+**S16 · Shift+Tab 在面板内反向循环**
+- When 面板打开且焦点在第一个可聚焦元素（关闭按钮）
+- Then 按 `Shift+Tab` 后焦点落到最后一个（「知道了」）
+
+**S17 · 背景滚动锁定与恢复**
+- When 面板打开
+- Then `document.body.style.overflow` 为 `hidden`，遮罩后的页面不可滚动
+- And 面板自身超出视口时面板内部可滚动（`.panel` 的 `max-height` + `overflow-y: auto`）
+- And 关闭或组件卸载后，`overflow` 恢复为打开前的原值（原值为空字符串时也恢复为空字符串）
 
 ### 2.2 异常路径
 
@@ -187,8 +202,12 @@ export function useAiAssistant(): AiAssistantContextValue
 
 ### 4.3 焦点与无障碍
 
-- [ ] 打开后焦点落在关闭按钮
-- [ ] 关闭后焦点回到打开它的元素
+- [x] 打开后焦点落在关闭按钮
+- [x] Tab 在最后一个可聚焦元素上落回第一个
+- [x] Shift+Tab 在第一个可聚焦元素上落回最后一个
+- [x] 四种关闭路径（Esc / 遮罩 / × / 知道了）焦点都回到打开它的元素
+- [x] 打开期间 `body` 不可滚动，关闭或卸载后恢复原值（含原值为空字符串）
+- [x] 关闭后焦点回到打开它的元素
 - [ ] 触发元素已移除时焦点归还静默跳过
 - [ ] 对话框有 `aria-modal="true"` 与正确 `aria-labelledby`
 - [ ] 悬浮按钮在窄屏隐藏文字后仍有 `aria-label`
@@ -196,14 +215,14 @@ export function useAiAssistant(): AiAssistantContextValue
 
 ### 4.4 工程
 
-- [ ] 全单元零网络请求（`grep -r "fetch(" components/home/ai-assistant.tsx` 无结果）
-- [ ] 无 Provider 时 `useAiAssistant` 抛错
-- [ ] 面板文案与 §3.4 一致（含免责说明）
-- [ ] `ai-assistant.test.tsx` 覆盖 S1–S5、S7、S9
-- [ ] `npx vitest run components/home/ai-assistant.test.tsx` 全绿
-- [ ] `npm run build` 通过
-- [ ] 无 `TODO` / `FIXME`，未被 `03-static-guard` 拦截
-- [ ] `powershell -File harness\run-all.ps1` 退出码 0
+- [x] 全单元零网络请求（`grep -r "fetch(" components/home/ai-assistant.tsx` 无结果）
+- [x] 无 Provider 时 `useAiAssistant` 抛错
+- [x] 面板文案与 §3.4 一致（含免责说明）
+- [x] `ai-assistant.test.tsx` 覆盖 S1–S9 与 S15–S17
+- [x] `npx vitest run components/home/ai-assistant.test.tsx` 全绿
+- [x] `npm run build` 通过
+- [x] 无 `TODO` / `FIXME`，未被 `03-static-guard` 拦截
+- [x] `powershell -File harness\run-all.ps1` 退出码 0
 
 ---
 
@@ -255,13 +274,18 @@ export function useAiAssistant(): AiAssistantContextValue
 
 | # | 本文档要求 | 仓库现状 | 影响 |
 |---|---|---|---|
-| 1 | 模态对话框应限制 Tab 在面板内 | **当前无焦点陷阱**：Tab 可跑到面板后的页面 | 键盘用户可能在遮罩后迷失；换 Radix `Dialog` 可一次性解决 |
-| 2 | 打开时锁定页面滚动 | **未实现**：`body` 未被锁，遮罩后仍可滚动 | 移动端体验瑕疵 |
+| 1 | 模态对话框应限制 Tab 在面板内 | **已补**（`harden-ai-assistant-modal`）：手写 Tab / Shift+Tab 循环，运行期查询可聚焦元素 | 一致 |
+| 2 | 打开时锁定页面滚动 | **已补**：保存并原样恢复 `body.style.overflow`；`.panel` 配 `max-height` + `overflow-y` 防内容被裁 | 一致 |
 | 3 | Tailwind + shadcn | 手写 CSS Module | 换栈后 3 处自写逻辑可删 |
 | 4 | 零网络请求 | 已满足，面板文案含免责声明 | 一致 |
 | 5 | 焦点归还 | 已实现（`restoreFocusRef`） | 一致 |
+| 6 | iOS Safari 滚动穿透 | **未处理**：仅用 `body.style.overflow = 'hidden'` | 真机遮罩后可能仍可触摸滚动；本次不处理，需真机验证 |
 
-> 第 1、2 条属于**已识别但未修**的缺口。若本单元要重做，必须先决定是「自写补齐」还是「引入 shadcn Dialog」；两条路线的验收项不同，不可混着做完再判断。
+> 第 1、2 条已于 `harden-ai-assistant-modal` 中按「自写补齐」路线完成，未引入 shadcn Dialog（理由见该 change 的 design.md）。若后续整体换栈，替换点仍在 §5.2。
+>
+> `.panel` 的 `max-height` + `overflow-y: auto` 是滚动锁的**配套**，不是可选优化：`body` 锁死后面板自身若超出视口，内容会被裁在视口外且无法滚动。
+>
+> 第 6 条属已知未处理项：`body { overflow: hidden }` 在 iOS Safari 上可能出现滚动穿透（触摸滚动传递到背景）。本次不处理，需真机验证后再决定是否追加 `touch-action: none` 或 `position: fixed` 方案。
 
 ---
 
