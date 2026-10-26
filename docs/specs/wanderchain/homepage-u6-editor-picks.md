@@ -22,7 +22,7 @@
 | 4 | 上限 6 条 | `EDITOR_PICKS_LIMIT`，截断由仓储完成 |
 | 5 | 三态：加载 / 错误 / 空 | 复用 U2 的 `SectionLoading` / `SectionError` / `EmptyState` |
 | 6 | 城市标签文案 | `all` 显示「全城」，其余显示中文城市名 |
-| 7 | 封面图 | 固定 4:3，懒加载，`alt="<标题>封面"` |
+| 7 | 封面图 | 固定 4:3，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<标题>封面"` |
 
 ### 1.2 不包含
 
@@ -41,7 +41,7 @@
 |---|---|---|
 | 精选卡片数据 | **Mock 契约**（U0 `mockRepository.listEditorPicks`） | 响应形状 `ListResult<EditorPick>`，换真实 API 时形状不变 |
 | 当前城市 | **静态**（由 U2 传入的 `city` prop） | 本组件不读 URL |
-| 封面图 | 静态 URL（`images.unsplash.com`） | 由 U0 `cover()` 生成 |
+| 封面图 | 静态 URL（`images.unsplash.com`） | 由 U0 `cover()` 生成；渲染前经自定义 loader 把宽度档位写进 `w` 参数 |
 | 编辑推荐接口 | **需要 API（本期未接）** | 本期零网络请求 |
 
 ### 1.4 与其他单元的关系
@@ -151,7 +151,7 @@ interface ListResult<T> { items: T[]; total: number }
 | `title` | 非空，≤ 24 字 | h3，允许换行 |
 | `summary` | 非空，≤ 80 字 | 正文段落，最多展示 3 行（视觉裁切，不做字符串截断） |
 | `city` | `CitySlug` | `all` → 「全城」；否则 → 中文名 |
-| `coverUrl` | 绝对 URL | 4:3，`loading="lazy"` |
+| `coverUrl` | 绝对 URL | 4:3，`loading="lazy"`，经自定义 loader 按档位改写 `w` |
 | `editor` | 非空，2–8 字 | 署名，前缀「编辑 · 」由展示层决定（当前仅展示名字） |
 | `sortOrder` | 可负数 | 不展示，仅参与排序 |
 
@@ -186,7 +186,8 @@ interface ListResult<T> { items: T[]; total: number }
 ### 4.3 图片与响应式
 
 - [ ] 封面为 4:3；`alt="<标题>封面"`
-- [ ] 封面 `loading="lazy"`，且 `.cover` 含 `height: auto`（防 `aspect-ratio` 失效）
+- [ ] 封面走 `next/image`，带多档 `srcset`；`sizes` 为 `(max-width: 640px) calc(100vw - 64px), (max-width: 900px) calc(50vw - 50px), (min-width: 1160px) 347px, calc(33.33vw - 40px)`
+- [ ] 封面 `loading="lazy"` + `decoding="async"`，且 `.cover` 含 `height: auto`（防 `aspect-ratio` 失效）
 - [ ] 图片加载失败时占位不塌陷
 - [ ] 320px 单列、无横向滚动；≥768px 两列；≥1024px 三列
 

@@ -24,6 +24,7 @@
 | 6 | 评分展示 | 固定一位小数（`toFixed(1)`） |
 | 7 | 浏览数格式化 | `formatCount`（万位缩写） |
 | 8 | 三态 | 复用 U2 的 `SectionLoading` / `SectionError` / `EmptyState` |
+| 9 | 封面图 | 固定 1:1，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<名称>封面"` |
 
 ### 1.2 不包含
 
@@ -42,7 +43,7 @@
 |---|---|---|
 | 景点数据 | **Mock 契约**（U0 `mockRepository.listHotAttractions`） | 形状 `ListResult<Attraction>` |
 | 当前城市 | **静态**（U2 传入的 `city` prop） | 组件不读 URL |
-| 封面图 | 静态 URL（`images.unsplash.com`） | 由 U0 `cover()` 生成，1:1 展示 |
+| 封面图 | 静态 URL（`images.unsplash.com`） | 由 U0 `cover()` 生成，1:1 展示；渲染前经自定义 loader 把宽度档位写进 `w` 参数 |
 | 热门景点接口 | **需要 API（本期未接）** | 本期零网络请求 |
 
 ### 1.4 与其他单元的关系
@@ -157,7 +158,7 @@ interface Attraction {
 |---|---|---|
 | `name` | 非空，2–20 字 | h3，允许换行 |
 | `city` | `CitySlug` | 中文名（`all` → 「全部」） |
-| `coverUrl` | 绝对 URL | 1:1，`loading="lazy"`，`alt="<名称>封面"` |
+| `coverUrl` | 绝对 URL | 1:1，`loading="lazy"`，`alt="<名称>封面"`，经自定义 loader 按档位改写 `w` |
 | `rating` | 0–5 的数字 | `toFixed(1)`，前缀「评分 」 |
 | `viewCount` | 非负整数 | `formatCount` → 万位缩写，后缀「 浏览」 |
 | `status` | 闭集 | 不展示；非 `published` 不进入列表 |
@@ -204,7 +205,9 @@ interface Attraction {
 
 ### 4.4 图片与响应式
 
-- [ ] 封面为 1:1；`alt="<名称>封面"`；`loading="lazy"`
+- [ ] 封面为 1:1；`alt="<名称>封面"`
+- [ ] 封面走 `next/image`，带多档 `srcset`；`sizes` 为 `(max-width: 720px) calc(50vw - 40px), (max-width: 1080px) calc(33.33vw - 38px), (min-width: 1160px) 204px, calc(20vw - 29px)`
+- [ ] 封面 `loading="lazy"` + `decoding="async"`
 - [ ] `.cover` 含 `height: auto`（防 `aspect-ratio` 被宽高属性顶死）
 - [ ] 图片失败时占位不塌陷
 - [ ] 320px 单列、无横向滚动；≥640px 两列；≥1024px 三列
