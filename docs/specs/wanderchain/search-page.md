@@ -73,6 +73,8 @@
 - When 用户点击某组末尾的 `See ... on the homepage` 链接
 - Then 跳到首页对应区块：`/#editor-picks`、`/#hot-posts`、`/#hot-attractions`
 - And 三个区块的 `<section>` 带有对应 `id`
+- And 区块数据就绪后目标区块进入视口，区块标题可见，
+  顶部与吸顶头部下沿的偏差小于视口高度的 10%（回链导航不受加载态到就绪态的高度变化影响）
 
 ### 2.2 异常路径
 

@@ -1,6 +1,7 @@
 import { expect, test } from './support/fixtures'
 import {
   NARROW_VIEWPORT,
+  expectAnchorLanded,
   expectNoHorizontalOverflow,
   gotoHome,
   gotoSearch,
@@ -98,10 +99,10 @@ test.describe('Search · 搜索结果页 · 桌面端', () => {
 
       const section = page.locator(anchor.hash)
       await expect(section).toHaveCount(1)
-      // 规格要求：跳到 /#... 且首页 section 带对应 id。Next 客户端导航会在区块数据
-      // 就绪前完成哈希滚动，实际落点会停在区块上方；偏移缺陷记录在 docs/e2e/README.md。
-      const box = await section.boundingBox()
-      expect(box?.height ?? 0, `${anchor.hash} 应已渲染出内容`).toBeGreaterThan(0)
+      // 初次滚动发生在区块数据就绪前，落位由首页的锚点补偿组件在布局稳定后完成。
+      await expect(section).toBeInViewport()
+      await expect(page.locator(`${anchor.hash}-title`)).toBeInViewport()
+      await expectAnchorLanded(page, anchor.hash)
     }
   })
 

@@ -35,6 +35,41 @@ export async function gotoSearch(page: Page, q?: string): Promise<void> {
   await gotoPath(page, q === undefined ? '/search' : withQuery('/search', { q }))
 }
 
+/**
+ * 锚点落位偏差：目标区块顶部与吸顶头部下沿的距离，按视口高度归一化。
+ * 区块对齐后该值应接近 0；只读取视口相对位置，与当前滚动量无关。
+ */
+export async function anchorOffsetRatio(section: Locator): Promise<number> {
+  return section.evaluate((element) => {
+    const header = document.querySelector('header')
+    const headerHeight = header === null ? 0 : header.getBoundingClientRect().height
+    const offset = element.getBoundingClientRect().top - headerHeight
+    return Math.abs(offset) / window.innerHeight
+  })
+}
+
+/**
+ * 断言锚点落位：目标区块顶部对齐吸顶头部下沿（偏差 < 10% 视口高）。
+ * 页尾区块可能已滚到文档尽头、无法再对齐，此时「停在 maxScroll」视为合格落位。
+ */
+export async function expectAnchorLanded(page: Page, hash: string): Promise<void> {
+  const section = page.locator(hash)
+  await expect
+    .poll(
+      async () => {
+        const ratio = await anchorOffsetRatio(section)
+        if (ratio < 0.1) return 'aligned'
+        const atDocumentEnd = await page.evaluate(() => {
+          const max = document.documentElement.scrollHeight - window.innerHeight
+          return Math.abs(window.scrollY - max) <= 1
+        })
+        return atDocumentEnd ? 'aligned' : `offset ${(ratio * 100).toFixed(1)}% of viewport`
+      },
+      { message: `${hash} 应停在吸顶头部下沿（或已滚到文档尽头）` },
+    )
+    .toBe('aligned')
+}
+
 /** 横向滚动是响应式最常见的破绽：允许 1px 的取整误差。 */
 export async function expectNoHorizontalOverflow(page: Page, label = '页面'): Promise<void> {
   const overflow = await page.evaluate(() => {

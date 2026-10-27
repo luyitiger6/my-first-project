@@ -1,11 +1,12 @@
 # docs/e2e · wanderchain E2E 说明
 
-把 `docs/specs/wanderchain/` 下 10 份 SPEC 的 When/Then 场景落成 Playwright 用例：
+把 `docs/specs/wanderchain/` 下 10 份 SPEC 的 When/Then 场景落成 Playwright 用例，
+外加首页锚点落位（`fix-homepage-anchor-landing` 变更）的补充场景：
 每个 Scenario（或 Scenario 下的 And 分支）对应一个独立 `test()`，测试标题与注释里标注场景编号。
 
 - 测试文件：`docs/e2e/<spec 名>.spec.ts`
-- 共 11 个文件、154 条用例
-- 前端生产代码零改动，测试依赖只装在**工作区根** `package.json`
+- 共 12 个文件、159 条用例
+- 除首页锚点补偿组件（`frontend/components/home/hash-anchor-restorer.tsx`）外，E2E 建设不改动前端生产代码；测试依赖只装在**工作区根** `package.json`
 
 ## 如何运行
 
@@ -54,14 +55,18 @@ npm run test:e2e:report     # 打开 HTML 报告
 | `homepage-hero.spec.ts` | `homepage-hero.md` | 17 |
 | `homepage-u0-contract-mock.spec.ts` | `homepage-u0-contract-mock.md` | 16 |
 | `homepage-u1-mock-auth.spec.ts` | `homepage-u1-mock-auth.md` | 21 |
-| `homepage-u2-skeleton.spec.ts` | `homepage-u2-skeleton.md` | 17 |
+| `homepage-u2-skeleton.spec.ts` | `homepage-u2-skeleton.md` | 16 |
 | `homepage-u3-feature-nav.spec.ts` | `homepage-u3-feature-nav.md` | 9 |
 | `homepage-u4-ai-assistant.spec.ts` | `homepage-u4-ai-assistant.md` | 17 |
-| `homepage-u5-city-switcher.spec.ts` | `homepage-u5-city-switcher.md` | 14 |
-| `homepage-u6-editor-picks.spec.ts` | `homepage-u6-editor-picks.md` | 11 |
+| `homepage-u5-city-switcher.spec.ts` | `homepage-u5-city-switcher.md` | 13 |
+| `homepage-u6-editor-picks.spec.ts` | `homepage-u6-editor-picks.md` | 10 |
 | `homepage-u7-hot-posts.spec.ts` | `homepage-u7-hot-posts.md` | 11 |
-| `homepage-u8-hot-attractions.spec.ts` | `homepage-u8-hot-attractions.md` | 10 |
-| `search-page.spec.ts` | `search-page.md` | 14 |
+| `homepage-u8-hot-attractions.spec.ts` | `homepage-u8-hot-attractions.md` | 11 |
+| `search-page.spec.ts` | `search-page.md` | 13 |
+| `homepage-anchors.spec.ts` | `fix-homepage-anchor-landing` 的 `wanderchain-homepage` delta | 5 |
+
+`homepage-anchors.spec.ts` 覆盖锚点落位稳定性的首页侧场景（直接带锚点访问、用户主动滚动让位、
+无锚点不自动滚动）；回链场景由 `search-page.spec.ts` 的 S5 覆盖。
 
 ## 诚实排除清单
 
@@ -82,12 +87,3 @@ README 记录在这里，避免把「没测」误读成「已通过」。
 | U7 S9 / S10 / S12 | 仓储 reject、无空城市、无零值数据 |
 | U8 S9 / S10 / S12 | 同上 |
 | U2 S7 / U6 S6 | 图片加载失败用 `page.route(..., abort)` 真实触发，已覆盖 |
-
-## 已知产品缺陷（测试已按 SPEC 断言，未掩盖）
-
-- **首页锚点回链落点偏移**：从 `/search` 点击 `See ... on the homepage` 后，
-  URL 正确变为 `/#editor-picks` / `/#hot-posts` / `/#hot-attractions`，首页对应 `<section id>` 也存在，
-  但 Next 客户端导航在区块数据（loading → ready）撑高之前就完成了哈希滚动，
-  数据到位后目标区块被推到视口上方约 1200px。
-  `search-page.spec.ts` 的 S5 按 SPEC 只断言「URL 带正确 hash + 目标 section 已渲染」，
-  未把「落点在视口内」写成通过条件；修复建议是在区块 ready 后按当前 hash 补一次 `scrollIntoView`。

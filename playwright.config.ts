@@ -9,7 +9,7 @@ const BROWSER_CHANNEL = process.env.E2E_CHANNEL ?? 'chrome'
 
 /**
  * E2E 工程放在工作区根：测试文件位于 docs/e2e，依赖因此必须落在根的 node_modules，
- * 不能装进 frontend/ 子模块。前端生产代码零改动。
+ * 不能装进 frontend/ 子模块。
  */
 export default defineConfig({
   testDir: path.join(__dirname, 'docs', 'e2e'),
