@@ -33,7 +33,7 @@
 - [x] 5.1 前端整链：`cd frontend; npm run build; npm run test` 均退出码 0，且通过用例数不少于改前基线（新增用例后应更多）。验证：两条命令的输出末行。
 - [x] 5.2 行为取证：`cd frontend; npm run dev` 后截图 `/`（英文界面、城市英文名）、`/?city=chengdu`（Chengdu 高亮）、`/search?q=chengdu`（英文命中三类）、`/search?q=成都`（中文仍命中）、`/search?q=zzz`（英文空态）、`/search`（英文引导态），随后关闭服务。验证：截图文件存在且与预期一致。
 - [x] 5.3 工作区总闸门：`powershell -File harness\run-all.ps1` 退出码 0（九道闸门全部 PASSED）。验证：`$LASTEXITCODE` 为 0。
-- [ ] 5.4 按子模块边界提交：先在 `frontend/` 提交并推送本轮代码与测试，再回工作区提交 `docs/` 与新 `frontend` gitlink。验证：`git -C frontend log --oneline -1` 有新提交，工作区 `git status` 只剩预期的自有文件与 gitlink 变动。
+- [x] 5.4 按子模块边界提交：先在 `frontend/` 提交并推送本轮代码与测试，再回工作区提交 `docs/` 与新 `frontend` gitlink。验证：`git -C frontend log --oneline -1` 有新提交，工作区 `git status` 只剩预期的自有文件与 gitlink 变动。
 
 ## Workflow follow-up
 
