@@ -3,7 +3,7 @@
 <cite>
 **本文引用的文件**   
 - [README.md](file://README.md)
-- [spec.md](file://openspec/specs/wanderchain-homepage/spec.md)
+- [spec-coverage-audit.md](file://docs/spec-coverage-audit.md)
 - [homepage-hero.md](file://docs/specs/wanderchain/homepage-hero.md)
 - [search-page.md](file://docs/specs/wanderchain/search-page.md)
 - [homepage-u2-skeleton.md](file://docs/specs/wanderchain/homepage-u2-skeleton.md)
@@ -19,9 +19,13 @@
 - [frontend/components/home/feature-nav.tsx](file://frontend/components/home/feature-nav.tsx)
 - [frontend/components/home/feature-nav.module.css](file://frontend/components/home/feature-nav.module.css)
 - [frontend/components/home/ai-assistant.tsx](file://frontend/components/home/ai-assistant.tsx)
+- [frontend/components/home/ai-assistant.test.tsx](file://frontend/components/home/ai-assistant.test.tsx)
 - [frontend/components/home/editor-picks.tsx](file://frontend/components/home/editor-picks.tsx)
+- [frontend/components/home/editor-picks.test.tsx](file://frontend/components/home/editor-picks.test.tsx)
 - [frontend/components/home/hot-posts.tsx](file://frontend/components/home/hot-posts.tsx)
 - [frontend/components/home/hot-attractions.tsx](file://frontend/components/home/hot-attractions.tsx)
+- [frontend/components/home/hot-attractions.module.css](file://frontend/components/home/hot-attractions.module.css)
+- [frontend/components/home/hot-attractions.test.tsx](file://frontend/components/home/hot-attractions.test.tsx)
 - [frontend/lib/home/cities.ts](file://frontend/lib/home/cities.ts)
 - [frontend/app/search/page.tsx](file://frontend/app/search/page.tsx)
 - [frontend/lib/image-loader.ts](file://frontend/lib/image-loader.ts)
@@ -33,16 +37,15 @@
 - [frontend/app/community/page.tsx](file://frontend/app/community/page.tsx)
 - [frontend/app/attractions/page.tsx](file://frontend/app/attractions/page.tsx)
 - [frontend/components/site/placeholder.tsx](file://frontend/components/site/placeholder.tsx)
-- [frontend/components/home/hot-attractions.test.tsx](file://frontend/components/home/hot-attractions.test.tsx)
-- [frontend/app/placeholders.test.tsx](file://frontend/app/placeholders.test.tsx)
 </cite>
 
 ## 更新摘要
 **所做更改**
-- **热门景点单列断点增强**：为热门景点组件新增 480px 视口下的单列布局断点，优化超小屏幕显示体验
-- **占位页站点框架增强**：社区和景点占位页现在包含完整的站点头部、页脚和 main-content 区域
-- **AI 助手错误消息标准化**：统一 AI 助手相关错误消息的英文文案，确保国际化一致性
-- **测试覆盖率提升**：从 208 个测试提升至约 228 个测试，增强了热点景点响应式行为和占位页框架覆盖
+- **全面规格覆盖率审计**：新增前端 wanderchain 模块 79.5% 覆盖率审计，包含严格覆盖率、宽松覆盖率与逐项场景覆盖明细
+- **响应式断点策略调整**：热门景点区块从移动优先调整为桌面优先策略，断点从 640px/1024px 更新为 1080px/720px/480px
+- **AI 助手测试覆盖扩展**：测试用例从 S1-S9 扩展至 S1-S17，新增焦点陷阱、背景滚动锁定、键盘导航等无障碍功能验证
+- **双语界面 alt 文本规范修正**：编辑推荐区块的 alt 文本统一使用英文字段 `titleEn`，确保国际化一致性
+- **测试框架增强**：新增 use-section-data.test.ts、section-boundary.test.tsx、section-state.test.tsx 等系统性测试覆盖
 
 ## 目录
 1. [引言](#引言)
@@ -631,6 +634,55 @@ Card --> Action["返回首页按钮"]
 - [frontend/app/attractions/page.tsx:1-18](file://frontend/app/attractions/page.tsx#L1-L18)
 - [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
 
+### 规格覆盖率审计（新增）
+WanderChain 首页已完成全面的规格覆盖率审计，为代码质量提供了量化评估基准。
+
+**核心指标：**
+- **严格覆盖率**：91/193 = 47.2%（仅已覆盖场景）
+- **宽松覆盖率**：125/193 = 64.8%（已覆盖 + 部分覆盖）
+- **前端 wanderchain 覆盖率**：79.5%（78 已覆盖 + 23 部分）
+- **数据库设计规范覆盖率**：100%（13/13）
+
+**覆盖分布：**
+- homepage-hero.md：10 个场景，5 个已覆盖，1 个部分覆盖，4 个未覆盖
+- homepage-u4-ai-assistant.md：17 个场景，10 个已覆盖，2 个部分覆盖，5 个未覆盖
+- homepage-u8-hot-attractions.md：14 个场景，10 个已覆盖，2 个部分覆盖，2 个未覆盖
+- search-page.md：9 个场景，7 个已覆盖，1 个部分覆盖，1 个未覆盖
+
+**主要缺口分类：**
+- 功能未实现（todo 后端）：36 个场景
+- jsdom/CSS 不可测：14 个场景（需真实浏览器）
+- 测试遗漏：15 个场景（可补）
+- 浏览器默认行为：3 个场景
+
+```mermaid
+flowchart TD
+Audit["规格覆盖率审计"] --> Overview["总览统计"]
+Overview --> StrictCoverage["严格覆盖率 47.2%"]
+Overview --> LooseCoverage["宽松覆盖率 64.8%"]
+Overview --> FrontendCoverage["前端覆盖率 79.5%"]
+FrontendCoverage --> Hero["Hero 首屏 50%"]
+FrontendCoverage --> AI["AI 助手 58.8%"]
+FrontendCoverage --> Attractions["热门景点 71.4%"]
+FrontendCoverage --> Search["搜索页面 77.8%"]
+Audit --> GapAnalysis["缺口分析"]
+GapAnalysis --> TodoBackend["Todo 后端未实现 36 个"]
+GapAnalysis --> JSDOM["Jsdom 限制 14 个"]
+GapAnalysis --> TestGaps["测试遗漏 15 个"]
+Audit --> ActionItems["行动项"]
+ActionItems --> P0["P0 系统性盲区"]
+ActionItems --> P1["P1 低成本测试遗漏"]
+ActionItems --> P2["P2 断言强度不足"]
+ActionItems --> P3["P3 需真实浏览器"]
+```
+
+**图表来源**
+- [docs/spec-coverage-audit.md:9-38](file://docs/spec-coverage-audit.md#L9-L38)
+- [docs/spec-coverage-audit.md:246-311](file://docs/spec-coverage-audit.md#L246-L311)
+
+**章节来源**
+- [docs/spec-coverage-audit.md:1-333](file://docs/spec-coverage-audit.md#L1-L333)
+
 ## 依赖关系分析
 WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据契约"的单向依赖，避免循环耦合：
 
@@ -724,6 +776,11 @@ AttractionsPage["景点占位页"] --> Placeholder
   - 完整的站点框架确保一致的用户体验
   - 语义化 HTML 结构提升可访问性
   - 响应式设计适配各种设备尺寸
+- **测试覆盖率提升（新增）**：
+  - 新增 use-section-data.test.ts、section-boundary.test.tsx、section-state.test.tsx 等系统性测试
+  - AI 助手测试从 S1-S9 扩展至 S1-S17，覆盖焦点陷阱、背景滚动锁定等无障碍功能
+  - 热门景点响应式行为测试覆盖 1080px/720px/480px 断点
+  - 双语界面 alt 文本测试确保国际化一致性
 
 ## 故障排查指南
 - **Hero 组件问题（已重构）**：
@@ -766,6 +823,11 @@ AttractionsPage["景点占位页"] --> Placeholder
   - 语义化结构异常：检查 main-content 区域的 role 属性是否正确设置
   - 样式问题：确认占位页的 CSS 类名是否正确应用
   - 导航链接失效：检查"返回首页"按钮的 href 属性是否正确指向 "/"
+- **规格覆盖率问题（新增）**：
+  - 测试覆盖率下降：检查新增测试是否覆盖了关键场景
+  - 断言失败：确认测试断言与实际实现保持一致
+  - 响应式断点测试：验证 1080px/720px/480px 断点的测试用例
+  - 无障碍功能测试：确认焦点陷阱、键盘导航等无障碍功能的测试覆盖
 - 面板无法关闭：确认遮罩点击、关闭按钮与 Esc 事件监听未被阻止；检查焦点归还逻辑。
 - 城市切换无效：确认 URL 查询参数格式为 `?city=slug`，且 `parseCity` 能识别该 slug。
 - 区块为空：检查 Mock 数据是否包含对应城市的条目；确认编辑器精选与帖子的状态过滤逻辑。
@@ -791,6 +853,8 @@ WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，�
 
 **测试覆盖率提升** 测试套件从 208 个测试提升至约 228 个测试，新增了对热门景点响应式行为、占位页站点框架和 AI 助手错误消息的覆盖，显著提升了代码质量和可靠性。
 
+**规格覆盖率审计** 全面的规格覆盖率审计显示前端 wanderchain 模块达到 79.5% 的覆盖率，其中严格覆盖率 47.2%，宽松覆盖率 64.8%。AI 助手测试从 S1-S9 扩展至 S1-S17，热门景点区块的响应式断点从移动优先调整为桌面优先策略，双语界面的 alt 文本规范得到修正。
+
 架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。双语数据层的引入进一步增强了系统的可扩展性和可维护性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。随着 `redesign-home-hero-with-search` 变更的归档，所有规格引用现已指向生产就绪的主规格文件 `openspec/specs/wanderchain-homepage/spec.md`，确保了文档与代码实现的完全同步。
 
-**更新** 随着英语优先本地化、评分系统标准化、占位页框架增强和测试覆盖率提升的完成，WanderChain 首页现在为全球用户提供一致的英文体验和标准化的评分显示，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。数据完整性验证机制确保了 Mock 数据和未来真实数据源都遵循统一的 0–5 评分约束，为系统的长期可维护性提供了保障。新增的单列断点和增强的站点框架进一步提升了用户体验的一致性和可访问性。
+**更新** 随着英语优先本地化、评分系统标准化、占位页框架增强、测试覆盖率提升和规格覆盖率审计的完成，WanderChain 首页现在为全球用户提供一致的英文体验和标准化的评分显示，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。数据完整性验证机制确保了 Mock 数据和未来真实数据源都遵循统一的 0–5 评分约束，为系统的长期可维护性提供了保障。新增的单列断点和增强的站点框架进一步提升了用户体验的一致性和可访问性。全面的规格覆盖率审计为代码质量提供了量化评估基准，79.5% 的前端覆盖率表明系统在功能完整性和测试覆盖方面已达到较高水平。

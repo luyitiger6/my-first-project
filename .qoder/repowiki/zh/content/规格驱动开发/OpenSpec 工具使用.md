@@ -8,8 +8,13 @@
 - [openspec/changes/archive/2026-10-27-extract-home-hero/design.md](file://openspec/changes/archive/2026-10-27-extract-home-hero/design.md)
 - [openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md](file://openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md)
 - [openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md](file://openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md)
-- [openspec/specs/wanderchain-homepage/spec.md](file://openspec/specs/wanderchain-homepage/spec.md)
-- [frontend/app/page.tsx](file://frontend/app/page.tsx)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/design.md](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/design.md)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md)
+- [frontend/components/home/use-section-data.test.ts](file://frontend/components/home/use-section-data.test.ts)
+- [frontend/components/home/section-boundary.test.tsx](file://frontend/components/home/section-boundary.test.tsx)
+- [frontend/lib/home/repository.sorting.test.ts](file://frontend/lib/home/repository.sorting.test.ts)
+- [docs/specs/wanderchain/homepage-hero.md](file://docs/specs/wanderchain/homepage-hero.md)
 - [.agents/skills/openspec-propose/SKILL.md](file://.agents/skills/openspec-propose/SKILL.md)
 - [.agents/skills/openspec-explore/SKILL.md](file://.agents/skills/openspec-explore/SKILL.md)
 - [.agents/skills/openspec-apply-change/SKILL.md](file://.agents/skills/openspec-apply-change/SKILL.md)
@@ -19,10 +24,10 @@
 
 ## 更新摘要
 **已进行的更改**   
-- 新增“归档变更示例：extract-home-hero”章节，展示已完成并归档的首页主视觉组件抽取变更
-- 更新“变更元数据”与“规格存储位置”部分，引用新的归档变更作为实际案例
-- 补充前端实现状态说明，展示 `app/page.tsx` 中已引入 `HomeHero` 组件的实际落地情况
-- 在“架构总览”和“详细组件分析”中增加归档后变更的生命周期示意
+- 新增“归档变更示例：close-frontend-test-gaps”章节，展示以测试补齐与文档对齐为核心、不改变生产代码行为的归档变更
+- 在“项目配置”“变更元数据”“规格存储位置与差异规格”“依赖关系分析”等部分补充 `skip_specs: true` 的使用场景
+- 补充前端测试实现状态说明，展示 `use-section-data.test.ts`、`section-boundary.test.tsx`、`repository.sorting.test.ts` 等用例如何体现 mock 数据源、SectionBoundary 错误边界验证与 desktop-first 断点策略
+- 在“架构总览”和“详细组件分析”中增加测试补齐类变更的生命周期示意，并与 extract-home-hero 形成对照
 
 ## 目录
 1. [引言](#引言)
@@ -39,14 +44,16 @@
 ## 引言
 本指南面向希望在本仓库中使用 OpenSpec 进行“规格驱动”开发的开发者。OpenSpec 通过 `openspec/` 目录组织变更提案、规格说明和归档记录，配合 CLI 完成从立项、审阅、实现到归档的全流程管理。仓库中已包含一个基于 `spec-driven` 工作流的项目示例，以及一套 Agent Skill 文档，用于指导如何调用 OpenSpec CLI 完成提议、探索、实现、同步和归档等操作。
 
-本次更新重点反映已归档变更 `extract-home-hero`：该变更将首页主视觉从 `app/page.tsx` 的内联 JSX 抽取为独立 Server Component `components/home/hero.tsx`，并通过 delta spec 向 `wanderchain-homepage` 能力补入“首页主视觉”需求，最终归档至 `openspec/changes/archive/2026-10-27-extract-home-hero/`。
+本次更新重点反映两个已归档变更：
+- `extract-home-hero`：将首页主视觉从 `app/page.tsx` 的内联 JSX 抽取为独立 Server Component，并通过 delta spec 向 `wanderchain-homepage` 能力补入“首页主视觉”需求。
+- `close-frontend-test-gaps`：以测试补齐与文档对齐为主，外部行为不变；通过 mock 数据源验证排序与截断、用真实 render 期抛错验证 SectionBoundary、按 desktop-first 实际断点修正单元文档响应式小节，并扩充 `harness/checks/08-spec-doc-breakpoints.ps1` 配对表。
 
 ## 项目结构
 仓库中与 OpenSpec 直接相关的根级目录是 `openspec/`，其典型子目录如下：
 - `openspec/config.yaml`：项目级 OpenSpec 配置，声明工作流 schema、上下文语言与规则提示等。
 - `openspec/specs/`：主规格（main specs）存放位置，按能力路径组织，例如 `workspace-layout`、`workspace-scaffold`、`skill-distribution`、`frontend-nextjs`、`wanderchain-homepage`。
 - `openspec/changes/`：活跃变更目录，每个变更是一个以短横线命名的小目录，内部包含 `.openspec.yaml`、`proposal.md`、`design.md`、`tasks.md` 以及 `specs/<capability-path>/spec.md` 等工件。
-- `openspec/changes/archive/`：已归档变更目录，通常以 `YYYY-MM-DD-<change-name>` 形式命名；`extract-home-hero` 即归档于 `2026-10-27-extract-home-hero`。
+- `openspec/changes/archive/`：已归档变更目录，通常以 `YYYY-MM-DD-<change-name>` 形式命名；`extract-home-hero` 与 `close-frontend-test-gaps` 均归档于该目录。
 
 ```mermaid
 graph TB
@@ -59,17 +66,20 @@ Changes --> Artifacts["proposal.md / design.md / tasks.md<br/>变更工件"]
 Changes --> DeltaSpecs["specs/<capability>/spec.md<br/>差异规格"]
 ORoot --> Archive["changes/archive/<date>-<name>/<br/>归档变更"]
 Archive --> ExtractHero["2026-10-27-extract-home-hero/<br/>首页主视觉抽取归档"]
+Archive --> TestGaps["2026-10-27-close-frontend-test-gaps/<br/>前端测试补齐归档"]
 ```
 
 **图示来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
 - [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml#L1-L3)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml:1-4](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml#L1-L4)
 - [.agents/skills/openspec-propose/SKILL.md:17-24](file://.agents/skills/openspec-propose/SKILL.md#L17-L24)
 - [.agents/skills/openspec-archive-change/SKILL.md:176-184](file://.agents/skills/openspec-archive-change/SKILL.md#L176-L184)
 
 **章节来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
 - [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml#L1-L3)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml:1-4](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml#L1-L4)
 - [.agents/skills/openspec-propose/SKILL.md:17-24](file://.agents/skills/openspec-propose/SKILL.md#L17-L24)
 - [.agents/skills/openspec-archive-change/SKILL.md:176-184](file://.agents/skills/openspec-archive-change/SKILL.md#L176-L184)
 
@@ -89,7 +99,7 @@ OpenSpec 在本仓库中的核心组件包括：
 - [.agents/skills/openspec-sync-specs/SKILL.md:86-177](file://.agents/skills/openspec-sync-specs/SKILL.md#L86-L177)
 
 ## 架构总览
-下图展示 OpenSpec 在仓库中的整体协作关系：开发者通过 CLI 创建变更、编写工件；CLI 根据 schema 生成并校验工件；差异规格可以同步到主规格；实现完成后归档变更。`extract-home-hero` 展示了从活跃变更到归档变更的完整生命周期。
+下图展示 OpenSpec 在仓库中的整体协作关系：开发者通过 CLI 创建变更、编写工件；CLI 根据 schema 生成并校验工件；差异规格可以同步到主规格；实现完成后归档变更。`extract-home-hero` 展示了从活跃变更到归档变更的完整生命周期，而 `close-frontend-test-gaps` 展示了“不修改主规格、只补齐测试与文档”的归档路径。
 
 ```mermaid
 sequenceDiagram
@@ -98,19 +108,15 @@ participant CLI as "OpenSpec CLI"
 participant Change as "变更目录<br/>openspec/changes/<name>"
 participant Specs as "主规格<br/>openspec/specs"
 participant Archive as "归档目录<br/>changes/archive"
-Dev->>CLI : "openspec new change extract-home-hero"
+Dev->>CLI : "openspec new change close-frontend-test-gaps"
 CLI-->>Change : "创建 .openspec.yaml 与工件骨架"
-Dev->>CLI : "openspec status --change extract-home-hero"
+Dev->>CLI : "openspec status --change close-frontend-test-gaps"
 CLI-->>Dev : "返回工件状态与依赖图"
-Dev->>CLI : "openspec instructions <artifact-id> --change extract-home-hero"
-CLI-->>Dev : "返回模板、规则与输出路径"
-Dev->>Change : "编写 proposal/design/tasks/delta spec"
-Dev->>CLI : "openspec sync specs --change extract-home-hero"
-CLI->>Specs : "将 delta spec 合并为 wanderchain-homepage 主规格"
+Dev->>Change : "编写 proposal/design/tasks<br/>skip_specs=true，不写 delta spec"
 Dev->>CLI : "openspec apply (由 skill 驱动)"
-CLI-->>Dev : "按 tasks 推进实现，修改 frontend/app/page.tsx 与 components/home/hero.*"
-Dev->>CLI : "openspec archive --change extract-home-hero"
-CLI->>Archive : "移动变更目录为 2026-10-27-extract-home-hero"
+CLI-->>Dev : "按 tasks 推进实现，补齐 use-section-data.test.ts、section-boundary.test.tsx、repository.sorting.test.ts"
+Dev->>CLI : "openspec archive --change close-frontend-test-gaps"
+CLI->>Archive : "移动变更目录为 2026-10-27-close-frontend-test-gaps"
 ```
 
 **图示来源**
@@ -138,18 +144,20 @@ CLI->>Archive : "移动变更目录为 2026-10-27-extract-home-hero"
 ### 变更元数据：`.openspec.yaml`
 每个变更目录下都有一个 `.openspec.yaml`，用于声明变更的基本元信息。仓库中既有活跃变更示例，也有归档变更示例：
 - 归档变更示例：`openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml`
+- 归档变更示例：`openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml`
 - 其他归档变更示例：`openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml`
 
 这些文件都包含：
 - `schema: spec-driven`
 - `created: YYYY-MM-DD`
 
-对于 `extract-home-hero`，归档后的元数据表明该变更已于 2026-10-27 创建并完成归档，不再处于活跃状态。在实际项目中，你可能还需要根据工作流扩展字段，例如：
+对于 `close-frontend-test-gaps`，归档后的元数据额外包含 `skip_specs: true`，表明该变更不产生也不需要同步 delta spec，而是聚焦于测试补齐与文档对齐。对于 `extract-home-hero`，归档后的元数据表明该变更已于 2026-10-27 创建并完成归档，不再处于活跃状态。在实际项目中，你可能还需要根据工作流扩展字段，例如：
 - `skip_specs`：跳过某些工件（如 delta spec）。
 - `retire_capabilities`：允许在归档时移除整个能力的主规格。
 
 **章节来源**
 - [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml#L1-L3)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml:1-4](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml#L1-L4)
 - [openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-24-add-frontend-template/.openspec.yaml#L1-L3)
 - [.agents/skills/openspec-archive-change/SKILL.md:122-124](file://.agents/skills/openspec-archive-change/SKILL.md#L122-L124)
 
@@ -191,17 +199,61 @@ G --> H["openspec archive 归档为 2026-10-27-extract-home-hero"]
 - [openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md:1-36](file://openspec/changes/archive/2026-10-27-extract-home-hero/specs/wanderchain-homepage/spec.md#L1-L36)
 - [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
 
+### 归档变更示例：close-frontend-test-gaps
+`close-frontend-test-gaps` 是一个以测试补齐与文档对齐为核心的归档变更，外部行为保持不变。其设计约束来自三处：
+- 主规格 `openspec/specs/wanderchain-homepage/` 声明界面为英文，单元文档中的中文文案不能反过来约束实现。
+- 前端测试跑在 jsdom 上，没有布局引擎与真实图片加载，布局类场景不可在此层验证。
+- `08-spec-doc-breakpoints.ps1` 要求文档响应式小节与 CSS 的 `max-width` 集合完全相等。
+
+该变更的关键设计决策包括：
+- 排序与截断用 mock 数据源验证，不用真实 Mock 数据自证。
+- `SectionBoundary` 用真实 render 期抛错验证，断言只降级该区块、文案为 `<title> could not load. Please try again later.`。
+- 无 `document` 场景只验证 `open()` 的安全分支。
+- 断点闸门扩充采用「文档跟实现」，U3/U5/U7 的文档改写为 desktop-first 实际断点，并把三对登记进 08 配对表。
+- 文档漂移以主规格与代码为准，补双语字段、修正 `alt` 文案、调整覆盖声明。
+
+```mermaid
+flowchart TD
+A["close-frontend-test-gaps 变更创建"] --> B[".openspec.yaml 设置 skip_specs=true"]
+B --> C["design.md 明确 Goals / Non-Goals / Decisions / Risks"]
+C --> D["tasks.md 按 P0/P1/P2/文档漂移/验收 拆解"]
+D --> E["use-section-data.test.ts 验证 loading/ready/error/deps/unmount"]
+D --> F["section-boundary.test.tsx 验证 render 期异常捕获"]
+D --> G["repository.sorting.test.ts 注入乱序/并列/超限数据"]
+G --> H["harness/checks/08-spec-doc-breakpoints.ps1 配对表扩充"]
+H --> I["openspec archive 归档为 2026-10-27-close-frontend-test-gaps"]
+```
+
+**图示来源**
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml:1-4](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml#L1-L4)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/design.md:1-63](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/design.md#L1-L63)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md:1-46](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md#L1-L46)
+- [frontend/components/home/use-section-data.test.ts:1-114](file://frontend/components/home/use-section-data.test.ts#L1-L114)
+- [frontend/components/home/section-boundary.test.tsx:1-69](file://frontend/components/home/section-boundary.test.tsx#L1-L69)
+- [frontend/lib/home/repository.sorting.test.ts:1-169](file://frontend/lib/home/repository.sorting.test.ts#L1-L169)
+
+**章节来源**
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml:1-4](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml#L1-L4)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/design.md:1-63](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/design.md#L1-L63)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md:1-46](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md#L1-L46)
+- [frontend/components/home/use-section-data.test.ts:1-114](file://frontend/components/home/use-section-data.test.ts#L1-L114)
+- [frontend/components/home/section-boundary.test.tsx:1-69](file://frontend/components/home/section-boundary.test.tsx#L1-L69)
+- [frontend/lib/home/repository.sorting.test.ts:1-169](file://frontend/lib/home/repository.sorting.test.ts#L1-L169)
+
 ### 规格存储位置与差异规格
 - 主规格位于 `openspec/specs/<capability-path>/spec.md`。
 - 差异规格位于变更目录下的 `openspec/changes/<name>/specs/<capability-path>/spec.md`。
 - 差异规格使用 `ADDED Requirements`、`MODIFIED Requirements`、`REMOVED Requirements`、`RENAMED Requirements` 等章节描述变更意图。
 - 通过 `openspec sync specs` 或归档流程，差异规格会被智能合并到主规格中。
+- 如果变更声明 `skip_specs: true`，则不期望存在 delta spec，也不会触发主规格同步逻辑。
 
-`extract-home-hero` 的 delta spec 仅包含 `ADDED Requirements`，新增“首页主视觉” Requirement，并在归档后出现在 `openspec/specs/wanderchain-homepage/spec.md` 末尾。
+`extract-home-hero` 的 delta spec 仅包含 `ADDED Requirements`，新增“首页主视觉” Requirement，并在归档后出现在 `openspec/specs/wanderchain-homepage/spec.md` 末尾；`close-frontend-test-gaps` 则通过 `skip_specs: true` 明确表示本轮不修改主规格，而是补齐测试与文档。
 
 ```mermaid
 flowchart TD
-Start(["开始：存在 delta spec"]) --> ReadDelta["读取 delta spec<br/>ADDED / MODIFIED / REMOVED / RENAMED"]
+Start(["开始：是否存在 delta spec"]) --> CheckSkip{"是否声明 skip_specs？"}
+CheckSkip --> |是| EndSkip["结束：不执行 delta spec 同步"]
+CheckSkip --> |否| ReadDelta["读取 delta spec<br/>ADDED / MODIFIED / REMOVED / RENAMED"]
 ReadDelta --> CheckMain{"主规格是否存在？"}
 CheckMain --> |否| NewMain["仅允许 ADDED<br/>创建新主规格"]
 CheckMain --> |是| Merge["智能合并：<br/>新增、修改、删除、重命名"]
@@ -212,6 +264,7 @@ Validate --> Done(["结束：主规格已更新"])
 
 **图示来源**
 - [.agents/skills/openspec-sync-specs/SKILL.md:78-177](file://.agents/skills/openspec-sync-specs/SKILL.md#L78-L177)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml:1-4](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml#L1-L4)
 
 **章节来源**
 - [.agents/skills/openspec-sync-specs/SKILL.md:78-177](file://.agents/skills/openspec-sync-specs/SKILL.md#L78-L177)
@@ -221,27 +274,33 @@ Validate --> Done(["结束：主规格已更新"])
 1. **创建变更**：使用 `openspec new change "<name>"`，CLI 会生成 `.openspec.yaml` 与工件骨架。
 2. **查看状态**：使用 `openspec status --change "<name>" --json` 查看工件依赖图、`applyRequires`、`planningHome`、`changeRoot`、`artifactPaths` 等。
 3. **获取工件指令**：使用 `openspec instructions <artifact-id> --change "<name>" --json` 获取模板、规则、输出路径与依赖。
-4. **编写工件**：按 schema 要求编写 `proposal.md`、`design.md`、`tasks.md`、`specs/<capability-path>/spec.md`。
-5. **同步规格**：使用 `openspec sync specs --change "<name>"` 将 delta spec 合并到主规格。
+4. **编写工件**：按 schema 要求编写 `proposal.md`、`design.md`、`tasks.md`、`specs/<capability-path>/spec.md`；若不需要 delta spec，可在 `.openspec.yaml` 中设置 `skip_specs: true`。
+5. **同步规格**：使用 `openspec sync specs --change "<name>"` 将 delta spec 合并到主规格；若 `skip_specs: true`，则跳过该步骤。
 6. **实现任务**：通过 skill 驱动的 apply 流程逐步完成 tasks。
 7. **归档变更**：使用 `openspec archive --change "<name>"`，归档目录名遵循 `YYYY-MM-DD-<change-name>` 规则。
 
-`extract-home-hero` 的 `tasks.md` 展示了完整的任务拆解与验收步骤，包括组件与样式落位、页面接线、DOM 结构比对测试、规格文档同步以及 `harness\run-all.ps1` 与 `openspec validate` 验收。
+`extract-home-hero` 与 `close-frontend-test-gaps` 的 `tasks.md` 都展示了完整的任务拆解与验收步骤，前者侧重组件抽取与 delta spec 同步，后者侧重测试补齐、文档对齐与闸门验证。
 
 ```mermaid
 flowchart TD
-A["openspec new change extract-home-hero"] --> B["openspec status --change extract-home-hero"]
-B --> C["openspec instructions <artifact-id> --change extract-home-hero"]
-C --> D["编写 proposal / design / tasks / delta spec"]
-D --> E["openspec sync specs --change extract-home-hero"]
-E --> F["实现 tasks：hero.tsx、hero.module.css、hero.test.tsx、page.tsx 调整"]
-F --> G["openspec archive --change extract-home-hero"]
+A["openspec new change <name>"] --> B["openspec status --change <name>"]
+B --> C["openspec instructions <artifact-id> --change <name>"]
+C --> D["编写 proposal / design / tasks"]
+D --> E{"是否需要 delta spec？"}
+E --> |是| F["编写 specs/<capability>/spec.md"]
+E --> |否| G["在 .openspec.yaml 设置 skip_specs=true"]
+F --> H["openspec sync specs --change <name>"]
+G --> I["跳过 sync specs"]
+H --> J["实现 tasks"]
+I --> J
+J --> K["openspec archive --change <name>"]
 ```
 
 **图示来源**
 - [.agents/skills/openspec-propose/SKILL.md:77-137](file://.agents/skills/openspec-propose/SKILL.md#L77-L137)
 - [.agents/skills/openspec-sync-specs/SKILL.md:47-177](file://.agents/skills/openspec-sync-specs/SKILL.md#L47-L177)
 - [.agents/skills/openspec-archive-change/SKILL.md:169-184](file://.agents/skills/openspec-archive-change/SKILL.md#L169-L184)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml:1-4](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml#L1-L4)
 
 **章节来源**
 - [.agents/skills/openspec-propose/SKILL.md:77-137](file://.agents/skills/openspec-propose/SKILL.md#L77-L137)
@@ -255,8 +314,9 @@ F --> G["openspec archive --change extract-home-hero"]
 - 如果主规格不存在，则只允许应用 ADDED requirements，并创建新的主规格。
 - 如果 delta 只包含 REMOVED requirements，且变更未声明 `retire_capabilities: true`，则归档时会报错；若已声明，则可视为已退休。
 - 同步后需验证主规格格式，确保没有残留 delta 专用章节头。
+- 如果变更声明 `skip_specs: true`，则不应存在 delta spec，同步流程应被跳过。
 
-`extract-home-hero` 的 delta spec 仅新增“首页主视觉”，因此同步后主规格末尾追加了该 Requirement 与对应 Scenario，而既有 Purpose 与其余 Requirement 保持不变。
+`extract-home-hero` 的 delta spec 仅新增“首页主视觉”，因此同步后主规格末尾追加了该 Requirement 与对应 Scenario；`close-frontend-test-gaps` 因 `skip_specs: true`，本轮不修改主规格，而是通过单元测试与文档闸门保证实现质量。
 
 ```mermaid
 flowchart TD
@@ -286,7 +346,7 @@ apply 流程由 skill 驱动，核心步骤包括：
 - 按任务顺序实现代码，并在 tasks 中标记 `- [ ]` 为 `- [x]`。
 - 遇到阻塞、歧义或超出规格范围的需求时暂停，建议更新工件。
 
-`extract-home-hero` 的 tasks 明确区分了“组件与样式落位”“页面接线与清理”“测试”“规格与文档同步”“验收”五个阶段，其中测试阶段特别强调用 DOM 结构比对证明“视觉零变化”，这是结构重构类变更的重要质量保障。
+`extract-home-hero` 的 tasks 明确区分了“组件与样式落位”“页面接线与清理”“测试”“规格与文档同步”“验收”五个阶段；`close-frontend-test-gaps` 的 tasks 则按 P0 系统性盲区、P1 测试遗漏、P2 断言强度、文档漂移与断点闸门、验收五类展开，其中测试阶段特别强调用注入数据集验证排序与截断、用 React 错误边界验证 SectionBoundary、用 `URLSearchParams` 解析 URL 参数，并通过 `harness/run-all.ps1` 完成全量闸门验收。
 
 ```mermaid
 sequenceDiagram
@@ -294,8 +354,8 @@ participant Dev as "开发者"
 participant Skill as "apply skill"
 participant CLI as "OpenSpec CLI"
 Dev->>Skill : "openspec apply"
-Skill->>CLI : "openspec status --change extract-home-hero --json"
-Skill->>CLI : "openspec instructions apply --change extract-home-hero --json"
+Skill->>CLI : "openspec status --change <name> --json"
+Skill->>CLI : "openspec instructions apply --change <name> --json"
 CLI-->>Skill : "contextFiles / tasks / instruction"
 Skill->>Dev : "显示进度与剩余任务"
 loop 直到完成或阻塞
@@ -320,19 +380,19 @@ Skill-->>Dev : "实现完成或暂停原因"
 - 可选择先同步再归档，或直接归档。
 - 归档目标目录为 `openspec/changes/archive/YYYY-MM-DD-<change-name>`。
 
-`extract-home-hero` 归档后的目录名为 `2026-10-27-extract-home-hero`，符合日期前缀命名规范；其 delta spec 已在归档前同步到 `openspec/specs/wanderchain-homepage/spec.md`。
+`extract-home-hero` 归档后的目录名为 `2026-10-27-extract-home-hero`，符合日期前缀命名规范；`close-frontend-test-gaps` 归档后的目录名为 `2026-10-27-close-frontend-test-gaps`，同样符合命名规范，且因 `skip_specs: true`，归档时不依赖 delta spec 同步结果。
 
 ```mermaid
 flowchart TD
-A["选择变更"] --> B["openspec status --change extract-home-hero --json"]
+A["选择变更"] --> B["openspec status --change <name> --json"]
 B --> C["检查工件状态"]
 C --> D["openspec list --json 检查任务状态"]
 D --> E{"delta spec 是否需要同步？"}
 E --> |是| F["执行 openspec sync specs"]
 E --> |否| G["跳过同步"]
 F --> H["验证主规格"]
-G --> H
-H --> I["移动到 changes/archive/2026-10-27-extract-home-hero"]
+G --> I["移动到 changes/archive/YYYY-MM-DD-<name>"]
+H --> I
 I --> J["输出归档摘要"]
 ```
 
@@ -345,12 +405,12 @@ I --> J["输出归档摘要"]
 ## 依赖关系分析
 OpenSpec 在本仓库中的依赖关系可以概括为：
 - `openspec/config.yaml` 决定工作流 schema 与上下文约束。
-- `.openspec.yaml` 描述单个变更的元数据。
+- `.openspec.yaml` 描述单个变更的元数据，包括是否跳过 delta spec。
 - `proposal.md`、`design.md`、`tasks.md`、`specs/<capability>/spec.md` 构成变更工件集合。
 - `openspec/specs/<capability>/spec.md` 是主规格，由 delta spec 同步而来。
 - Agent Skill 文档定义了 CLI 命令的标准调用顺序与错误处理策略。
 
-`extract-home-hero` 进一步体现了“规格先行、实现跟进、归档固化”的依赖链：delta spec 定义“首页主视觉”契约，`tasks.md` 驱动前端组件与样式迁移，`frontend/app/page.tsx` 消费 `HomeHero` 组件，最终归档变更并保留主规格作为真相层。
+`extract-home-hero` 体现了“规格先行、实现跟进、归档固化”的依赖链：delta spec 定义“首页主视觉”契约，`tasks.md` 驱动前端组件与样式迁移，`frontend/app/page.tsx` 消费 `HomeHero` 组件，最终归档变更并保留主规格作为真相层。`close-frontend-test-gaps` 则体现了“测试与文档对齐优先”的依赖链：`design.md` 明确不引入真实浏览器测试基建、不为布局伪断言，`tasks.md` 驱动 `use-section-data.test.ts`、`section-boundary.test.tsx`、`repository.sorting.test.ts` 等测试落地，并通过 `harness/checks/08-spec-doc-breakpoints.ps1` 锁定文档与 CSS 断点的一致性。
 
 ```mermaid
 graph LR
@@ -366,30 +426,41 @@ CLI --> ChangeDir
 CLI --> MainSpec
 ExtractHero["extract-home-hero 归档变更"] --> FrontendPage["frontend/app/page.tsx"]
 FrontendPage --> HeroComponent["components/home/hero.tsx"]
+TestGaps["close-frontend-test-gaps 归档变更"] --> UseSectionData["use-section-data.test.ts"]
+TestGaps --> SectionBoundary["section-boundary.test.tsx"]
+TestGaps --> SortingTest["repository.sorting.test.ts"]
 ```
 
 **图示来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
 - [openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md:1-37](file://openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md#L1-L37)
-- [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md:1-46](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md#L1-L46)
+- [frontend/components/home/use-section-data.test.ts:1-114](file://frontend/components/home/use-section-data.test.ts#L1-L114)
+- [frontend/components/home/section-boundary.test.tsx:1-69](file://frontend/components/home/section-boundary.test.tsx#L1-L69)
+- [frontend/lib/home/repository.sorting.test.ts:1-169](file://frontend/lib/home/repository.sorting.test.ts#L1-L169)
 - [.agents/skills/openspec-propose/SKILL.md:17-24](file://.agents/skills/openspec-propose/SKILL.md#L17-L24)
 - [.agents/skills/openspec-sync-specs/SKILL.md:86-177](file://.agents/skills/openspec-sync-specs/SKILL.md#L86-L177)
 
 **章节来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
 - [openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md:1-37](file://openspec/changes/archive/2026-10-27-extract-home-hero/tasks.md#L1-L37)
-- [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md:1-46](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/tasks.md#L1-L46)
+- [frontend/components/home/use-section-data.test.ts:1-114](file://frontend/components/home/use-section-data.test.ts#L1-L114)
+- [frontend/components/home/section-boundary.test.tsx:1-69](file://frontend/components/home/section-boundary.test.tsx#L1-L69)
+- [frontend/lib/home/repository.sorting.test.ts:1-169](file://frontend/lib/home/repository.sorting.test.ts#L1-L169)
 - [.agents/skills/openspec-propose/SKILL.md:17-24](file://.agents/skills/openspec-propose/SKILL.md#L17-L24)
 - [.agents/skills/openspec-sync-specs/SKILL.md:86-177](file://.agents/skills/openspec-sync-specs/SKILL.md#L86-L177)
 
 ## 性能与可维护性建议
 - **保持工件最小化**：只在必要时创建工件，避免重复描述同一需求。
-- **优先使用 delta spec**：通过 delta spec 表达增量变更，减少主规格的大段重写。
+- **优先使用 delta spec**：通过 delta spec 表达增量变更，减少主规格的大段重写；若确实不需要 delta spec，应在 `.openspec.yaml` 中显式设置 `skip_specs: true`。
 - **及时同步主规格**：在归档前执行 `openspec sync specs`，确保主规格反映最新契约。
 - **明确变更边界**：在 `proposal.md` 中清晰说明范围、不在范围项与假设。
 - **任务可追踪**：在 `tasks.md` 中将大任务拆分为可独立完成的子任务，便于 apply 流程跟踪进度。
 - **归档命名规范**：归档目录建议使用 `YYYY-MM-DD-<change-name>`，避免日期重复或命名冲突。
 - **结构重构需证明视觉零变化**：参考 `extract-home-hero` 的 DOM 结构比对思路，在不改变用户可见行为的前提下降低回归风险。
+- **测试补齐应避免代理断言**：参考 `close-frontend-test-gaps` 的 `repository.sorting.test.ts`，用注入数据集直接验证排序键、并列分支与字面上限，而不是依赖真实 Mock 数据的巧合顺序。
+- **文档与实现保持一致**：参考 `close-frontend-test-gaps` 对 U3/U5/U7 响应式小节的改写，让单元文档描述实际 CSS 断点，并通过 `08-spec-doc-breakpoints.ps1` 强制配对。
 
 [本节为通用建议，不直接分析具体文件]
 
@@ -398,9 +469,9 @@ FrontendPage --> HeroComponent["components/home/hero.tsx"]
 - **找不到 OpenSpec 根目录**：运行 `openspec list --json`，如果返回 `"root": null`，说明当前目录不是 OpenSpec 项目根。可通过 `openspec init` 初始化，或通过 `--store <id>` 指向已注册的 store。
 - **store 声明无法解析**：如果错误消息以 `Declared in` 或 `Invalid store declaration in` 开头，说明项目通过 store 声明了 OpenSpec，但当前机器未注册该 store。应先注册 store 或修正 `store:` 配置。
 - **工件缺失导致阻塞**：使用 `openspec status --change "<name>" --json` 查看 `applyRequires` 与 `artifacts.requires`，然后按依赖顺序创建缺失工件。
-- **delta spec 无法同步**：如果主规格不存在，只有 ADDED requirements 可被应用；如果 delta 只包含 REMOVED requirements，需要确认变更是否声明 `retire_capabilities: true`。
+- **delta spec 无法同步**：如果主规格不存在，只有 ADDED requirements 可被应用；如果 delta 只包含 REMOVED requirements，需要确认变更是否声明 `retire_capabilities: true`；如果变更声明 `skip_specs: true`，则不应尝试同步 delta spec。
 - **归档时报错**：检查工件是否全部完成、任务是否全部勾选、delta spec 是否已同步到主规格。
-- **归档后仍看到活跃变更**：确认变更目录是否已从 `openspec/changes/<name>` 移动到 `openspec/changes/archive/YYYY-MM-DD-<name>`；`extract-home-hero` 已归档至 `2026-10-27-extract-home-hero`。
+- **归档后仍看到活跃变更**：确认变更目录是否已从 `openspec/changes/<name>` 移动到 `openspec/changes/archive/YYYY-MM-DD-<name>`；`extract-home-hero` 已归档至 `2026-10-27-extract-home-hero`，`close-frontend-test-gaps` 已归档至 `2026-10-27-close-frontend-test-gaps`。
 
 **章节来源**
 - [.agents/skills/openspec-explore/SKILL.md:19-30](file://.agents/skills/openspec-explore/SKILL.md#L19-L30)
@@ -409,7 +480,7 @@ FrontendPage --> HeroComponent["components/home/hero.tsx"]
 - [.agents/skills/openspec-sync-specs/SKILL.md:108-171](file://.agents/skills/openspec-sync-specs/SKILL.md#L108-L171)
 
 ## 结论
-OpenSpec 在本仓库中以 `spec-driven` 工作流为核心，通过 `openspec/config.yaml` 与 `.openspec.yaml` 管理项目与变更配置，通过 `openspec/changes` 与 `openspec/specs` 管理变更工件与主规格，并通过 Agent Skill 文档标准化 CLI 调用流程。`extract-home-hero` 展示了从提案、设计、任务拆解、delta spec 同步到归档的完整闭环，同时体现了“规格先行、实现跟进、归档固化”的最佳实践。推荐开发者按照“创建变更 → 编写工件 → 同步规格 → 实现任务 → 归档变更”的顺序开展工作，以保持规格与实现的持续一致。
+OpenSpec 在本仓库中以 `spec-driven` 工作流为核心，通过 `openspec/config.yaml` 与 `.openspec.yaml` 管理项目与变更配置，通过 `openspec/changes` 与 `openspec/specs` 管理变更工件与主规格，并通过 Agent Skill 文档标准化 CLI 调用流程。`extract-home-hero` 展示了从提案、设计、任务拆解、delta spec 同步到归档的完整闭环，同时体现了“规格先行、实现跟进、归档固化”的最佳实践；`close-frontend-test-gaps` 则展示了另一种常见场景：外部行为不变，但通过 mock 数据源、SectionBoundary 错误边界验证与 desktop-first 断点策略补齐测试与文档缺口，并以 `skip_specs: true` 明确本轮不修改主规格。推荐开发者按照“创建变更 → 编写工件 → 同步规格（如需要）→ 实现任务 → 归档变更”的顺序开展工作，以保持规格与实现的持续一致。
 
 [本节为总结性内容，不直接分析具体文件]
 
@@ -437,9 +508,11 @@ OpenSpec 在本仓库中以 `spec-driven` 工作流为核心，通过 `openspec/
 - 变更元数据：`.openspec.yaml`
   - 关键字段：`schema`、`created`
   - 可选字段：`skip_specs`、`retire_capabilities`
-- 归档变更示例：`openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml`
-  - 体现归档后变更的元数据形态，可用于对比活跃变更与归档变更的差异。
+- 归档变更示例：
+  - `openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml`：体现带 delta spec 的归档变更元数据形态。
+  - `openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml`：体现 `skip_specs: true` 的归档变更元数据形态，可用于对比不同变更类型在 `.openspec.yaml` 上的差异。
 
 **章节来源**
 - [openspec/config.yaml:1-29](file://openspec/config.yaml#L1-L29)
 - [openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml:1-3](file://openspec/changes/archive/2026-10-27-extract-home-hero/.openspec.yaml#L1-L3)
+- [openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml:1-4](file://openspec/changes/archive/2026-10-27-close-frontend-test-gaps/.openspec.yaml#L1-L4)
