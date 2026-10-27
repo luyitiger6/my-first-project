@@ -1,11 +1,10 @@
-基于分析，我现在了解了具体的变更内容。让我更新 WanderChain 首页规格文档：
-
 # WanderChain 首页规格文档
 
 <cite>
 **本文引用的文件**   
 - [README.md](file://README.md)
 - [homepage-hero.md](file://docs/specs/wanderchain/homepage-hero.md)
+- [search-page.md](file://docs/specs/wanderchain/search-page.md)
 - [homepage-u1-mock-auth.md](file://docs/specs/wanderchain/homepage-u1-mock-auth.md)
 - [homepage-u2-skeleton.md](file://docs/specs/wanderchain/homepage-u2-skeleton.md)
 - [homepage-u4-ai-assistant.md](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md)
@@ -28,8 +27,10 @@
 - [frontend/components/home/city-switcher.tsx](file://frontend/components/home/city-switcher.tsx)
 - [frontend/app/community/page.tsx](file://frontend/app/community/page.tsx)
 - [frontend/app/attractions/page.tsx](file://frontend/app/attractions/page.tsx)
+- [frontend/app/search/page.tsx](file://frontend/app/search/page.tsx)
 - [frontend/lib/image-loader.ts](file://frontend/lib/image-loader.ts)
 - [frontend/lib/image-loader.test.ts](file://frontend/lib/image-loader.test.ts)
+- [frontend/lib/search/query.ts](file://frontend/lib/search/query.ts)
 - [frontend/next.config.ts](file://frontend/next.config.ts)
 - [frontend/components/home/editor-picks.module.css](file://frontend/components/home/editor-picks.module.css)
 - [frontend/components/home/hot-attractions.module.css](file://frontend/components/home/hot-attractions.module.css)
@@ -37,14 +38,13 @@
 
 ## 更新摘要
 **所做更改**
-- 新增独立的 Hero 首屏组件规格与实现
-- 增强 Mock 认证、骨架结构、城市切换器、热门景点规格文档
-- **新增 AI 助手模态框无障碍功能增强**：焦点陷阱、背景滚动锁定、完整键盘导航支持
-- **新增九个规格场景（S15-S17）**：Tab 键正向循环、Shift+Tab 反向循环、背景滚动锁定行为
-- 更新首页聚合器以使用新的 Hero 组件
-- 完善类型定义和验收标准
-- **修正热门景点区块响应式设计规范**：从移动优先改为桌面优先策略，断点从640px/1024px调整为1080px/720px
-- **更新图片处理机制说明**：现在使用Next.js Image优化和自定义loader，不再需要images.remotePatterns配置
+- **Hero 首屏组件完全重构**：从接受 props 的组件转变为自包含的服务器组件，移除了 `stats` 参数和相关契约
+- **新增背景图片系统**：实现了全宽背景图、深色遮罩层和底部渐变过渡效果
+- **集成原生搜索功能**：在 Hero 区域添加了原生 `<form>` 搜索框，提交到独立的 `/search` 页面
+- **移除统计面板**：删除了原有的四项统计数据展示（编辑精选、热门帖子、热门景点等）
+- **新增搜索页面架构**：创建了完整的搜索结果页面，支持三态显示（引导态、空态、结果态）
+- **增强无障碍功能**：改进了焦点管理、键盘导航和屏幕阅读器支持
+- **优化响应式设计**：调整了断点和布局策略，提供更好的移动端体验
 
 ## 目录
 1. [引言](#引言)
@@ -69,7 +69,8 @@
 WanderChain 首页由一个页面级路由和多个可复用区块组成：
 
 - 页面层：`frontend/app/page.tsx` 作为首页入口，负责解析 URL 城市参数、组装 Hero 区域与区块容器。
-- Hero 首屏：独立的 `HomeHero` 组件，包含品牌标识、主标题、CTA 按钮和统计面板。
+- **Hero 首屏（已重构）**：全新的自包含 Server Component，包含背景大图、品牌标识、主标题、导语、原生搜索框和文字入口。
+- **搜索页面（新增）**：独立的 `/search` 页面，处理关键词检索、结果分组和三态显示。
 - 区块组件：功能导航、城市切换、编辑推荐、热门帖子、热门景点分别位于 `components/home/*`。
 - 共享 Hook：`useSectionData` 统一封装加载、就绪、错误三态。
 - **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭、遮罩点击关闭，以及完整的键盘导航支持。
@@ -80,7 +81,7 @@ WanderChain 首页由一个页面级路由和多个可复用区块组成：
 graph TB
 Home["首页<br/>frontend/app/page.tsx"] --> Header["站点头部<br/>SiteHeader"]
 Home --> Footer["站点底部<br/>SiteFooter"]
-Home --> Hero["Hero 首屏<br/>hero.tsx"]
+Home --> Hero["Hero 首屏重构<br/>hero.tsx"]
 Home --> FeatureNav["功能导航<br/>feature-nav.tsx"]
 Home --> CitySwitcher["城市切换<br/>city-switcher.tsx"]
 Home --> EditorPicks["编辑推荐<br/>editor-picks.tsx"]
@@ -95,11 +96,14 @@ AiAssistant --> ScrollLock["滚动锁定<br/>body.style.overflow"]
 EditorPicks --> ImageOptimization["图片优化<br/>image-loader.ts"]
 HotAttractions --> ImageOptimization
 ImageOptimization --> NextConfig["Next.js 配置<br/>next.config.ts"]
+Hero --> SearchForm["搜索表单<br/>原生 form 提交"]
+SearchForm --> SearchPage["搜索页面<br/>search/page.tsx"]
+SearchPage --> QueryEngine["查询引擎<br/>lib/search/query.ts"]
 ```
 
 **图表来源**
 - [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
-- [frontend/components/home/hero.tsx:1-93](file://frontend/components/home/hero.tsx#L1-L93)
+- [frontend/components/home/hero.tsx:1-74](file://frontend/components/home/hero.tsx#L1-L74)
 - [frontend/components/home/feature-nav.tsx:1-116](file://frontend/components/home/feature-nav.tsx#L1-L116)
 - [frontend/components/home/city-switcher.tsx:1-74](file://frontend/components/home/city-switcher.tsx#L1-L74)
 - [frontend/components/home/editor-picks.tsx:1-66](file://frontend/components/home/editor-picks.tsx#L1-L66)
@@ -107,6 +111,7 @@ ImageOptimization --> NextConfig["Next.js 配置<br/>next.config.ts"]
 - [frontend/components/home/hot-attractions.tsx:1-70](file://frontend/components/home/hot-attractions.tsx#L1-L70)
 - [frontend/components/home/use-section-data.ts:1-44](file://frontend/components/home/use-section-data.ts#L1-L44)
 - [frontend/components/home/ai-assistant.tsx:1-212](file://frontend/components/home/ai-assistant.tsx#L1-L212)
+- [frontend/app/search/page.tsx:1-112](file://frontend/app/search/page.tsx#L1-L112)
 - [frontend/lib/image-loader.ts:1-20](file://frontend/lib/image-loader.ts#L1-L20)
 - [frontend/next.config.ts:1-14](file://frontend/next.config.ts#L1-L14)
 
@@ -114,8 +119,9 @@ ImageOptimization --> NextConfig["Next.js 配置<br/>next.config.ts"]
 - [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
 
 ## 核心组件
-- **Hero 首屏组件**：独立的 `HomeHero` 组件，包含眉标、主标题、导语、CTA 按钮和统计面板，支持自定义统计数据展示。
-- 首页聚合器：解析 `searchParams`，调用 `parseCity` 得到当前城市，并将城市与查询参数透传给各区块。Hero 区域展示本期统计上限，区块按"功能入口 → 城市入口 → 内容列表"顺序渲染。
+- **Hero 首屏组件（已重构）**：全新的自包含 Server Component，不再接收任何 props。包含背景大图、深色遮罩、品牌眉标、主标题、导语、原生搜索表单和文字入口行。城市规模提示动态派生自城市白名单。
+- **搜索页面（新增）**：独立的 React Server Component，处理关键词检索、结果分组和三态显示（引导态、空态、结果态）。使用纯函数 `searchContent()` 进行全量数据检索。
+- 首页聚合器：解析 `searchParams`，调用 `parseCity` 得到当前城市，并将城市与查询参数透传给各区块。Hero 区域现在专注于视觉呈现和搜索入口。
 - 区块数据钩子：`useSectionData` 将异步数据源包装为 `{loading, error, ready}` 三态，避免重复拉取并处理组件卸载后的状态更新。
 - 功能导航：包含旅游社区、景点攻略两个链接卡片，以及 AI 助手按钮；后两者分别跳转到占位页或唤起同一面板。
 - **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。**新增完整无障碍支持**：焦点陷阱（Tab/Shift+Tab 循环）、背景滚动锁定、键盘导航支持。
@@ -124,7 +130,8 @@ ImageOptimization --> NextConfig["Next.js 配置<br/>next.config.ts"]
 - **响应式图片优化系统**：自定义 next/image loader 将宽度档位直接写入 Unsplash CDN 参数，结合 srcset 和 sizes 属性实现智能图片加载。
 
 **章节来源**
-- [frontend/components/home/hero.tsx:10-44](file://frontend/components/home/hero.tsx#L10-L44)
+- [frontend/components/home/hero.tsx:14-73](file://frontend/components/home/hero.tsx#L14-L73)
+- [frontend/app/search/page.tsx:32-111](file://frontend/app/search/page.tsx#L32-L111)
 - [frontend/app/page.tsx:32-35](file://frontend/app/page.tsx#L32-L35)
 - [frontend/components/home/use-section-data.ts:6-43](file://frontend/components/home/use-section-data.ts#L6-L43)
 - [frontend/components/home/feature-nav.tsx:50-115](file://frontend/components/home/feature-nav.tsx#L50-L115)
@@ -140,9 +147,10 @@ graph TB
 subgraph "页面层"
 Page["首页 page.tsx"]
 Layout["根布局 layout.tsx"]
+SearchPage["搜索页面 search/page.tsx"]
 end
 subgraph "交互层"
-Hero["Hero 首屏 hero.tsx"]
+Hero["Hero 首屏重构 hero.tsx"]
 Nav["功能导航 feature-nav.tsx"]
 City["城市切换 city-switcher.tsx"]
 AI["AI 助手 ai-assistant.tsx"]
@@ -155,6 +163,7 @@ end
 subgraph "数据层"
 Hook["use-section-data.ts"]
 Repo["Mock 仓储 repository.ts契约"]
+Query["查询引擎 query.ts"]
 end
 subgraph "图片优化层"
 Loader["自定义 image loader<br/>image-loader.ts"]
@@ -169,6 +178,8 @@ Page --> Posts
 Page --> Attractions
 Layout --> AI
 Nav --> AI
+Hero --> SearchPage
+SearchPage --> Query
 Picks --> Hook
 Posts --> Hook
 Attractions --> Hook
@@ -182,70 +193,100 @@ Config --> CDN
 **图表来源**
 - [frontend/app/page.tsx:37-63](file://frontend/app/page.tsx#L37-L63)
 - [frontend/app/layout.tsx:25-29](file://frontend/app/layout.tsx#L25-L29)
-- [frontend/components/home/hero.tsx:46-92](file://frontend/components/home/hero.tsx#L46-L92)
+- [frontend/components/home/hero.tsx:14-73](file://frontend/components/home/hero.tsx#L14-L73)
 - [frontend/components/home/feature-nav.tsx:71-115](file://frontend/components/home/feature-nav.tsx#L71-L115)
 - [frontend/components/home/city-switcher.tsx:13-31](file://frontend/components/home/city-switcher.tsx#L13-L31)
 - [frontend/components/home/editor-picks.tsx:10-12](file://frontend/components/home/editor-picks.tsx#L10-L12)
 - [frontend/components/home/hot-posts.tsx:11-12](file://frontend/components/home/hot-posts.tsx#L11-L12)
 - [frontend/components/home/hot-attractions.tsx:11-12](file://frontend/components/home/hot-attractions.tsx#L11-L12)
 - [frontend/components/home/use-section-data.ts:15-42](file://frontend/components/home/use-section-data.ts#L15-L42)
+- [frontend/app/search/page.tsx:32-111](file://frontend/app/search/page.tsx#L32-L111)
 - [frontend/lib/image-loader.ts:1-20](file://frontend/lib/image-loader.ts#L1-L20)
 - [frontend/next.config.ts:1-14](file://frontend/next.config.ts#L1-L14)
 
 ## 详细组件分析
 
-### Hero 首屏组件（新增）
-Hero 首屏是独立的 React Server Component，包含品牌标识、主标题、导语、CTA 按钮和统计面板。组件支持通过 `stats` prop 自定义右侧统计面板的数据，默认值来自数据契约常量。
+### Hero 首屏组件（已重构）
+Hero 首屏现在是完全自包含的 React Server Component，不再接收任何 props。它包含背景大图、深色遮罩层、品牌标识、主标题、导语、原生搜索表单和文字入口行。组件通过 `CITY_COUNT` 常量动态计算城市数量，不再依赖外部统计数据。
 
 ```mermaid
 flowchart TD
-Start["HomeHero 组件"] --> Resolve["resolveStats(stats)"]
-Resolve --> Valid{"stats 合法？"}
-Valid --> |否| Default["使用默认统计数据"]
-Valid --> |是| Custom["使用传入统计数据"]
-Default --> Render["渲染首屏内容"]
-Custom --> Render
-Render --> Eyebrow["显示眉标 'wanderchain · 城市旅行指南'"]
-Render --> Title["显示 h1 主标题"]
-Render --> Lead["显示导语段落"]
-Render --> Actions["显示三个 CTA 按钮"]
-Render --> Stats["显示统计面板"]
+Start["HomeHero 组件重构"] --> Background["渲染背景大图<br/>next/image fill + priority"]
+Background --> Overlay["应用深色遮罩层<br/>.veil + .fade"]
+Overlay --> Content["渲染主要内容"]
+Content --> Eyebrow["显示眉标 'wanderchain · 城市旅行指南'"]
+Content --> Title["显示 h1 主标题"]
+Content --> Lead["显示导语段落<br/>包含动态城市数量"]
+Content --> SearchForm["渲染原生搜索表单<br/>method='get' action='/search'"]
+Content --> Links["显示文字入口行<br/>社区/景点/按城市逛"]
+Content --> Meta["显示城市规模提示<br/>派生自 CITIES 白名单"]
 ```
 
 **图表来源**
-- [frontend/components/home/hero.tsx:34-44](file://frontend/components/home/hero.tsx#L34-L44)
-- [frontend/components/home/hero.tsx:46-92](file://frontend/components/home/hero.tsx#L46-L92)
+- [frontend/components/home/hero.tsx:14-73](file://frontend/components/home/hero.tsx#L14-L73)
+- [frontend/components/home/hero.module.css:1-158](file://frontend/components/home/hero.module.css#L1-L158)
+
+**更新** Hero 组件已从接受 `stats` prop 的组件转变为完全自包含的服务器组件，移除了所有统计数据展示，新增了背景图片和搜索功能。
 
 **章节来源**
-- [homepage-hero.md:1-286](file://docs/specs/wanderchain/homepage-hero.md#L1-L286)
-- [frontend/components/home/hero.tsx:1-93](file://frontend/components/home/hero.tsx#L1-L93)
-- [frontend/components/home/hero.module.css:1-107](file://frontend/components/home/hero.module.css#L1-L107)
-- [frontend/components/home/hero.test.tsx:1-122](file://frontend/components/home/hero.test.tsx#L1-L122)
+- [homepage-hero.md:1-249](file://docs/specs/wanderchain/homepage-hero.md#L1-L249)
+- [frontend/components/home/hero.tsx:1-74](file://frontend/components/home/hero.tsx#L1-L74)
+- [frontend/components/home/hero.module.css:1-158](file://frontend/components/home/hero.module.css#L1-L158)
+- [frontend/components/home/hero.test.tsx:1-75](file://frontend/components/home/hero.test.tsx#L1-L75)
+
+### 搜索页面（新增）
+搜索页面是全新的 React Server Component，处理关键词检索、结果分组和三态显示。它使用纯函数 `searchContent()` 进行全量数据检索，不受首页列表上限约束。
+
+```mermaid
+flowchart TD
+Start["SearchPage 组件"] --> ParseQuery["解析搜索参数 q"]
+ParseQuery --> QueryResult["调用 searchContent()"]
+QueryResult --> CheckState{"检查查询状态"}
+CheckState --> |无关键词| GuideState["显示引导态<br/>输入提示 + 回首页链接"]
+CheckState --> |零命中| EmptyState["显示空态<br/>未找到结果 + 回首页链接"]
+CheckState --> |有结果| ResultState["显示结果态<br/>分组展示 + 回链"]
+ResultState --> Groups["按类型分组<br/>编辑推荐 → 帖子 → 景点"]
+Groups --> Items["渲染条目<br/>标题 + 城市 + 元信息"]
+Items --> Anchors["添加分组回链<br/>/#editor-picks / #hot-posts / #hot-attractions"]
+```
+
+**图表来源**
+- [frontend/app/search/page.tsx:32-111](file://frontend/app/search/page.tsx#L32-L111)
+
+**章节来源**
+- [search-page.md:1-252](file://docs/specs/wanderchain/search-page.md#L1-L252)
+- [frontend/app/search/page.tsx:1-112](file://frontend/app/search/page.tsx#L1-L112)
 
 ### 首页聚合器与城市参数流
-首页是数据与交互的装配点：它从 Next.js 的 `searchParams` 中读取城市，使用 `parseCity` 做非法值归一化，再构造稳定查询对象传递给城市切换与内容区块。Hero 区域展示城市数量与各区块上限，强调"本地 Mock 契约，未来接口替换不重写界面"。
+首页是数据与交互的装配点：它从 Next.js 的 `searchParams` 中读取城市，使用 `parseCity` 做非法值归一化，再构造稳定查询对象传递给城市切换与内容区块。Hero 区域现在专注于视觉呈现和搜索入口，不再展示统计数据。
 
 ```mermaid
 sequenceDiagram
 participant Browser as "浏览器"
 participant Page as "首页 page.tsx"
-participant Hero as "Hero 首屏"
+participant Hero as "Hero 首屏重构"
+participant SearchForm as "搜索表单"
+participant SearchPage as "搜索页面"
 participant CityHook as "parseCity / cities"
 participant Switcher as "城市切换 city-switcher.tsx"
 participant Blocks as "内容区块"
 Browser->>Page : 访问首页并携带 ?city=...
-Page->>Hero : 渲染 HomeHero 组件
+Page->>Hero : 渲染 HomeHero 组件无参
 Page->>CityHook : parseCity(params.city)
 CityHook-->>Page : 返回有效城市 slug
 Page->>Switcher : 传入 activeCity 与 query
 Switcher->>Browser : router.replace(更新 ?city=...)
 Browser->>Page : 重新渲染
 Page->>Blocks : 传入 city 并刷新区块数据
+SearchForm->>SearchPage : 提交搜索到 /search?q=...
+SearchPage->>SearchPage : 执行 searchContent() 检索
 ```
 
 **图表来源**
 - [frontend/app/page.tsx:32-35](file://frontend/app/page.tsx#L32-L35)
 - [frontend/app/page.tsx:42-63](file://frontend/app/page.tsx#L42-L63)
+- [frontend/components/home/hero.tsx:33-49](file://frontend/components/home/hero.tsx#L33-L49)
+- [frontend/app/search/page.tsx:32-111](file://frontend/app/search/page.tsx#L32-L111)
 - [frontend/components/home/city-switcher.tsx:13-31](file://frontend/components/home/city-switcher.tsx#L13-L31)
 
 **章节来源**
@@ -488,7 +529,8 @@ U0 明确类型定义、城市白名单、Mock 数据规模与 `HomeRepository` 
 WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据契约"的单向依赖，避免循环耦合：
 
 - 页面依赖：城市解析、区块组件、站点头尾。
-- Hero 依赖：数据契约常量（CITIES、LIMITS），无外部状态。
+- **Hero 依赖（已重构）**：数据契约常量（CITIES），无外部状态，新增背景图片依赖。
+- **搜索页面依赖（新增）**：查询引擎 `searchContent()`，站点框架组件。
 - 区块依赖：`useSectionData`、`mockRepository`、城市名称格式化。
 - **AI 助手依赖**：Provider 上下文，被功能导航与站点头部触发。**新增无障碍依赖**：焦点管理、键盘事件监听、滚动控制。
 - **图片优化依赖**：next/image 组件、自定义 image loader、Next.js 配置。
@@ -506,7 +548,8 @@ U2 --> U5["U5 城市切换"]
 U2 --> U6
 U2 --> U7
 U2 --> U8
-Hero["Hero 首屏"] --> U0
+Hero["Hero 首屏重构"] --> U0
+Search["搜索页面新增"] --> Query["查询引擎"]
 Accessibility["无障碍功能"] --> U4
 ImageOpt["图片优化系统"] --> U6
 ImageOpt --> U8
@@ -531,7 +574,8 @@ Loader["image-loader.ts"] --> Config["next.config.ts"]
 
 ## 性能与可维护性
 - **零网络请求**：当前所有区块通过 Mock 仓储提供数据，避免首屏阻塞与跨域问题；真实 API 接入时只需替换数据源。
-- **Hero 组件优化**：独立的 Hero 组件减少页面组件复杂度，支持静态渲染和无客户端依赖。
+- **Hero 组件优化（已重构）**：独立的 Hero 组件减少页面组件复杂度，支持静态渲染和无客户端依赖。新的背景图片系统通过 `priority` 和自定义 loader 优化首屏加载性能。
+- **搜索功能优化（新增）**：纯函数查询引擎避免客户端状态，Server Component 渲染确保首屏可见性。
 - **三态加载**：`useSectionData` 统一管理 loading/error/ready，减少重复请求与竞态条件。
 - **城市参数稳定**：首页对 `searchParams` 做单值归一，避免数组参数导致的不必要重渲染。
 - **响应式图片优化（已更新）**：
@@ -543,10 +587,17 @@ Loader["image-loader.ts"] --> Config["next.config.ts"]
 - **可替换数据层**：类型与 `ListResult<T>` 契约使 Mock 与真实 API 可互换，组件与测试无需改动。
 - **无障碍性能优化**：AI 助手模态框使用运行期查询而非缓存的可聚焦元素列表，避免内存泄漏和性能问题。
 
-[本节为通用指导，不直接分析具体文件]
-
 ## 故障排查指南
-- **Hero 组件问题**：检查 `stats` prop 是否合法（长度=4、顺序正确、值为非负整数）；确认组件未被误标记为 Client Component。
+- **Hero 组件问题（已重构）**：
+  - 组件签名变化：确认不再传递 `stats` prop，组件现在是无参的 `HomeHero()`
+  - 背景图片加载：检查 `next/image` 配置和自定义 loader 是否正确设置
+  - 搜索表单提交：确认 `action="/search"` 和 `method="get"` 属性正确
+  - 城市数量显示：检查 `CITIES` 白名单是否包含正确的城市数据
+- **搜索页面问题（新增）**：
+  - 页面无法访问：确认 `/search` 路由文件存在且正确导出
+  - 搜索结果为空：检查 `searchContent()` 函数的匹配逻辑和字段映射
+  - 分组回链失效：确认首页区块的 `id` 属性设置正确（`editor-picks`、`hot-posts`、`hot-attractions`）
+  - 三态显示异常：检查查询参数解析和状态判断逻辑
 - **AI 助手模态框问题**：
   - 面板未打开：检查是否包裹在 `AiAssistantProvider` 内；确认触发按钮调用了 `open()` 而非跳转。
   - 焦点异常：确认焦点陷阱正常工作（Tab/Shift+Tab 循环）；检查关闭按钮初始焦点设置。
@@ -565,6 +616,7 @@ Loader["image-loader.ts"] --> Config["next.config.ts"]
 
 **章节来源**
 - [homepage-hero.md:79-87](file://docs/specs/wanderchain/homepage-hero.md#L79-L87)
+- [search-page.md:40-52](file://docs/specs/wanderchain/search-page.md#L40-L52)
 - [homepage-u4-ai-assistant.md:40-52](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md#L40-L52)
 - [homepage-u4-ai-assistant.md:97-110](file://docs/specs/wanderchain/homepage-u4-ai-assistant.md#L97-L110)
 - [frontend/components/home/ai-assistant.tsx:60-75](file://frontend/components/home/ai-assistant.tsx#L60-L75)
@@ -574,6 +626,4 @@ Loader["image-loader.ts"] --> Config["next.config.ts"]
 - [frontend/next.config.ts:6-10](file://frontend/next.config.ts#L6-L10)
 
 ## 结论
-WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**新增的独立 Hero 首屏组件**进一步提升了代码的可维护性和组件复用性。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**更新的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。**特别地，热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略**，使用1080px/720px断点提供更好的桌面端体验。架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
-
-[本节为总结性内容，不直接分析具体文件]
+WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**Hero 首屏组件的完全重构**带来了全新的视觉体验和搜索功能，从接受 props 的组件转变为自包含的服务器组件，移除了统计数据面板，新增了背景图片和原生搜索框。**新增的搜索页面**提供了完整的站内检索能力，支持三态显示和结果分组。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**更新的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。**特别地，热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略**，使用1080px/720px断点提供更好的桌面端体验。架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
