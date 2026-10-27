@@ -4,7 +4,7 @@
 |---|---|
 | 单元编号 | `hero`（不在原 U0–U8 序列内，排在 U2 骨架之后、内容区块之前） |
 | 归属能力 | `wanderchain-homepage` |
-| 对应主 spec | `### Requirement: 首屏主视觉与站内搜索入口` — 当前在 change `redesign-home-hero-with-search` 的 delta 中（[delta](../../../openspec/changes/redesign-home-hero-with-search/specs/wanderchain-homepage/spec.md)），归档后进入 `openspec/specs/wanderchain-homepage/spec.md` |
+| 对应主 spec | `### Requirement: 首屏主视觉与站内搜索入口` — [openspec/specs/wanderchain-homepage/spec.md](../../../openspec/specs/wanderchain-homepage/spec.md)（已归档，12 Requirement / 50 Scenario） |
 | 关联能力 | `wanderchain-search`（首屏搜索框的提交目标，见 `search-page.md`） |
 | 规格层级 | 人读契约（`docs/specs/`，草稿层），行为真相以主 spec 为准 |
 | 现状 | 组件 `frontend/components/home/hero.tsx`，样式 `frontend/components/home/hero.module.css`，由 `app/page.tsx` 以 `<HomeHero />` 挂载 |
