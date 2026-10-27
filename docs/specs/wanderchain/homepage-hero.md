@@ -2,11 +2,12 @@
 
 | 项 | 值 |
 |---|---|
-| 单元编号 | `hero`（新增单元，不在原 U0–U8 序列内；落地建议插在 U2 骨架之后、内容区块之前） |
+| 单元编号 | `hero`（不在原 U0–U8 序列内，排在 U2 骨架之后、内容区块之前） |
 | 归属能力 | `wanderchain-homepage` |
-| 对应主 spec | **暂无**。主 spec 9 个 Requirement 中无 hero，当前由「首页骨架与区块编排」涵盖 |
-| 规格层级 | 人读契约（`docs/specs/`，草稿层）。要成为行为真相，须另立 change 补 `### Requirement:` |
-| 现状 | 首屏 JSX 内联在 `frontend/app/page.tsx` 第 47–97 行，样式在 `app/home.module.css` 的 `.hero` 系列 |
+| 对应主 spec | `### Requirement: 首屏主视觉与站内搜索入口` — 当前在 change `redesign-home-hero-with-search` 的 delta 中（[delta](../../../openspec/changes/redesign-home-hero-with-search/specs/wanderchain-homepage/spec.md)），归档后进入 `openspec/specs/wanderchain-homepage/spec.md` |
+| 关联能力 | `wanderchain-search`（首屏搜索框的提交目标，见 `search-page.md`） |
+| 规格层级 | 人读契约（`docs/specs/`，草稿层），行为真相以主 spec 为准 |
+| 现状 | 组件 `frontend/components/home/hero.tsx`，样式 `frontend/components/home/hero.module.css`，由 `app/page.tsx` 以 `<HomeHero />` 挂载 |
 
 ---
 
@@ -16,28 +17,29 @@
 
 | # | 功能 | 说明 |
 |---|---|---|
-| 1 | 眉标（eyebrow） | 固定文案 `wanderchain · 城市旅行指南`，非标题语义 |
-| 2 | 主标题（h1） | 全页唯一 h1，文案「把想去的地方，走成一条能出发的路线。」 |
-| 3 | 导语段落（lead） | 说明「七座城市，三种入口」与「内容来自本地 Mock 契约」 |
-| 4 | 主 CTA | `进入旅游社区` → `/community` |
-| 5 | 次 CTA | `查看景点攻略` → `/attractions` |
-| 6 | 文本锚点 | `按城市逛 →` → `#cities`（原地滚动，不换路由） |
-| 7 | 城市提示行 | 固定文案「当前城市会影响下方三类内容的范围。」 |
-| 8 | 右侧统计面板 | 标题「本期一览」+ 四项数字：城市入口 / 编辑推荐 / 热门帖子 / 热门景点 |
-| 9 | 语义与无障碍 | `section[aria-labelledby="hero-title"]`、`aside[aria-labelledby="hero-aside-title"]`、键盘可达、焦点可见 |
-| 10 | 响应式布局 | mobile-first：窄屏单列堆叠，≥768px 双列（文案左、统计右） |
+| 1 | 背景大图 | 全宽 `next/image` `fill` + `object-fit: cover`，`sizes="100vw"`、`priority`、`alt=""`，容器 `aria-hidden` |
+| 2 | 遮罩层 | `.veil` 竖向 + 横向两段深色渐变，保证叠字对比度 |
+| 3 | 底部渐变 | `.fade` 把大图过渡到 `--wc-sand`，与下一屏无缝衔接 |
+| 4 | 眉标 | 固定文案 `wanderchain · 城市旅行指南`，颜色改用 `--wc-accent-soft` 以适配深色背景 |
+| 5 | 主标题（h1） | 全页唯一 h1，`id="hero-title"`，文案「把想去的地方，走成一条能出发的路线。」 |
+| 6 | 导语段落 | 由城市白名单派生的城市数 + 三类内容说明 |
+| 7 | 站内搜索框 | 原生 `<form method="get" action="/search">`，输入 `type="search"` `name="q"` 必填，隐藏 `label` |
+| 8 | 文字入口行 | `进入旅游社区` → `/community`、`查看景点攻略` → `/attractions`、`按城市逛 →` → `#cities` |
+| 9 | 城市规模提示 | 「当前覆盖 N 座城市，每周由编辑重新走一遍。」N = 城市白名单中除 `all` 之外的数量 |
+| 10 | 语义与无障碍 | `section[aria-labelledby="hero-title"]`、表单 `role="search"`、焦点可见、配色只用 `--wc-*` token |
+| 11 | 响应式 | desktop-first：默认宽屏左对齐叠字，窄屏收窄留白、搜索框改纵向 |
 
 ### 1.2 不包含
 
 | 排除项 | 归属 | 理由 |
 |---|---|---|
-| 顶部导航栏、logo、账户入口 | `site-header` / U1 | 属站点框架，hero 之下 |
+| 顶部导航栏、logo、账户入口 | `site-header` / U1 | 站点框架，hero 之上 |
 | 页脚 | `site-footer` | 同上 |
+| 检索本身（匹配、分组、空态） | `wanderchain-search` | hero 只负责提交，不承载结果 |
 | 城市切换的交互与状态 | U5 `city-switcher` | hero 只提供 `#cities` 锚点，不读也不写 `?city=` |
-| 搜索框、表单提交、联想下拉 | 未立项 | 本期产品无搜索能力 |
 | 轮播、自动播放、背景视频、滚动视差 | 未立项 | 首屏不引入持续动效 |
-| 背景大图 / 视觉插图资源 | 未立项 | 当前为纯文字版式；如后续新增，见 5.4 |
-| 任何数据请求（Mock 或真实 API） | — | 四项数字全部由编译期常量推导，零网络 |
+| 统计面板 / 任何列表上限数值 | 已退役 | 由首屏改版删除，理由见 delta 的 REMOVED 段 |
+| 任何数据请求（Mock 或真实 API） | — | 全部为编译期静态渲染，零网络 |
 | 加载态 / 错误态 / 空态 | — | 静态区块无异步数据，不需要区块三态 |
 | 登录态展示（头像、昵称） | U1 `account-menu` | 职责隔离 |
 
@@ -52,50 +54,50 @@
 **S1 · 首屏渲染**
 - When 访问 `/`
 - Then 页面出现且仅出现 1 个 `h1`，文案为「把想去的地方，走成一条能出发的路线。」
-- And 眉标、导语、城市提示行文本与 §1.1 一致
+- And 眉标、导语、城市规模提示文本与 §1.1 一致
 
-**S2 · 三个入口可用**
-- When 用户点击主 CTA / 次 CTA / 文本锚点
+**S2 · 背景大图出图**
+- When 首屏渲染
+- Then 背景图为 `<img>`，`alt` 为空、`sizes="100vw"`，带 `priority` 提示
+- And 图片由自定义 loader 按宽度档位直接向 CDN 取图，不经过 `/_next/image`
+
+**S3 · 搜索框提交**
+- When 用户输入关键词并提交（回车或点击「搜索」）
+- Then 浏览器以 GET 方式跳到 `/search?q=<关键词>`
+- And 输入为空时被 `required` 拦在浏览器端，不产生空查询请求
+
+**S4 · 文字入口**
+- When 用户点击三个文字入口之一
 - Then 分别跳转 `/community`、`/attractions`、滚动到 `id="cities"` 的元素
 - And 锚点跳转不改变 URL 路径，不触发整页刷新
 
-**S3 · 统计面板数据正确**
-- When 未传入 `stats`
-- Then 面板渲染四项，顺序为 城市入口 → 编辑推荐 → 热门帖子 → 热门景点
-- And 四项数值分别等于 `CITIES.length`、`EDITOR_PICKS_LIMIT`、`HOT_POSTS_LIMIT`、`HOT_ATTRACTIONS_LIMIT`
+**S5 · 城市规模提示**
+- When 城市白名单增减一座城市
+- Then 提示中的数字随之变化，无需改动 hero 代码
+- And 数字不含 `all`（筛选项不是城市）
 
-**S4 · 调用方覆盖统计**
-- When 传入合法的 `stats`（恰好 4 项、label 合法、value 为非负整数）
-- Then 面板按传入顺序与数值渲染
-- And 组件不修改传入数组（不排序、不 push）
-
-**S5 · 城市上下文透传（不改 hero 结构）**
+**S6 · 城市切换不影响主视觉**
 - When 访问 `/?city=beijing`
-- Then hero 的文案、CTA、统计数字与无参数时完全一致
-- And 当前城市仅由下方城市入口与内容区块体现，hero 不重复展示
+- Then 首屏文案、搜索框、文字入口、城市规模提示与无参数时完全一致
+- And 城市语义只由下方城市入口与内容区块体现
 
 ### 2.2 异常路径
 
-**S6 · `stats` 非法**
-- When 传入 `[]`、3 项、5 项，或某项 `value` 为负数 / 非整数 / `NaN`
-- Then 整组回退默认四项目，页面不报错、不抛异常
-- And 不输出 `console.error`（测试环境无噪音）
-
 **S7 · 锚点目标缺失**
 - When `#cities` 对应元素因下方区块渲染失败而消失
-- Then 点击文本锚点不报错、不跳转错误页（浏览器按无目标处理）
-- And 主 CTA 与次 CTA 仍正常工作，属于可接受的局部降级
+- Then 点击文字锚点不报错、不跳转错误页（浏览器按无目标处理）
+- And 另两个文字入口仍正常工作，属于可接受的局部降级
 
 **S8 · 超窄屏（320px）**
 - When 视口宽度 320px
-- Then 单列堆叠：眉标 → 标题 → 导语 → 三个入口 → 提示行 → 统计面板
-- And 标题按 `clamp(38px, 6vw, 62px)` 缩到下限并自然换行，不截断、不省略
+- Then 搜索框改为纵向（输入在上、按钮在下，按钮满宽）
+- And 标题按 `clamp(36px, 5.6vw, 64px)` 缩到下限并自然换行，不截断、不省略
 - And 页面无横向滚动条（`scrollWidth <= clientWidth`）
 
 **S9 · 无客户端 JS / 慢网络**
 - When 首屏 HTML 已到达但客户端 JS 尚未执行（或禁用）
-- Then 眉标、标题、导语、三个入口、统计面板全部可见且可点击
-- And 组件不依赖 `useEffect` 才出现内容
+- Then 眉标、标题、导语、搜索框、文字入口、城市规模提示全部可见
+- And 表单可直接提交，不依赖 `useEffect` 才出现内容
 
 **S10 · 系统偏好减少动效**
 - When `prefers-reduced-motion: reduce`
@@ -106,49 +108,35 @@
 
 ## 3. 数据结构
 
-### 3.1 类型定义
+### 3.1 静态常量
 
 ```ts
-// frontend/components/home/hero.tsx（新增）
-export type HeroStatLabel = '城市入口' | '编辑推荐' | '热门帖子' | '热门景点'
+// frontend/components/home/hero.tsx
+const HERO_IMAGE = 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?...'
 
-export interface HeroStat {
-  /** 展示用中文标签，必须是 HeroStatLabel 之一 */
-  readonly label: HeroStatLabel
-  /** 非负整数，0 合法；不显示小数与千分位 */
-  readonly value: number
-}
-
-export interface HomeHeroProps {
-  /**
-   * 覆盖右侧统计面板。
-   * 缺省：由 CITIES.length 与三个 *_LIMIT 常量推导，顺序固定。
-   * 校验：必须恰好 4 项、严格按 S1 顺序、每项 value 为非负整数；任一不满足 → 整组回退默认。
-   */
-  readonly stats?: readonly HeroStat[]
-}
+/** 城市规模只从白名单派生：all 是筛选项，不是一座城市 */
+const CITY_COUNT = CITIES.filter((city) => city.slug !== 'all').length
 ```
 
 ### 3.2 约束表
 
-| 字段 | 类型 | 必填 | 约束 | 违反时行为 |
-|---|---|---|---|---|
-| `stats` | `readonly HeroStat[]` | 否 | 长度 = 4，顺序固定，元素只读 | 整组回退默认值 |
-| `stats[i].label` | `HeroStatLabel` | 是 | 四字或三字中文标签，闭集 | 整组回退默认值 |
-| `stats[i].value` | `number` | 是 | `Number.isInteger(v) && v >= 0` | 整组回退默认值 |
+| 项 | 约束 | 违反时行为 |
+|---|---|---|
+| `CITY_COUNT` | 由 `CITIES` 派生，不得硬编码 | 城市白名单变更后提示数字失真 |
+| 搜索参数名 | 固定 `q`，与 `/search` 页读取的键一致 | 检索页读不到关键词，恒为引导态 |
+| 表单方法 | 固定 `method="get"` | 关键词进不了 URL，结果页无法被分享或刷新 |
+| 背景图 `alt` | 空字符串 + 容器 `aria-hidden` | 装饰图被读屏播报，成为噪音 |
 
 ### 3.3 组件契约
 
 | 项 | 约定 |
 |---|---|
-| 组件签名 | `export function HomeHero(props: HomeHeroProps)`，默认导出不提供 |
+| 组件签名 | `export function HomeHero()`，无入参；不导出 `HeroStat` / `HomeHeroProps` |
 | 渲染类型 | React Server Component，文件内**不得**出现 `'use client'` |
 | 内部状态 | 无 `useState` / `useReducer` / `useEffect` |
 | 副作用 | 无：不发请求、不读 `localStorage`、不读 `window` |
-| 默认值来源 | `CITIES`（`lib/home/cities.ts`）、`EDITOR_PICKS_LIMIT` / `HOT_POSTS_LIMIT` / `HOT_ATTRACTIONS_LIMIT`（`lib/home/repository.ts`） |
-| 不接收 | `city`、`query`、任何列表数据 —— 城市语义由 U5 与内容区块承担 |
-
-> 默认值与现有的 `page.tsx` 内联实现逐项一致，抽取不得改变首屏可见内容。
+| 数据来源 | 仅 `CITIES`（`lib/home/cities.ts`）与两个常量 |
+| 不接收 | `city`、`query`、`stats`、任何列表数据 |
 
 ---
 
@@ -156,37 +144,35 @@ export interface HomeHeroProps {
 
 ### 4.1 结构
 
-- [ ] 首屏存在且仅存在 1 个 `h1`，`id="hero-title"`，文案与 §1.1 一致
-- [ ] 眉标、导语、城市提示行三段文本与 §1.1 逐字一致
-- [ ] 统计面板为 `aside`，`aria-labelledby="hero-aside-title"`，标题为「本期一览」
-- [x] 统计面板四项顺序为 城市入口 → 编辑推荐 → 热门帖子 → 热门景点
+- [x] 首屏存在且仅存在 1 个 `h1`，`id="hero-title"`，文案与 §1.1 一致
+- [x] 区域以 `h1` 命名（`aria-labelledby="hero-title"`）
+- [x] 背景图为 `<img>`，`alt=""`，`sizes="100vw"`
+- [x] 页面不再出现「本期一览」统计面板，区域内无 `listitem`
 
 ### 4.2 交互
 
-- [x] 主 CTA `href="/community"`，次 CTA `href="/attractions"`
-- [x] 文本锚点 `href="#cities"`，且页面中存在 `id="cities"` 元素
-- [ ] 键盘 Tab 顺序 = 视觉顺序；所有可交互元素有可见焦点环
+- [x] 搜索表单 `method="get"` + `action="/search"`，输入 `name="q"` 且 `required`
+- [x] 文字入口 `href` 分别为 `/community`、`/attractions`、`#cities`
+- [ ] 键盘 Tab 顺序 = 视觉顺序；输入框与按钮均有可见焦点环（`focus-within`）
 - [ ] 点击任一入口不出现控制台报错
 
 ### 4.3 数据
 
-- [x] 默认四项数值分别等于 `CITIES.length`、`EDITOR_PICKS_LIMIT`、`HOT_POSTS_LIMIT`、`HOT_ATTRACTIONS_LIMIT`
-- [x] 传入合法 `stats` 时按传入值渲染，且传入数组未被修改
-- [x] 传入 `[]` / 3 项 / 5 项 / 含负数或小数时回退默认四项，无异常、无 `console.error`
+- [x] 城市规模提示中的数字等于 `CITIES` 中非 `all` 的城市数
+- [x] 组件不引用 `EDITOR_PICKS_LIMIT` / `HOT_POSTS_LIMIT` / `HOT_ATTRACTIONS_LIMIT`
+- [x] 渲染期间零 `fetch`
 
 ### 4.4 响应式与无障碍
 
 - [ ] 320px 宽下无横向滚动（`document.documentElement.scrollWidth <= clientWidth`）
-- [ ] ≥768px 呈现双列（文案左、统计右），窄屏为单列堆叠
-- [ ] 标题在 320px 下完整换行、不截断、不出现省略号
+- [ ] 900px 以下留白收窄、标题换行宽度放宽；600px 以下搜索框改纵向
+- [ ] 白字压在遮罩上满足对比度（正文 ≥ 4.5:1，大标题 ≥ 3:1）
 - [ ] `prefers-reduced-motion: reduce` 下无位移类过渡
 
 ### 4.5 工程
 
 - [x] 组件文件内无 `'use client'`、无 `useState` / `useEffect`
-- [x] `page.tsx` 中 hero 内联 JSX 已移除，改为 `<HomeHero />`，页面可见内容不变
-- [x] hero 专属样式迁入 `hero.module.css`；`home.module.css` 中不再有 `.hero` 系列类
-- [x] 新增 `components/home/hero.test.tsx`，覆盖 S1–S4、S6
+- [x] 断点只使用 `max-width: 900px` 与 `max-width: 600px`，与 §5.3 一致
 - [x] `npx vitest run components/home/hero.test.tsx app/page.test.tsx` 全绿
 - [ ] `npm run build` 通过（TypeScript 类型检查 + RSC 边界检查）
 - [ ] 无 `TODO` / `FIXME` / `.skip`，未被 `03-static-guard` 拦截
@@ -198,71 +184,46 @@ export interface HomeHeroProps {
 
 ### 5.1 React + Next.js App Router
 
-- Next.js `16.4.3`、React `19.3.1`，App Router，文件放 `frontend/components/home/hero.tsx`
+- Next.js `16` App Router，文件放 `frontend/components/home/hero.tsx`
 - 默认 **Server Component**：不加 `'use client'`；不得使用 `useRouter`、`usePathname`、`useState`
-- 跳转一律用 `next/link` 的 `<Link>`；纯页内锚点可用原生 `<a href="#cities">`
-- 不引入 `dynamic()`、`Suspense` 或任何异步数据获取；组件保持同步纯函数
+- 站内跳转用 `next/link` 的 `<Link>`；纯页内锚点用原生 `<a href="#cities">`
+- 搜索框是原生表单，靠浏览器导航完成跳转，不引入客户端状态或 `router.push`
 
-### 5.2 Tailwind CSS + shadcn/ui
+### 5.2 样式体系
 
-**⚠ 现状：仓库未安装 Tailwind 与 shadcn/ui**（`package.json` 依赖仅 `next` / `react` / `react-dom`；样式为 CSS Modules + `globals.css` 设计 token）。本节是**目标约束**，不是当前事实。
+- CSS Modules + `globals.css` 设计 token（`.wc-container` / `.wc-eyebrow` / `.wc-button`）
+- 颜色只用 `--wc-*` token；渐变允许 `rgba()` 透明度写法，禁止新增十六进制字面量
+- 叠字必须在定位元素之上：`.inner` 显式 `position: relative`，否则会被遮罩盖住
 
-若按本节落地，前置条件（另立 change，不得在本单元内夹带）：
+### 5.3 响应式（desktop-first）
 
-1. `package.json` 增 `tailwindcss` / `postcss` / `autoprefixer`，新增 `postcss.config.mjs`
-2. `globals.css` 顶部加 `@import "tailwindcss"`，并把现有 `--wc-*` token 映射到 Tailwind 主题变量
-3. `components.json` + `npx shadcn@latest init`，按需 `add button`
-4. `04-frontend.ps1` 的 `npm ci → build → test` 三步链需重新验证一遍
-
-目标写法（引入后）：
-
-- 布局与间距用 Tailwind 工具类，不再新增 CSS Module
-- 两个 CTA 用 shadcn `Button`，配合 `asChild` 包裹 `Link`，禁止手写 `<button>` + `onClick` 导航
-- 颜色只能用 `globals.css` 的 `--wc-*` token 或其 Tailwind 映射，禁止出现十六进制字面量
-
-**过渡期约定**：Tailwind 未引入前，本单元沿用 CSS Modules + `wc-*` 工具类（`.wc-container` / `.wc-eyebrow` / `.wc-button`）。**同一组件内不得混用两套方案**。
-
-### 5.3 响应式（mobile-first）
+真相源：`frontend/components/home/hero.module.css`（下方断点须与该文件的 `@media` 一致，由 `harness/checks/08-spec-doc-breakpoints.ps1` 校验）
 
 | 断点 | 布局 |
 |---|---|
-| 默认（320–767px） | 单列：眉标 → 标题 → 导语 → 入口 → 提示行 → 统计面板 |
-| `≥768px` | 双列 grid：文案 `1.35fr` / 统计 `1fr`，列间距 `clamp(28px, 5vw, 64px)` |
-| `≥1024px` | 维持双列，仅增大留白，不新增第三列 |
+| 默认（宽屏） | 全宽大图 + 左对齐叠字，正文列 `max-width: 760px`，搜索框横排 |
+| `≤ 900px` | 最小高度下调，标题换行宽度放宽，正文列取消宽度限制 |
+| `≤ 600px` | 搜索框改纵向、按钮满宽，胶囊圆角降级为卡片圆角 |
 
-- CSS 一律先写默认（窄屏）再写 `min-width` 断点，禁止 `max-width` 反写
-- 标题 `clamp(38px, 6vw, 62px)`；导语 `max-width: 46ch`；标题 `max-width: 18ch`
-- 首屏纵向留白 `padding-block: clamp(48px, 8vw, 92px) clamp(24px, 4vw, 44px)`
-- 320px 下不得出现横向滚动；长文案必须 `overflow-wrap: break-word`
+- 标题 `clamp(36px, 5.6vw, 64px)`；导语 `max-width: 48ch`
+- 首屏纵向留白 `padding-block: clamp(72px, 12vw, 132px) clamp(56px, 9vw, 104px)`
+- 320px 下不得出现横向滚动
 
-### 5.4 图片优化（next/image）
+### 5.4 图片（next/image）
 
-**现状：hero 无任何图片，`next/image` 在仓库中零使用。**
+- 背景图用 `next/image` 的 `fill`，容器负责定位；禁止 CSS `background-image` 承载内容图
+- `sizes="100vw"` + `priority`：首屏 LCP 元素优先加载
+- 走 `next.config.ts` 的自定义 loader（`images.loader: 'custom'`），请求直达 Unsplash，故不需要 `remotePatterns`，也不产生 `/_next/image` 请求
+- 纯装饰图 `alt=""` + 容器 `aria-hidden`，不占用读屏朗读
 
-- 若本单元后续新增视觉图（背景图、插画、logo 位），**必须**用 `next/image`，禁止 `<img>` 与 CSS `background-image` 承载内容图
-- 首屏图必须带 `priority`；其余 `loading="lazy"`
-- `sizes` 必填，且与 5.3 的断点一致（例：`sizes="(min-width: 768px) 60vw, 100vw"`）
-- 远程图需先在 `next.config.ts` 注册域名：
-
-```ts
-const nextConfig: NextConfig = {
-  output: 'standalone',
-  images: {
-    remotePatterns: [{ protocol: 'https', hostname: 'images.wanderchain.dev' }],
-  },
-}
-```
-
-- 静态装饰图（纯视觉、无信息）应设为 `alt=""` + `aria-hidden`，不占用无障碍朗读
-
-### 5.5 与现状的差异（落地前必须知道）
+### 5.5 与现状的差异
 
 | # | 本文档要求 | 仓库现状 | 影响 |
 |---|---|---|---|
-| 1 | Tailwind + shadcn/ui | 未安装，用 CSS Modules | 直接照做会与现有 8 个组件样式体系割裂 |
-| 2 | `next/image` | 零使用，hero 无图 | 当前无适用对象；本条为未来约束 |
-| 3 | hero 是独立单元 | 已抽出为 `components/home/hero.tsx` + `hero.module.css`（2026-10-27） | 一致；`page.tsx` 仅剩 `<HomeHero />` |
-| 4 | 有 Requirement 作为真相 | change `extract-home-hero` 已补 ADDED「首页主视觉」，待归档后进入主 spec | 归档前真相仍以 delta 形式存在，本文档不直接改写主 spec |
+| 1 | 首屏有背景大图 | 改版前为纯文字版式，无图 | 本轮新增；首次引入 LCP 图片，需关注加载体积 |
+| 2 | 首屏有搜索框 | 改版前无搜索能力 | 与 `wanderchain-search` 同批落地，首个版本即真检索 |
+| 3 | 无统计面板 | 改版前为四项 `*_LIMIT` 派生数字 | 删除属 BREAKING：`HeroStat` / `HomeHeroProps` 不再导出 |
+| 4 | 有 Requirement 作为真相 | delta 为 REMOVED + ADDED（校验器不允许 MODIFIED 丢场景） | 归档后主 spec 中该 Requirement 改名为「首屏主视觉与站内搜索入口」 |
 
 ---
 
@@ -270,16 +231,18 @@ const nextConfig: NextConfig = {
 
 | 项 | 路径 |
 |---|---|
-| 组件 | `frontend/components/home/hero.tsx`（新增） |
-| 样式 | `frontend/components/home/hero.module.css`（新增，从 `app/home.module.css` 迁出 `.hero*`） |
-| 挂载点 | `frontend/app/page.tsx` 第 47–97 行替换为 `<HomeHero />` |
-| 默认值 | `frontend/lib/home/cities.ts`、`frontend/lib/home/repository.ts` |
-| 测试 | `frontend/components/home/hero.test.tsx`（新增）+ `frontend/app/page.test.tsx`（回归） |
+| 组件 | `frontend/components/home/hero.tsx` |
+| 样式 | `frontend/components/home/hero.module.css` |
+| 挂载点 | `frontend/app/page.tsx` 的 `<HomeHero />` |
+| 常量来源 | `frontend/lib/home/cities.ts` |
+| 提交目标 | `frontend/app/search/page.tsx`（见 `search-page.md`） |
+| 测试 | `frontend/components/home/hero.test.tsx` + `frontend/app/page.test.tsx`（回归） |
 
 ```powershell
 cd frontend
 npx vitest run components/home/hero.test.tsx app/page.test.tsx
 npm run build
 cd ..
+powershell -File harness\checks\08-spec-doc-breakpoints.ps1
 powershell -File harness\run-all.ps1
 ```
