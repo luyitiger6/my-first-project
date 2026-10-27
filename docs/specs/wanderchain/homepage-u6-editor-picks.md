@@ -24,7 +24,7 @@
 | 4 | 上限 6 条 | `EDITOR_PICKS_LIMIT`，截断由仓储完成 |
 | 5 | 三态：加载 / 错误 / 空 | 复用 U2 的 `SectionLoading` / `SectionError` / `EmptyState` |
 | 6 | 城市标签文案 | `all` 显示 `All cities`，其余显示 `cityNameEn` |
-| 7 | 封面图 | 固定 4:3，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<title> cover"` |
+| 7 | 封面图 | 固定 4:3，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<titleEn> cover"` |
 
 ### 1.2 不包含
 
@@ -190,7 +190,7 @@ interface ListResult<T> { items: T[]; total: number }
 
 ### 4.3 图片与响应式
 
-- [ ] 封面为 4:3；`alt="<标题>封面"`
+- [ ] 封面为 4:3；`alt="<titleEn> cover"`
 - [ ] 封面走 `next/image`，带多档 `srcset`；`sizes` 为 `(max-width: 640px) calc(100vw - 64px), (max-width: 900px) calc(50vw - 50px), (min-width: 1160px) 347px, calc(33.33vw - 40px)`
 - [ ] 封面 `loading="lazy"` + `decoding="async"`，且 `.cover` 含 `height: auto`（防 `aspect-ratio` 失效）
 - [ ] 图片加载失败时占位不塌陷
@@ -256,7 +256,7 @@ interface ListResult<T> { items: T[]; total: number }
 
 - 封面必须带 `sizes` 与多档 `srcset`；`sizes` 按双层 `.wc-container` 的真实内容宽推导，见 §4.3
 - 首屏以下卡片保持 `loading="lazy"`；不得给全部卡片加 `priority`
-- `alt` 规则不变：`"<标题>封面"`；纯装饰封面才允许 `alt=""`（当前封面承载内容语义，不可置空）
+- `alt` 规则不变：`"<titleEn> cover"`；纯装饰封面才允许 `alt=""`（当前封面承载内容语义，不可置空）
 - **历史坑**：给图片同时写 `width` + `height` 且 CSS 用 `aspect-ratio` 时，必须保留 `.cover { height: auto }`，否则图片比例会被宽高属性顶死（已发生过一次失真事故）
 
 ### 5.5 与现状的差异

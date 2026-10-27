@@ -233,12 +233,14 @@ interface CityOption {
 
 约束：用 `ToggleGroup` 后必须保留「点当前项不触发导航」的短路逻辑（`onValueChange` 在取消选中时也会触发）；不得用 `Tabs`（Tabs 语义为切换面板，不是筛选）。
 
-### 5.3 响应式（mobile-first）
+### 5.3 响应式（desktop-first）
+
+真相源：`frontend/components/home/city-switcher.module.css`（下方断点须与该文件的 `@media` 一致，由 `harness/checks/08-spec-doc-breakpoints.ps1` 校验）
 
 | 断点 | 布局 |
 |---|---|
-| 默认（320–767px） | chip 换行，`gap: 8px`，单个 chip 高度 ≥ 36px（触控目标优先 44px） |
-| `≥768px` | 单行 8 项，`gap: 10px` |
+| 默认（宽屏） | 单行 8 项，`gap: 10px`，chip 内边距 `10px 20px`、字号 `15px` |
+| `≤ 640px` | chip 内边距收窄为 `9px 16px`、字号降到 `14px`，按需换行 |
 
 - `.list` 用 `display: flex; flex-wrap: wrap`，禁止 `overflow-x: auto`（会隐藏部分城市）
 - chip 文本 `white-space: nowrap`，容器负责换行

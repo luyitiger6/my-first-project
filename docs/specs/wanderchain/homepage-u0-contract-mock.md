@@ -131,17 +131,17 @@ export type CitySlug =
 export type ContentStatus = 'published' | 'draft' | 'removed'
 
 export interface EditorPick {
-  id: number; title: string; summary: string
-  city: CitySlug; coverUrl: string; editor: string; sortOrder: number
+  id: number; title: string; titleEn: string; summary: string; summaryEn: string
+  city: CitySlug; coverUrl: string; editor: string; editorEn: string; sortOrder: number
 }
 
 export interface Post {
-  id: number; title: string; author: string; city: CitySlug
+  id: number; title: string; titleEn: string; author: string; authorEn: string; city: CitySlug
   status: ContentStatus; commentCount: number; viewCount: number; publishedAt: string
 }
 
 export interface Attraction {
-  id: number; name: string; city: CitySlug; coverUrl: string
+  id: number; name: string; nameEn: string; city: CitySlug; coverUrl: string
   rating: number; viewCount: number; status: ContentStatus; publishedAt: string
 }
 

@@ -219,17 +219,18 @@ interface LinkEntry {
 
 约束：整卡可点击时**不得**在卡内嵌套第二个可交互元素（否则 Tab 停在两层、点击语义冲突）。
 
-### 5.3 响应式（mobile-first）
+### 5.3 响应式（desktop-first）
+
+真相源：`frontend/components/home/feature-nav.module.css`（下方断点须与该文件的 `@media` 一致，由 `harness/checks/08-spec-doc-breakpoints.ps1` 校验）
 
 | 断点 | 布局 |
 |---|---|
-| 默认（320–767px） | 单列，三卡纵向堆叠，`gap: 16px` |
-| `≥768px` | 三列等宽 `grid-template-columns: repeat(3, minmax(0,1fr))`，`gap: 20px` |
-| `≥1024px` | 维持三列，卡片内边距增大 |
+| 默认（宽屏） | 三列等宽 `grid-template-columns: repeat(3, minmax(0,1fr))`，`gap: 18px` |
+| `≤ 900px` | 单列，三卡纵向堆叠，`gap` 仍为 `18px` |
 
-- 先写单列默认值，再用 `min-width` 提列数；禁止 `max-width` 反写
+- 实现是 desktop-first：默认三列，用 `max-width` 收窄到单列，不使用 `min-width` 提列
 - 卡片作为 grid item 必须 `min-width: 0`，否则长文案撑破网格
-- 图标固定 22×22，不随列宽缩放
+- 图标 SVG 固定 22×22（容器 44×44），不随列宽缩放
 
 ### 5.4 图片（next/image）
 

@@ -188,19 +188,19 @@ export function useAiAssistant(): AiAssistantContextValue
 
 ### 4.1 开关
 
-- [ ] 初始无 `[role="dialog"]`，两触发器 `aria-expanded="false"`
-- [ ] 顶栏与悬浮两个触发器打开同一个面板
-- [ ] 面板打开时两触发器 `aria-expanded` 均为 `true`
-- [ ] 重复调用 `open()` 不叠加面板
-- [ ] 关闭后 `[role="dialog"]` 从 DOM 移除
+- [x] 初始无 `[role="dialog"]`，两触发器 `aria-expanded="false"`
+- [x] 顶栏与悬浮两个触发器打开同一个面板
+- [x] 面板打开时两触发器 `aria-expanded` 均为 `true`
+- [x] 重复调用 `open()` 不叠加面板
+- [x] 关闭后 `[role="dialog"]` 从 DOM 移除
 
 ### 4.2 关闭方式
 
-- [ ] 按 `Esc` 可关闭
-- [ ] 点击遮罩可关闭
-- [ ] 点击「×」可关闭
-- [ ] 点击 `Got it` 可关闭
-- [ ] 点击面板内部不关闭
+- [x] 按 `Esc` 可关闭
+- [x] 点击遮罩可关闭
+- [x] 点击「×」可关闭
+- [x] 点击 `Got it` 可关闭
+- [x] 点击面板内部不关闭
 
 ### 4.3 焦点与无障碍
 
@@ -210,17 +210,17 @@ export function useAiAssistant(): AiAssistantContextValue
 - [x] 四种关闭路径（Esc / 遮罩 / × / 知道了）焦点都回到打开它的元素
 - [x] 打开期间 `body` 不可滚动，关闭或卸载后恢复原值（含原值为空字符串）
 - [x] 关闭后焦点回到打开它的元素
-- [ ] 触发元素已移除时焦点归还静默跳过
-- [ ] 对话框有 `aria-modal="true"` 与正确 `aria-labelledby`
-- [ ] 悬浮按钮在窄屏隐藏文字后仍有 `aria-label`
-- [ ] 面板内无 `h1`
+- [x] 触发元素已移除时焦点归还静默跳过
+- [x] 对话框有 `aria-modal="true"` 与正确 `aria-labelledby`
+- [x] 悬浮按钮在窄屏隐藏文字后仍有 `aria-label`
+- [x] 面板内无 `h1`
 
 ### 4.4 工程
 
 - [x] 全单元零网络请求（`grep -r "fetch(" components/home/ai-assistant.tsx` 无结果）
 - [x] 无 Provider 时 `useAiAssistant` 抛错
 - [x] 面板文案与 §3.4 一致（含免责说明）
-- [x] `ai-assistant.test.tsx` 覆盖 S1–S9 与 S15–S17
+- [x] `ai-assistant.test.tsx` 覆盖 S1–S17（S13 的 SSR 首屏由 `app/layout.test.tsx` 与服务端渲染断言共同覆盖）
 - [x] `npx vitest run components/home/ai-assistant.test.tsx` 全绿
 - [x] `npm run build` 通过
 - [x] 无 `TODO` / `FIXME`，未被 `03-static-guard` 拦截

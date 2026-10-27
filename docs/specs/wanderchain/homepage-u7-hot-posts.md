@@ -251,12 +251,15 @@ interface Post {
 
 约束：`shadcn` 无「有序列表」组件，本单元**不应**为套组件而改变语义结构；引入 Tailwind 后也须保留 `<ol>`。
 
-### 5.3 响应式（mobile-first）
+### 5.3 响应式（desktop-first）
+
+真相源：`frontend/components/home/hot-posts.module.css`（下方断点须与该文件的 `@media` 一致，由 `harness/checks/08-spec-doc-breakpoints.ps1` 校验）
 
 | 断点 | 布局 |
 |---|---|
-| 默认（320–767px） | 单列：排名 + 标题 + 元信息 + 计数纵向堆叠 |
-| `≥768px` | 三栏：排名 `auto` / 内容 `1fr` / 计数 `auto`，单行不换行 |
+| 默认（宽屏） | 两列网格 `grid-template-columns: repeat(2, minmax(0,1fr))`，`gap: 0 36px`；单条为「排名 / 内容 / 计数」三栏不换行 |
+| `≤ 900px` | 网格收为单列，条目内部仍保持三栏 |
+| `≤ 640px` | 条目允许换行，计数列另起一行并左缩进对齐标题 |
 
 - 计数列需 `white-space: nowrap`，避免 `128 comments · 26,000 views` 被拆成两行
 - 标题列 `min-width: 0`，防长标题撑破三栏

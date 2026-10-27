@@ -22,9 +22,12 @@ Set-Location $projectRoot
 # 配对表：只有登记在此的单元参与校验。新增已对齐的单元时在这里加一行。
 $pairs = @(
     @{ Doc = 'docs/specs/wanderchain/homepage-hero.md';               Css = 'frontend/components/home/hero.module.css' },
-    @{ Doc = 'docs/specs/wanderchain/homepage-u6-editor-picks.md';    Css = 'frontend/components/home/editor-picks.module.css' },
-    @{ Doc = 'docs/specs/wanderchain/homepage-u8-hot-attractions.md'; Css = 'frontend/components/home/hot-attractions.module.css' },
-    @{ Doc = 'docs/specs/wanderchain/search-page.md';                 Css = 'frontend/app/search/search.module.css' }
+    @{ Doc = 'docs/specs/wanderchain/homepage-u3-feature-nav.md';      Css = 'frontend/components/home/feature-nav.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/homepage-u5-city-switcher.md';    Css = 'frontend/components/home/city-switcher.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/homepage-u6-editor-picks.md';     Css = 'frontend/components/home/editor-picks.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/homepage-u7-hot-posts.md';        Css = 'frontend/components/home/hot-posts.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/homepage-u8-hot-attractions.md';  Css = 'frontend/components/home/hot-attractions.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/search-page.md';                  Css = 'frontend/app/search/search.module.css' }
 )
 
 $problems = New-Object System.Collections.ArrayList
