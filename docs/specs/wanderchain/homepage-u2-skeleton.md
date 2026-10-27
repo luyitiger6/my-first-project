@@ -12,11 +12,13 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；骨架只负责区块顺序与三态展示，不覆盖各单元的英文文案。
+
 ### 1.1 包含
 
 | # | 能力 | 落点 |
 |---|---|---|
-| 1 | 根布局：`<html lang="zh-CN">`、跳过导航链接、两个 Provider | `app/layout.tsx` |
+| 1 | 根布局：`<html lang="en">`、跳过导航链接、两个 Provider | `app/layout.tsx` |
 | 2 | 站点元数据：标题模板、描述、favicon | `layout.tsx` `metadata` |
 | 3 | 首页装配：顶栏 → 首屏 → 五个区块 → 页脚 | `app/page.tsx` |
 | 4 | 查询参数解析：`searchParams` → `city` + 单值 query 对象 | `parseCity` + `toQuery` |
@@ -62,11 +64,11 @@
 - When 访问 `/`
 - Then 页面内 `[data-section]` 的出现顺序恒为
   `feature-nav → city-switcher → editor-picks → hot-posts → hot-attractions`
-- And 每个区块可见标题依次为 功能入口 / 城市入口 / 编辑推荐 / 热门帖子 / 热门景点
+- And 每个区块可见标题依次为 `Where to start` / `Pick a city first` / `Editor's picks` / `Trending posts` / `Popular attractions`
 
 **S2 · 城市参数下发**
 - When 访问 `/?city=beijing`
-- Then 城市入口的「北京」为选中态（`aria-pressed="true"`）
+- Then 城市入口的 `Beijing` 为选中态（`aria-pressed="true"`）
 - And 三个内容区块收到 `city='beijing'` 并以该城市请求数据
 
 **S3 · 合法城市直达**
@@ -87,12 +89,12 @@
 
 **S6 · 非法城市回落**
 - When 访问 `/?city=atlantis`
-- Then 城市归一化为 `all`，「全部」为选中态
+- Then 城市归一化为 `all`，`All cities` 为选中态
 - And 页面不报错、不出现空页面
 
 **S7 · 单区块数据失败**
 - When 任取数函数 reject
-- Then 该区块展示 `role="alert"` 的错误文案「<标题>暂时没能加载出来，稍后再试试。」
+- Then 该区块展示 `role="alert"` 的错误文案 `<title> could not load. Please try again later.`（`title` 取英文区块名）
 - And 其余区块正常渲染（顺序断言仍成立）
 
 **S8 · 单区块渲染期异常**
@@ -164,9 +166,9 @@ function useSectionData<T>(
 | 组件 | Props | 约束 | 违反后果 |
 |---|---|---|---|
 | `HomePage` | `searchParams: Promise<SearchParams>` | 必须 `await`；不接受普通对象 | Next 16 运行期报错 |
-| `SectionBoundary` | `title: string` | 非空，与区块可见标题一致 | 错误文案变成「undefined暂时…」 |
+| `SectionBoundary` | `title: string` | 非空，与区块可见标题一致（英文） | 错误文案变成 `undefined could not load…` |
 | `SectionBoundary` | `children: ReactNode` | 必须为单个区块组件 | 边界粒度过粗，一处失败连带多区块 |
-| `SectionLoading` | `label: string` | 非空中文短文，含省略号 | 空白加载态，屏幕阅读器读不到内容 |
+| `SectionLoading` | `label: string` | 非空英文短文，含省略号 | 空白加载态，屏幕阅读器读不到内容 |
 | `SectionError` | `message: string` | 必须包含区块名 + 重试建议 | 用户无法判断哪块坏了 |
 | `EmptyState` | `message: string` | 必须含当前城市名或下一步指引 | 空态像故障 |
 | `useSectionData` | `load` | **必须内联箭头函数**或稳定引用；不得每次渲染新建依赖 | 无限重取 |
@@ -189,14 +191,14 @@ function useSectionData<T>(
 ### 4.1 编排
 
 - [ ] `[data-section]` 顺序恒为 feature-nav → city-switcher → editor-picks → hot-posts → hot-attractions
-- [ ] 五个区块标题文案与 §1.1 一致
-- [ ] 顶栏、页脚、浮动 AI 按钮、跳过链接在所有路由可见
+- [ ] 五个区块标题文案与 §2.1 S1 一致
+- [ ] 顶栏、页脚、浮动 AI 按钮、跳过链接在所有路由可见（英文文案）
 - [ ] 主内容区 `id="main-content"` 存在，跳过链接点击后聚焦到主内容
 
 ### 4.2 参数
 
-- [ ] `/?city=beijing` 下「北京」`aria-pressed="true"`
-- [ ] `/?city=atlantis` 下「全部」为选中态
+- [ ] `/?city=beijing` 下 `Beijing` `aria-pressed="true"`
+- [ ] `/?city=atlantis` 下 `All cities` 为选中态
 - [ ] 重复参数 `?city=beijing&city=shanghai` 取首值，不报错
 - [ ] 其余单值参数在切换城市后仍被保留
 - [ ] 无 `searchParams` 时城市为 `all`

@@ -12,6 +12,8 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；卡片只渲染 `titleEn` / `authorEn`，城市只读 `cityNameEn`。
+
 ### 1.1 包含
 
 | # | 能力 | 说明 |
@@ -22,7 +24,7 @@
 | 4 | 只展示已发布 | `status === 'published'`，`draft` / `removed` 排除（由 U0 保证） |
 | 5 | 城市过滤 | 当前城市 + 全城通用（`all`） |
 | 6 | 上限 10 条 | `HOT_POSTS_LIMIT` |
-| 7 | 数字与日期格式化 | `formatCount`（万位）+ `formatDate`（M 月 D 日） |
+| 7 | 数字与日期格式化 | `formatCount`（`en-US` 千分位）+ `formatDate`（`MMM D`） |
 | 8 | 三态 | 复用 U2 的 `SectionLoading` / `SectionError` / `EmptyState` |
 
 ### 1.2 不包含
@@ -78,15 +80,15 @@
 
 **S5 · 城市过滤**
 - When `city='chengdu'`
-- Then 只展示成都与全城通用的已发布帖子
+- Then 只展示 `Chengdu` 与全城通用的已发布帖子
 
 **S6 · 元信息拼接**
-- When 帖子作者 `旅人小舟`、城市 `hangzhou`、日期 `2026-10-05`
-- Then 元信息行为「旅人小舟 · 杭州 · 10 月 5 日」
+- When 帖子作者 `Traveler Zhou`、城市 `hangzhou`、日期 `2026-10-05`
+- Then 元信息行为 `Traveler Zhou · Hangzhou · Oct 5`
 
 **S7 · 计数格式化**
 - When 浏览数为 `26000`
-- Then 显示「2.6 万 浏览」；评论数始终显示原值（如「128 评论」）
+- Then 显示 `26,000 views`；评论数始终显示原值（如 `128 comments`）
 
 **S8 · 切换城市重取**
 - When `city` 变化
@@ -96,22 +98,22 @@
 
 **S9 · 取数失败**
 - When 仓储 reject
-- Then 展示 `role="alert"` 的「热门帖子暂时没能加载出来，稍后再试试。」
+- Then 展示 `role="alert"` 的 `Trending posts could not load. Please try again later.`
 - And 不展示空态，不残留旧列表
 
 **S10 · 空结果**
 - When 该城市无帖子
-- Then 展示「<城市名>还没有帖子，去社区写第一篇。」
+- Then 展示 `Be the first to ask in <city>.`
 - And 不展示错误提示
 
 **S11 · 超长标题**
-- When 标题超过 30 字
+- When 英文标题超过 2 行
 - Then 标题换行，排名与计数不被挤压，行高稳定
 - And 不截断语义（不用 `line-clamp` 掩盖）
 
 **S12 · 极端数值**
 - When `viewCount=0` / `commentCount=0`
-- Then 显示「0 评论 · 0 浏览」，不显示 `NaN` 或空白
+- Then 显示 `0 comments · 0 views`，不显示 `NaN` 或空白
 
 **S13 · 超窄屏（320px）**
 - When 视口 320px
@@ -145,8 +147,10 @@ export function HotPosts({ city }: HotPostsProps): JSX.Element
 ```ts
 interface Post {
   id: number
-  title: string
-  author: string
+  title: string      // 中文标题（内容资产，不渲染）
+  titleEn: string    // 英文标题（界面唯一可读标题）
+  author: string     // 中文作者名（内容资产，不渲染）
+  authorEn: string   // 英文作者名
   city: CitySlug
   status: ContentStatus
   commentCount: number
@@ -157,12 +161,12 @@ interface Post {
 
 | 字段 | 约束 | 展示规则 |
 |---|---|---|
-| `title` | 非空，≤ 40 字 | h3，允许换行 |
-| `author` | 非空，2–12 字 | 元信息首位，**无前缀** |
-| `city` | `CitySlug` | 显示中文名（`all` → 「全部」） |
-| `publishedAt` | 合法 ISO | `formatDate` → `M 月 D 日` |
-| `commentCount` | 非负整数 | **原值**展示，不做万位缩写 |
-| `viewCount` | 非负整数 | `formatCount` → 万位缩写 |
+| `titleEn` | 非空，2–12 个英文单词 | h3，允许换行 |
+| `authorEn` | 非空，人名 | 元信息首位，**无前缀** |
+| `city` | `CitySlug` | 显示 `cityNameEn`（`all` → `All cities`） |
+| `publishedAt` | 合法 ISO | `formatDate` → `MMM D`（`en-US`） |
+| `commentCount` | 非负整数 | **原值**展示，不做缩写 |
+| `viewCount` | 非负整数 | `formatCount` → `en-US` 千分位 |
 | `status` | 闭集 | 不展示；非 `published` 不进入列表 |
 | `id` | 唯一正整数 | React key + 排序兜底 |
 
@@ -171,12 +175,12 @@ interface Post {
 | 位置 | 文案 |
 |---|---|
 | eyebrow | `Trending` |
-| 标题 | 热门帖子 |
-| 区块说明 | 按评论、浏览与发布时间排序。 |
-| 加载 | 正在统计这周的热度…（`role="status"`） |
-| 错误 | 热门帖子暂时没能加载出来，稍后再试试。（`role="alert"`） |
-| 空态 | `{cityName(city)}还没有帖子，去社区写第一篇。` |
-| 计数行 | `{commentCount} 评论 · {formatCount(viewCount)} 浏览` |
+| 标题 | `Trending posts` |
+| 区块说明 | `Ranked by comments, views and publish time.` |
+| 加载 | `Measuring this week's buzz…`（`role="status"`） |
+| 错误 | `Trending posts could not load. Please try again later.`（`role="alert"`） |
+| 空态 | `Be the first to ask in {cityNameEn(city)}.` |
+| 计数行 | `{commentCount} comments · {formatCount(viewCount)} views` |
 
 ---
 
@@ -187,8 +191,8 @@ interface Post {
 - [ ] 条目数 ≤ 10，且等于 `items.length`
 - [ ] 每条含排名、标题、作者、城市、日期、评论数、浏览数
 - [ ] 排名从 `01` 起两位补零，连续无跳号
-- [ ] 元信息格式为「作者 · 城市 · M 月 D 日」
-- [ ] 浏览数 ≥ 10000 时显示「N 万」；评论数显示原值
+- [ ] 元信息格式为 `{authorEn} · {cityNameEn} · {MMM D}`
+- [ ] 浏览数按 `en-US` 千分位展示（如 `26,000`）；评论数显示原值
 
 ### 4.2 数据规则
 
@@ -254,7 +258,7 @@ interface Post {
 | 默认（320–767px） | 单列：排名 + 标题 + 元信息 + 计数纵向堆叠 |
 | `≥768px` | 三栏：排名 `auto` / 内容 `1fr` / 计数 `auto`，单行不换行 |
 
-- 计数列需 `white-space: nowrap`，避免「128 评论 · 2.6 万 浏览」被拆成两行
+- 计数列需 `white-space: nowrap`，避免 `128 comments · 26,000 views` 被拆成两行
 - 标题列 `min-width: 0`，防长标题撑破三栏
 - 数字统一 `font-variant-numeric: tabular-nums`，切换城市时宽度不跳动
 

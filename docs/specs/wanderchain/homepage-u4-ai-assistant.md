@@ -12,6 +12,8 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；触发按钮、面板标题、说明、能力清单与免责声明一律以英文为准。
+
 ### 1.1 包含
 
 | # | 能力 | 落点 |
@@ -20,9 +22,9 @@
 | 2 | 上下文读取，Provider 外使用时抛错 | `useAiAssistant` |
 | 3 | 两个触发器：顶栏行内、右下角悬浮 | `AiAssistantTrigger variant="header" \| "floating"` |
 | 4 | 模态面板：遮罩 + `role="dialog"` + `aria-modal="true"` + Tab 焦点陷阱 | 同文件 |
-| 5 | 三种关闭方式：Esc、点遮罩、点关闭按钮 / 「知道了」 | 同文件 |
+| 5 | 三种关闭方式：Esc、点遮罩、点关闭按钮 / `Got it` | 同文件 |
 | 6 | 焦点管理：打开时聚焦关闭按钮、Tab / Shift+Tab 在面板内循环、关闭后焦点归还触发元素 | `restoreFocusRef` / `panelRef` |
-| 7 | 面板内容：`即将上线` 徽标、标题、说明、三条能力清单、免责说明 | 静态文案 |
+| 7 | 面板内容：`Coming soon` 徽标、标题、说明、三条能力清单、免责说明 | 静态文案 |
 | 8 | 触发按钮的无障碍属性：`aria-haspopup="dialog"` + `aria-expanded` | 两个触发器 |
 | 9 | 背景滚动锁：打开期间 `body` 不可滚动，关闭或卸载时恢复原值 | 同文件 |
 
@@ -69,7 +71,7 @@
 - And URL 不变化、不新增历史记录
 
 **S3 · 顶栏按钮打开**
-- When 点击顶栏「AI 助手」
+- When 点击顶栏 `AI assistant`
 - Then 打开同一个面板（与 S2 共享状态，不产生第二份实例）
 
 **S4 · Esc 关闭并归还焦点**
@@ -86,22 +88,22 @@
 - Then 面板保持打开（事件被 `stopPropagation` 拦下）
 
 **S7 · 点按钮关闭**
-- When 点击右上角「×」或底部「知道了」
+- When 点击右上角「×」或底部 `Got it`
 - Then 面板关闭，焦点归还
 
 **S8 · 打开时自动聚焦**
 - When 面板打开
-- Then 焦点落在关闭按钮（`aria-label="关闭 AI 助手"`）
-- And 屏幕阅读器会朗读对话框标题「AI 旅行助手」
+- Then 焦点落在关闭按钮（`aria-label="Close the AI assistant"`）
+- And 屏幕阅读器会朗读对话框标题 `AI travel assistant`
 
 **S15 · Tab 在面板内正向循环**
-- When 面板打开且焦点在最后一个可聚焦元素（「知道了」）
+- When 面板打开且焦点在最后一个可聚焦元素（`Got it`）
 - Then 按 `Tab` 后焦点回到第一个（关闭按钮）
 - And 焦点不跑到遮罩后的页面
 
 **S16 · Shift+Tab 在面板内反向循环**
 - When 面板打开且焦点在第一个可聚焦元素（关闭按钮）
-- Then 按 `Shift+Tab` 后焦点落到最后一个（「知道了」）
+- Then 按 `Shift+Tab` 后焦点落到最后一个（`Got it`）
 
 **S17 · 背景滚动锁定与恢复**
 - When 面板打开
@@ -135,8 +137,8 @@
 
 **S14 · 窄屏悬浮按钮**
 - When 视口 320px
-- Then 悬浮按钮可点击、`aria-label="打开 AI 助手"` 仍存在
-- And 即使隐藏「AI 助手」文字，也不能变成无名按钮
+- Then 悬浮按钮可点击、`aria-label="Open the AI assistant"` 仍存在
+- And 即使隐藏 `AI assistant` 文字，也不能变成无名按钮
 
 ---
 
@@ -166,8 +168,8 @@ export function useAiAssistant(): AiAssistantContextValue
 
 | variant | 元素 | 必填属性 | 文案 |
 |---|---|---|---|
-| `header` | `<button type="button">` | `aria-haspopup="dialog"`、`aria-expanded={isOpen}`、`data-testid="ai-header"` | 图标 + 「AI 助手」 |
-| `floating` | `<button type="button">` | 同上 + `aria-label="打开 AI 助手"`、`data-testid="ai-floating"` | 图标 + 「AI 助手」（窄屏仅图标） |
+| `header` | `<button type="button">` | `aria-haspopup="dialog"`、`aria-expanded={isOpen}`、`data-testid="ai-header"` | 图标 + `AI assistant` |
+| `floating` | `<button type="button">` | 同上 + `aria-label="Open the AI assistant"`、`data-testid="ai-floating"` | 图标 + `AI assistant`（窄屏仅图标） |
 
 ### 3.4 面板契约
 
@@ -175,10 +177,10 @@ export function useAiAssistant(): AiAssistantContextValue
 |---|---|---|
 | 容器 | `<div data-testid="ai-overlay" onClick={close}>` | 遮罩层，点击关闭 |
 | 对话框 | `<section role="dialog" aria-modal="true" aria-labelledby="ai-assistant-title">` | 内部点击 `stopPropagation` |
-| 标题 | `<h2 id="ai-assistant-title">AI 旅行助手</h2>` | id 必须与 `aria-labelledby` 一致；不得用 `h1` |
-| 关闭按钮 | `aria-label="关闭 AI 助手"` | 打开后作为初始焦点 |
+| 标题 | `<h2 id="ai-assistant-title">AI travel assistant</h2>` | id 必须与 `aria-labelledby` 一致；不得用 `h1` |
+| 关闭按钮 | `aria-label="Close the AI assistant"` | 打开后作为初始焦点 |
 | 能力清单 | 3 个 `<li>` | 纯文案，不可点击 |
-| 免责说明 | 「当前是纯前端占位入口，不会发送任何请求。」 | 必须保留，防止误解 |
+| 免责说明 | `This is a front-end placeholder. It sends no requests.` | 必须保留，防止误解 |
 
 ---
 
@@ -197,7 +199,7 @@ export function useAiAssistant(): AiAssistantContextValue
 - [ ] 按 `Esc` 可关闭
 - [ ] 点击遮罩可关闭
 - [ ] 点击「×」可关闭
-- [ ] 点击「知道了」可关闭
+- [ ] 点击 `Got it` 可关闭
 - [ ] 点击面板内部不关闭
 
 ### 4.3 焦点与无障碍
@@ -259,7 +261,7 @@ export function useAiAssistant(): AiAssistantContextValue
 | 默认（320–767px） | 底部抽屉式：贴底、通栏、上圆角，最大高 `85vh` 内部滚动 |
 | `≥768px` | 居中卡片：最大宽 `480px`，上下留白 `24px` |
 
-- 悬浮按钮：`≥768px` 显示「AI 助手」文字 + 图标；窄屏仅图标（必须保留 `aria-label`）
+- 悬浮按钮：`≥768px` 显示 `AI assistant` 文字 + 图标；窄屏仅图标（必须保留 `aria-label`）
 - 悬浮按钮需避让安全区（`padding-bottom: env(safe-area-inset-bottom)`）
 - 面板打开时不得引起页面横向滚动
 

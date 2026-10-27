@@ -12,15 +12,17 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；下表与场景中的卡片标题、描述、动作文案一律以英文为准。
+
 ### 1.1 包含
 
 | # | 卡片 | 形态 | 跳转 / 动作 |
 |---|---|---|---|
-| 1 | 旅游社区 | `<Link>` | `/community` |
-| 2 | 景点攻略 | `<Link>` | `/attractions` |
-| 3 | AI 助手 | `<button>` | 调用 `useAiAssistant().open()`（不跳路由） |
+| 1 | Travel community | `<Link>` | `/community` |
+| 2 | Attraction guides | `<Link>` | `/attractions` |
+| 3 | AI assistant | `<button>` | 调用 `useAiAssistant().open()`（不跳路由） |
 | 4 | 区块外壳 | `<section data-section="feature-nav" aria-labelledby="feature-nav-title">` | — |
-| 5 | 区块标题 | eyebrow `Explore` + h2「从哪里开始」+ 说明「三个入口，覆盖逛、查、问三件事。」 | — |
+| 5 | 区块标题 | eyebrow `Explore` + h2 `Where to start` + 说明 `Three entrances covering three things: wander, look up, ask.` | — |
 | 6 | 三个内联 SVG 图标（人像 / 地图针 / 火花） | `aria-hidden` + `focusable="false"` | 纯装饰 |
 | 7 | 色调变体 | `green` / `sand` / `accent` 三套 | 仅视觉区分 |
 
@@ -28,7 +30,7 @@
 
 | 排除项 | 归属 |
 |---|---|
-| 顶栏导航（旅游社区 / 景点攻略） | `site-header` |
+| 顶栏导航（`Travel community` / `Attraction guides`） | `site-header` |
 | AI 面板本体（遮罩、内容、关闭逻辑） | U4 |
 | 社区页 / 景点页的实际内容 | `/community`、`/attractions` 占位页 |
 | 卡片数据来自接口 | — | 三张卡为**静态配置**，不取数 |
@@ -57,34 +59,34 @@
 
 **S1 · 三张卡渲染**
 - When 首页加载
-- Then 区块内恰有 3 个可交互单元，顺序为 旅游社区 → 景点攻略 → AI 助手
+- Then 区块内恰有 3 个可交互单元，顺序为 `Travel community` → `Attraction guides` → `AI assistant`
 - And 每张卡都含 图标、标题、描述、动作文案四要素
 
 **S2 · 路由跳转**
-- When 点击「旅游社区」
-- Then 导航到 `/community`；点击「景点攻略」导航到 `/attractions`
+- When 点击 `Travel community`
+- Then 导航到 `/community`；点击 `Attraction guides` 导航到 `/attractions`
 - And 两者均为 `<a href>`，支持中键 / 新标签页打开
 
 **S3 · 打开 AI 面板**
-- When 点击「AI 助手」卡
+- When 点击 `AI assistant` 卡
 - Then 调用 `open()`，面板出现（`role="dialog"`）
 - And 当前 URL **不变**，不产生历史记录
 
 **S4 · 区块语义**
 - When 屏幕阅读器读取
-- Then 区块由 `aria-labelledby="feature-nav-title"` 命名，标题为 h2「从哪里开始」
+- Then 区块由 `aria-labelledby="feature-nav-title"` 命名，标题为 h2 `Where to start`
 - And 三个图标被跳过（`aria-hidden="true"`），不朗读为图片
 
 **S5 · 键盘操作**
 - When 用 Tab 遍历
-- Then 焦点依次落在 旅游社区 → 景点攻略 → AI 助手
+- Then 焦点依次落在 `Travel community` → `Attraction guides` → `AI assistant`
 - And 每张卡有可见焦点环，Enter / Space 均可触发
 
 ### 2.2 异常路径
 
 **S6 · 上下文缺失**
 - When 组件在 `AiAssistantProvider` 之外渲染
-- Then `useAiAssistant()` 抛出 `useAiAssistant 必须在 AiAssistantProvider 内使用`
+- Then `useAiAssistant()` 抛出 `useAiAssistant must be used inside AiAssistantProvider`
 - And 不允许静默失败（禁用按钮或空实现）
 
 **S7 · 路由目标不存在**
@@ -103,7 +105,7 @@
 - And 图标与标题不得被挤压变形
 
 **S10 · 面板已打开时再次点击**
-- When 面板已打开，用户再次点击「AI 助手」卡
+- When 面板已打开，用户再次点击 `AI assistant` 卡
 - Then 不产生第二个面板实例（`isOpen` 幂等置 true）
 - And 不抛错
 
@@ -130,9 +132,9 @@ export function FeatureNav(): JSX.Element
 interface LinkEntry {
   key: string          // 唯一，用作 React key
   href: string         // 站内绝对路径，必须以 / 开头
-  title: string        // 卡片标题，2–6 字
-  description: string  // 一句话描述，20–30 字
-  action: string       // 动作文案，4–8 字，展示为「{action} →」
+  title: string        // 卡片标题，2–4 个英文单词
+  description: string  // 一句话描述，约 10–16 个英文单词
+  action: string       // 动作短语，2–4 个英文单词，展示为 `{action} →`
   tone: 'green' | 'sand'
   Icon: () => JSX.Element  // 内联 SVG，必须 aria-hidden
 }
@@ -142,7 +144,7 @@ interface LinkEntry {
 |---|---|---|
 | `key` | 唯一、非空 | React key 冲突 |
 | `href` | `/community` / `/attractions` 二选一 | 死链 |
-| `title` | 非空中文 | 卡片无名 |
+| `title` | 非空英文 | 卡片无名 |
 | `description` | 非空，单行语义完整 | 文案截断后语义残缺 |
 | `tone` | 闭集 2 值 | `styles[tone]` 取到 `undefined` |
 | `Icon` | 返回 SVG，根节点含 `aria-hidden="true"` 与 `focusable="false"` | 屏幕阅读器朗读空图 |
@@ -162,15 +164,15 @@ interface LinkEntry {
 
 ### 4.1 内容
 
-- [ ] 恰有 3 张卡，顺序为 旅游社区 → 景点攻略 → AI 助手
+- [ ] 恰有 3 张卡，顺序为 `Travel community` → `Attraction guides` → `AI assistant`
 - [ ] 三张卡标题、描述、动作文案与 §1.1 一致（动作文案带 `→`）
-- [ ] 区块 eyebrow 为 `Explore`，h2 为「从哪里开始」，说明文案一致
+- [ ] 区块 eyebrow 为 `Explore`，h2 为 `Where to start`，说明文案一致
 - [ ] 三处图标均为内联 SVG 且 `aria-hidden="true" focusable="false"`
 
 ### 4.2 交互
 
-- [ ] 「旅游社区」`href="/community"`，「景点攻略」`href="/attractions"`
-- [ ] 点击「AI 助手」后出现 AI 面板，URL 不变化
+- [ ] `Travel community` `href="/community"`，`Attraction guides` `href="/attractions"`
+- [ ] 点击 `AI assistant` 后出现 AI 面板，URL 不变化
 - [ ] 三个入口 Tab 顺序 = 视觉顺序，焦点环可见
 - [ ] AI 卡在面板已打开时重复点击不报错、不叠加面板
 

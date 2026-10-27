@@ -12,6 +12,8 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；表单、账户区与错误文案一律以英文为准。
+
 ### 1.1 包含
 
 | # | 能力 | 落点 |
@@ -34,7 +36,7 @@
 | 服务端会话、Cookie、HttpOnly | 未立项 |
 | 第三方登录（微信 / GitHub / OAuth） | 未立项 |
 | 找回密码、邮箱验证、验证码 | 未立项 |
-| 权限校验与路由守卫（`admin` 仅用于展示「编辑」标） | 未立项 |
+| 权限校验与路由守卫（`admin` 仅用于展示 `Editor` 标） | 未立项 |
 | 收藏 / 发帖等依赖登录的业务能力 | 未立项 |
 | AI 助手面板 | U4 |
 
@@ -62,11 +64,11 @@
 **S1 · 首帧会话恢复（已登录）**
 - When 页面加载且本地存在未过期会话
 - Then 状态由 `loading` 变为 `user`，`user` 为会话中的用户对象
-- And 顶栏展示用户名（`admin` 角色额外展示「编辑」标）
+- And 顶栏展示用户名（`admin` 角色额外展示 `Editor` 标）
 
 **S2 · 首帧会话恢复（未登录）**
 - When 本地无会话
-- Then 状态变为 `guest`，顶栏展示「登录 / 注册」链接指向 `/login`
+- Then 状态变为 `guest`，顶栏展示 `Log in / Sign up` 链接指向 `/login`
 
 **S3 · 注册成功**
 - When 提交合法邮箱、≥6 位密码、≥2 字用户名，且两次密码一致
@@ -84,7 +86,7 @@
 - And 注册时同一邮箱的不同大小写写法被判为重复
 
 **S6 · 退出登录**
-- When 点击「退出」
+- When 点击 `Log out`
 - Then `wanderchain.session` 被移除，状态变为 `guest`
 - And 账号表 `wanderchain.accounts` **不受影响**（已注册账号仍可再次登录）
 
@@ -92,29 +94,29 @@
 
 **S7 · 邮箱格式非法**
 - When 提交不含 `@` 或不含点号的邮箱
-- Then 抛出 `AuthError('请输入有效的邮箱地址')`，表单以 `role="alert"` 展示
+- Then 抛出 `AuthError('Enter a valid email address')`，表单以 `role="alert"` 展示
 - And 不写入任何存储
 
 **S8 · 密码过短**
 - When 提交长度 < 6 的密码
-- Then 抛出 `AuthError('密码至少 6 位')`，状态保持 `guest`
+- Then 抛出 `AuthError('Password must be at least 6 characters')`，状态保持 `guest`
 
 **S9 · 用户名过短**
 - When 注册时用户名 trim 后长度 < 2
-- Then 抛出 `AuthError('用户名至少 2 个字符')`
+- Then 抛出 `AuthError('Username must be at least 2 characters')`
 
 **S10 · 邮箱重复**
 - When 注册一个已存在于种子表或已注册表中的邮箱
-- Then 抛出 `AuthError('该邮箱已经注册过了')`，账号表不被写入
+- Then 抛出 `AuthError('This email is already registered')`，账号表不被写入
 
 **S11 · 凭据不匹配**
 - When 邮箱不存在或密码错误
-- Then 抛出 `AuthError('邮箱或密码不正确')`
-- And 错误文案不区分「账号不存在」与「密码错误」（避免枚举账号）
+- Then 抛出 `AuthError('Incorrect email or password')`
+- And 错误文案不区分「账号不存在」与「密码错误」，文案完全一致（避免枚举账号）
 
 **S12 · 两次密码不一致**
 - When 注册模式下两次输入不同且点击提交
-- Then 直接展示「两次输入的密码不一致」
+- Then 直接展示 `The two passwords do not match`
 - And **不调用** `register`，不产生任何存储写入
 
 **S13 · 会话过期**
@@ -127,7 +129,7 @@
 
 **S15 · 提交中重复点击**
 - When 请求进行中再次点击提交
-- Then 按钮 `disabled` 且文案为「处理中…」，不产生第二次调用
+- Then 按钮 `disabled` 且文案为 `Working…`，不产生第二次调用
 
 **S16 · 服务端渲染阶段**
 - When 在无 `window` 的环境执行本模块
@@ -167,9 +169,9 @@ export interface AuthContextValue {
 | 组件 | Props | 约束 |
 |---|---|---|
 | `AuthProvider` | `{ children: ReactNode }` | 必须包裹整个 `body` 内容；页面内**只能出现一个** |
-| `AuthForm` | `{ mode: 'login' \| 'register' }` | 闭集 2 值；决定是否渲染「用户名」「确认密码」两个字段与文案 |
+| `AuthForm` | `{ mode: 'login' \| 'register' }` | 闭集 2 值；决定是否渲染 `Username` / `Confirm password` 两个字段与文案 |
 | `AccountMenu` | 无 | 必须位于 `AuthProvider` 内，否则抛错 |
-| `useAuth()` | 无 | 在 Provider 外调用抛 `useAuth 必须在 AuthProvider 内使用` |
+| `useAuth()` | 无 | 在 Provider 外调用抛 `useAuth must be used inside AuthProvider` |
 
 ### 3.3 字段与规则约束
 
@@ -200,9 +202,9 @@ export interface AuthContextValue {
 - [ ] 种子账号 `traveler@wanderchain.dev / traveler123` 可登录且 `role === 'user'`
 - [ ] 邮箱大小写与首尾空格不影响登录结果
 - [ ] 注册成功后账号入 `wanderchain.accounts`、会话入 `wanderchain.session`
-- [ ] 重复邮箱（含大小写差异）注册被拒绝，文案为「该邮箱已经注册过了」
+- [ ] 重复邮箱（含大小写差异）注册被拒绝，文案为 `This email is already registered`
 - [ ] 邮箱非法 / 密码 < 6 / 用户名 < 2 分别给出对应文案
-- [ ] 登录失败统一文案「邮箱或密码不正确」
+- [ ] 登录失败统一文案 `Incorrect email or password`
 - [ ] 两次密码不一致时不调用 `register`，无存储写入
 - [ ] 退出后会话被清除，账号表保留，原账号可再次登录
 
@@ -211,12 +213,12 @@ export interface AuthContextValue {
 - [ ] 过期会话被删除并回到 `guest`
 - [ ] 会话 JSON 损坏时被删除且不白屏
 - [ ] 无 `window` 环境下不抛错（`readSession()` 返回 `null`）
-- [ ] 提交中按钮 `disabled` 且文案「处理中…」
+- [ ] 提交中按钮 `disabled` 且文案 `Working…`
 
 ### 4.3 界面
 
-- [ ] 顶栏三态：加载时占位（无文字）、访客时「登录 / 注册」、登录后「用户名 + 退出」
-- [ ] `admin` 用户额外显示「编辑」标
+- [ ] 顶栏三态：加载时占位（无文字）、访客时 `Log in / Sign up`、登录后「用户名 + `Log out`」
+- [ ] `admin` 用户额外显示 `Editor` 标
 - [ ] 表单错误以 `role="alert"` 呈现
 - [ ] 登录页展示演示账号提示，注册页不展示
 - [ ] 登录页与注册页互有跳转链接
@@ -251,7 +253,7 @@ export interface AuthContextValue {
 
 | 现状元素 | 目标组件 |
 |---|---|
-| `<label><span>邮箱</span><input/></label>` | `Label` + `Input` |
+| `<label><span>Email</span><input/></label>` | `Label` + `Input` |
 | 提交按钮 | `Button`（`disabled` 由 `pending` 驱动） |
 | 错误提示 `<p role="alert">` | `Alert` variant=`destructive`，或保留原生 `role="alert"` |
 | 顶栏用户名 + 退出 | `DropdownMenu`（`DropdownMenuTrigger` + `DropdownMenuItem`） |

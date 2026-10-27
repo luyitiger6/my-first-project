@@ -13,6 +13,8 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；下表文案一律以英文为准。
+
 ### 1.1 包含
 
 | # | 功能 | 说明 |
@@ -20,12 +22,12 @@
 | 1 | 背景大图 | 全宽 `next/image` `fill` + `object-fit: cover`，`sizes="100vw"`、`priority`、`alt=""`，容器 `aria-hidden` |
 | 2 | 遮罩层 | `.veil` 竖向 + 横向两段深色渐变，保证叠字对比度 |
 | 3 | 底部渐变 | `.fade` 把大图过渡到 `--wc-sand`，与下一屏无缝衔接 |
-| 4 | 眉标 | 固定文案 `wanderchain · 城市旅行指南`，颜色改用 `--wc-accent-soft` 以适配深色背景 |
-| 5 | 主标题（h1） | 全页唯一 h1，`id="hero-title"`，文案「把想去的地方，走成一条能出发的路线。」 |
+| 4 | 眉标 | 固定文案 `wanderchain · City travel guide`，颜色改用 `--wc-accent-soft` 以适配深色背景 |
+| 5 | 主标题（h1） | 全页唯一 h1，`id="hero-title"`，文案 `Turn a place you want to see into a route you can start today.` |
 | 6 | 导语段落 | 由城市白名单派生的城市数 + 三类内容说明 |
 | 7 | 站内搜索框 | 原生 `<form method="get" action="/search">`，输入 `type="search"` `name="q"` 必填，隐藏 `label` |
-| 8 | 文字入口行 | `进入旅游社区` → `/community`、`查看景点攻略` → `/attractions`、`按城市逛 →` → `#cities` |
-| 9 | 城市规模提示 | 「当前覆盖 N 座城市，每周由编辑重新走一遍。」N = 城市白名单中除 `all` 之外的数量 |
+| 8 | 文字入口行 | `Enter the travel community` → `/community`、`Browse attraction guides` → `/attractions`、`Browse by city →` → `#cities` |
+| 9 | 城市规模提示 | `Currently covering N cities, re-walked by our editors every week.` N = 城市白名单中除 `all` 之外的数量 |
 | 10 | 语义与无障碍 | `section[aria-labelledby="hero-title"]`、表单 `role="search"`、焦点可见、配色只用 `--wc-*` token |
 | 11 | 响应式 | desktop-first：默认宽屏左对齐叠字，窄屏收窄留白、搜索框改纵向 |
 
@@ -53,7 +55,7 @@
 
 **S1 · 首屏渲染**
 - When 访问 `/`
-- Then 页面出现且仅出现 1 个 `h1`，文案为「把想去的地方，走成一条能出发的路线。」
+- Then 页面出现且仅出现 1 个 `h1`，文案为 `Turn a place you want to see into a route you can start today.`
 - And 眉标、导语、城市规模提示文本与 §1.1 一致
 
 **S2 · 背景大图出图**
@@ -62,7 +64,7 @@
 - And 图片由自定义 loader 按宽度档位直接向 CDN 取图，不经过 `/_next/image`
 
 **S3 · 搜索框提交**
-- When 用户输入关键词并提交（回车或点击「搜索」）
+- When 用户输入关键词并提交（回车或点击 `Search`）
 - Then 浏览器以 GET 方式跳到 `/search?q=<关键词>`
 - And 输入为空时被 `required` 拦在浏览器端，不产生空查询请求
 

@@ -13,6 +13,8 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；结果标题、城市标与元信息只读英文字段，中文内容字段仍参与检索。
+
 ### 1.1 包含
 
 | # | 功能 | 说明 |
@@ -20,9 +22,9 @@
 | 1 | 查询参数解析 | 读 `q`，只取第一个值；缺失或只有空白 → 引导态 |
 | 2 | 全量检索 | 直接扫 `lib/home/mock-data.ts` 的三个原始数组，不受首页 `*_LIMIT` 截断 |
 | 3 | 发布态过滤 | 帖子与景点只收 `status === 'published'`，草稿与已删除不出现在结果里 |
-| 4 | 匹配字段 | 编辑推荐 `title` / `summary` / `editor` / 城市中文名；帖子 `title` / `author` / 城市中文名；景点 `name` / 城市中文名 |
-| 5 | 分组 | 固定顺序 编辑推荐 → 帖子 → 景点，组内保持数据源顺序，只输出有命中的组 |
-| 6 | 结果条目 | 标题 + 城市中文名 + 一条类型元信息；条目本身**不是**链接 |
+| 4 | 匹配字段 | 编辑推荐 `title` / `titleEn` / `summary` / `summaryEn` / `editor` / `editorEn` / 城市中英文名；帖子 `title` / `titleEn` / `author` / `authorEn` / 城市中英文名；景点 `name` / `nameEn` / 城市中英文名。城市 slug 不单独参与匹配 |
+| 5 | 分组 | 固定顺序 `Editor's picks` → `Posts` → `Attractions`，组内保持数据源顺序，只输出有命中的组 |
+| 6 | 结果条目 | 英文标题 + 城市英文名 + 一条英文类型元信息；条目本身**不是**链接 |
 | 7 | 分组回链 | 每组末尾回首页对应锚点：`/#editor-picks`、`/#hot-posts`、`/#hot-attractions` |
 | 8 | 三态 | 引导态（无关键词）/ 空态（零命中）/ 结果态（有命中） |
 | 9 | 站点框架 | 复用 `SiteHeader` / `SiteFooter`，全页唯一 `h1` |
@@ -49,13 +51,13 @@
 
 **S1 · 引导态**
 - When 访问 `/search`，或 `q` 只含空白
-- Then 渲染「输入一个城市、帖子或景点的名字」引导文案与回首页链接
+- Then 渲染 `Type the name of a city, a post or an attraction to search across everything.` 引导文案与回首页链接
 - And 不渲染任何结果分组
 
 **S2 · 三类同时命中**
 - When 访问 `/search?q=成都`
-- Then 分组顺序为 编辑推荐 → 帖子 → 景点，每组显示组名与条数
-- And 顶部回显「关键词「成都」共 N 条结果。」
+- Then 分组顺序为 `Editor's picks` → `Posts` → `Attractions`，每组显示组名与条数
+- And 顶部回显 `{N} results for “成都”.`
 
 **S3 · 被首页截断的内容可见**
 - When 搜索只出现在首页列表之外的内容（如 `沙面岛`、`回民街`、`后海村`）
@@ -63,12 +65,12 @@
 - And 检索不复用 `mockRepository.list*`（它们按首页上限截断）
 
 **S4 · 关键词归一化**
-- When 访问 `/search?q=%20%20成都%20%20`
-- Then 页面回显「成都」，结果与 `q=成都` 完全一致
-- And 大小写不敏感；城市 slug（如 `chengdu`）不作为匹配依据
+- When 访问 `/search?q=%20%20chengdu%20%20`
+- Then 页面回显 `chengdu`，结果与 `q=chengdu` 完全一致
+- And 大小写不敏感（`Chengdu` 同样命中）；命中经由城市英文名 `Chengdu`，slug 不单独参与匹配 —— 英文名与 slug 不同形的 `xian` 零命中
 
 **S5 · 分组回链**
-- When 用户点击某组末尾的「在首页看…」链接
+- When 用户点击某组末尾的 `See ... on the homepage` 链接
 - Then 跳到首页对应区块：`/#editor-picks`、`/#hot-posts`、`/#hot-attractions`
 - And 三个区块的 `<section>` 带有对应 `id`
 
@@ -76,7 +78,7 @@
 
 **S6 · 零命中**
 - When 访问 `/search?q=zzz`
-- Then 渲染「没有找到与「zzz」有关的内容。」空态与回首页入口
+- Then 渲染 `Nothing found for “zzz”.` 空态与回首页入口
 - And 不渲染空的结果分组
 
 **S7 · 草稿 / 已删除内容不可搜**
@@ -108,7 +110,7 @@ export interface SearchHit {
   readonly id: number
   readonly title: string
   readonly city: CitySlug
-  readonly cityLabel: string // city 为 all 时显示「全城」
+  readonly cityLabel: string // city 为 all 时显示 `All cities`，否则为 `cityNameEn`
   readonly meta: string // 编辑署名 / 作者与评论数 / 评分与浏览量
 }
 
@@ -136,7 +138,7 @@ export function searchContent(rawQuery: string): SearchOutcome
 |---|---|---|---|
 | `query` | `string` | `rawQuery.trim()`，空串表示未提问 | 页面渲染引导态 |
 | `total` | `number` | 等于各组 `items.length` 之和 | 顶部条数与分组不符 |
-| `groups` | `SearchGroup[]` | 顺序固定，不含空组 | 出现「0 条」的空分组 |
+| `groups` | `SearchGroup[]` | 顺序固定，不含空组 | 出现 `0` 条的空分组 |
 | `items` | `SearchHit[]` | 保持数据源顺序，不重排 | 结果顺序不可预期 |
 | `anchorHref` | `string` | 必须是三个首页锚点之一 | 回链落到 404 或错位区块 |
 
@@ -149,7 +151,7 @@ export function searchContent(rawQuery: string): SearchOutcome
 | 数据来源 | `searchContent()` 一个纯函数；页面不直接读 `mock-data` |
 | 状态 | 无 `useState` / `useEffect`；三态由 `query` 与 `total` 推导 |
 | 副作用 | 无 `fetch` / `XHR` / `localStorage` |
-| 元信息 | 导出 `metadata`（title「搜索」+ description），全页唯一 `h1` |
+| 元信息 | 导出 `metadata`（title `Search` + description），全页唯一 `h1` |
 
 ---
 
@@ -157,7 +159,7 @@ export function searchContent(rawQuery: string): SearchOutcome
 
 ### 4.1 结构
 
-- [x] 全页唯一 `h1`，文案「站内搜索」
+- [x] 全页唯一 `h1`，文案 `Search the site`
 - [x] 含 `SiteHeader`（`banner`）与 `SiteFooter`（`contentinfo`）
 - [x] 每个分组是 `<section aria-labelledby>`，组名为 `h2`
 - [x] 结果条目是 `li`，内部不含 `<a>`
@@ -172,10 +174,11 @@ export function searchContent(rawQuery: string): SearchOutcome
 ### 4.3 数据
 
 - [x] 无 `q` 或 `q` 只含空白 → 引导态，无分组
-- [x] `q=成都` → 三类命中，分组顺序 编辑推荐 → 帖子 → 景点
-- [x] `q=沙面岛` → 命中被首页上限截断的景点
+- [x] `q=成都` → 三类命中，分组顺序 `Editor's picks` → `Posts` → `Attractions`
+- [x] `q=chengdu` 与 `q=成都` 命中同一组结果（城市中文名与英文名都参与匹配）
+- [x] `q=沙面岛` → 命中被首页上限截断的景点（中文内容字段仍可搜）
 - [x] `draft` / `removed` 内容零命中
-- [x] 关键词回显去首尾空白；`chengdu` 零命中
+- [x] 关键词回显去首尾空白；`xian` 零命中（英文名 `Xi'an`，slug 不参与匹配）
 
 ### 4.4 响应式与无障碍
 

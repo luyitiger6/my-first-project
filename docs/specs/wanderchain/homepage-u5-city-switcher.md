@@ -12,6 +12,8 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；城市 chip 与右上角说明只读 `nameEn` / `taglineEn`，中文字段保留为内容资产。
+
 ### 1.1 包含
 
 | # | 能力 | 说明 |
@@ -20,9 +22,9 @@
 | 2 | 当前城市高亮 | `aria-pressed="true"` + `active` 样式类 |
 | 3 | 点击切换城市 | `router.replace` 改写 URL，**不新增历史记录** |
 | 4 | 保留其他查询参数 | 切换时保留 `query` 中除 `city` 外的全部单值参数 |
-| 5 | 选中「全部」时移除参数 | URL 中删除 `city`，回到 `/?`（或仅保留其他参数） |
-| 6 | 当前城市说明 | 区块右上角展示「当前：<城市名> · <城市 tagline>」 |
-| 7 | 区块锚点 `id="cities"` | 供 hero 的「按城市逛 →」跳转 |
+| 5 | 选中 `All cities` 时移除参数 | URL 中删除 `city`，回到 `/?`（或仅保留其他参数） |
+| 6 | 当前城市说明 | 区块右上角展示 `Now: <city name> · <city tagline>` |
+| 7 | 区块锚点 `id="cities"` | 供 hero 的 `Browse by city →` 跳转 |
 | 8 | 重复点击当前城市 | 短路，不触发导航 |
 
 ### 1.2 不包含
@@ -59,31 +61,31 @@
 
 **S1 · 渲染 8 个 chip**
 - When 首页加载
-- Then 依次渲染 全部 / 北京 / 上海 / 广州 / 成都 / 西安 / 杭州 / 三亚
+- Then 依次渲染 All cities / Beijing / Shanghai / Guangzhou / Chengdu / Xi'an / Hangzhou / Sanya
 - And 每个 chip 是 `<button type="button">`，带 `aria-pressed`
 
 **S2 · 选中态**
 - When `activeCity='beijing'`
-- Then 「北京」`aria-pressed="true"`，其余 7 个为 `false`
-- And 「北京」额外带激活样式类
+- Then `Beijing` `aria-pressed="true"`，其余 7 个为 `false`
+- And `Beijing` 额外带激活样式类
 
 **S3 · 切换到具体城市**
-- When 在 `/?` 下点击「成都」
+- When 在 `/?` 下点击 `Chengdu`
 - Then `router.replace('/?city=chengdu')`
 - And 浏览器历史**不新增**条目（后退仍回到进入首页前的位置）
 
 **S4 · 保留其他参数**
-- When 在 `/?city=beijing&utm=x` 下点击「上海」
+- When 在 `/?city=beijing&utm=x` 下点击 `Shanghai`
 - Then 跳转到 `/?city=shanghai&utm=x`
 - And `utm` 未被丢弃
 
 **S5 · 切回全部**
-- When 在 `/?city=beijing&utm=x` 下点击「全部」
+- When 在 `/?city=beijing&utm=x` 下点击 `All cities`
 - Then 跳转到 `/?utm=x`（`city` 被删除，其余保留）
 
 **S6 · 说明文案跟随**
 - When 当前城市为 `hangzhou`
-- Then 右上角展示「当前：杭州 · 西湖以西是茶山」
+- Then 右上角展示 `Now: Hangzhou · Tea hills west of the lake`
 - And 切换到其他城市后文案同步更新
 
 **S7 · 重复点击当前城市**
@@ -94,11 +96,11 @@
 
 **S8 · 非法 `activeCity`**
 - When 传入不在 `CITIES` 中的 slug（防御性场景，正常链路由 `parseCity` 拦截）
-- Then 说明文案回退到首个城市（全部）的 tagline，页面不报错
+- Then 说明文案回退到首个城市（`All cities`）的 tagline，页面不报错
 - And 8 个 chip 仍全部渲染，无任何 chip 被标记为选中
 
 **S9 · `query` 为空对象**
-- When `query={}` 时点击「北京」
+- When `query={}` 时点击 `Beijing`
 - Then 跳转到 `/?city=beijing`（不出现 `/?` 后紧跟空串或 `?&`）
 
 **S10 · `query` 含 `city` 字段**
@@ -145,16 +147,18 @@ export function CitySwitcher({ activeCity, query }: CitySwitcherProps): JSX.Elem
 ```ts
 interface CityOption {
   slug: CitySlug   // 8 值闭集
-  name: string     // 中文名，2–3 字
-  tagline: string  // 一句话，8–12 字
+  name: string     // 中文名，2–3 字（内容资产，不渲染）
+  nameEn: string   // 英文名，界面唯一可读名称
+  tagline: string  // 中文一句话（内容资产，不渲染）
+  taglineEn: string // 英文一句话，2–6 个单词
 }
 ```
 
 | 字段 | 约束 | 违反后果 |
 |---|---|---|
 | `slug` | 唯一，与 `CitySlug` 一一对应 | chip key 冲突 |
-| `name` | 非空，用于按钮可访问名称 | 屏幕阅读器读不到城市名 |
-| `tagline` | 非空，`all` 也必须有不限城市语义 | 说明行出现空白 |
+| `nameEn` | 非空，用于按钮可访问名称 | 屏幕阅读器读不到城市名 |
+| `taglineEn` | 非空，`all` 也必须有不限城市语义 | 说明行出现空白 |
 
 ### 3.4 URL 改写规则
 
@@ -172,16 +176,16 @@ interface CityOption {
 
 ### 4.1 渲染
 
-- [ ] 8 个 chip，顺序为 全部 / 北京 / 上海 / 广州 / 成都 / 西安 / 杭州 / 三亚
+- [ ] 8 个 chip，顺序为 All cities / Beijing / Shanghai / Guangzhou / Chengdu / Xi'an / Hangzhou / Sanya
 - [ ] 每个 chip 为 `<button type="button">` 且带 `aria-pressed`
 - [ ] 选中城市 `aria-pressed="true"`，其余为 `"false"`
-- [ ] 右上角文案为「当前：<城市名> · <tagline>」
+- [ ] 右上角文案为 `Now: <city name> · <tagline>`
 - [ ] 区块容器带 `id="cities"` 与 `data-section="city-switcher"`
 
 ### 4.2 切换行为
 
 - [ ] 点击非当前城市后 URL 变为 `/?city=<slug>`
-- [ ] 「全部」时 URL 中不含 `city` 参数
+- [ ] `All cities` 时 URL 中不含 `city` 参数
 - [ ] 其他查询参数在切换后被保留
 - [ ] 点击当前城市不产生导航
 - [ ] 连续快速切换后 URL 与最后点击一致
@@ -252,7 +256,7 @@ interface CityOption {
 | 2 | 保留其他查询参数 | 已实现（`URLSearchParams(query)`） | 一致 |
 | 3 | 8 个 chip | 已实现（`CITIES` 8 项） | 一致 |
 | 4 | shadcn `ToggleGroup` | CSS Modules 手写按钮 | 换栈需保留短路逻辑与 `aria-pressed` |
-| 5 | 记住上次城市 | **未实现**（只认 URL） | 直接访问 `/` 永远从「全部」开始 |
+| 5 | 记住上次城市 | **未实现**（只认 URL） | 直接访问 `/` 永远从 `All cities` 开始 |
 
 ---
 

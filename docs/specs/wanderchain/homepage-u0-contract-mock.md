@@ -12,6 +12,8 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；数据层同时保留中英文字段，界面只读英文字段。
+
 ### 1.1 包含
 
 | # | 能力 | 落点 |
@@ -19,7 +21,7 @@
 | 1 | 领域类型：城市、内容状态、三类内容实体、查询与列表结果 | `lib/home/types.ts` |
 | 2 | 8 项城市表（`all` + 7 城）与默认值 | `lib/home/cities.ts` |
 | 3 | 城市入参归一化：缺失 / 非法 / 数组 → `all` | `parseCity` |
-| 4 | 城市 slug → 中文名 | `cityName` |
+| 4 | 城市 slug → 中文名 / 英文名 | `cityName` / `cityNameEn` |
 | 5 | 列表上限常量：6 / 10 / 5 | `lib/home/repository.ts` |
 | 6 | 仓储接口 `HomeRepository` 与 Mock 实现 | `mockRepository` |
 | 7 | 城市过滤、排序、截断 + 总数统计 | 仓储内部 |
@@ -87,9 +89,9 @@
 - And 三个上限分别为 `EDITOR_PICKS_LIMIT=6`、`HOT_POSTS_LIMIT=10`、`HOT_ATTRACTIONS_LIMIT=5`
 
 **S6 · 格式化**
-- When `formatCount(20000)` → `'2 万'`；`formatCount(12345)` → `'1.2 万'`；`formatCount(999)` → `'999'`
+- When `formatCount(20000)` → `'20,000'`；`formatCount(12345)` → `'12,345'`；`formatCount(999)` → `'999'`
 - When `formatDate('2026-10-05T00:00:00Z')`
-- Then 输出 `'10 月 5 日'`（本地时区，无前导零、不含年份）
+- Then 输出 `'Oct 5'`（`en-US` 口径，时区固定 `Asia/Shanghai`，不含年份）
 
 ### 2.2 异常路径
 
@@ -99,7 +101,7 @@
 
 **S8 · 城市表无此 slug**
 - When `cityName('unknown' as CitySlug)` 遇到未收录项
-- Then 返回 `'全部'`（兜底文案），不返回 `undefined`
+- Then 返回 `'全部'`（中文名兜底），不返回 `undefined`；`cityNameEn` 的兜底为 `'All cities'`
 
 **S9 · 空结果**
 - When 某城市无任何匹配内容
@@ -112,7 +114,7 @@
 
 **S11 · 时间字段异常**
 - When 某条 `publishedAt` 不是合法 ISO 字符串
-- Then 排序不抛错（`Number.isNaN` 参与比较时按 0 处理），`formatDate` 输出 `'NaN 月 NaN 日'` 视为数据缺陷，须由 Mock 数据修订而非代码兜底
+- Then 排序不抛错（`Number.isNaN` 参与比较时按 0 处理），`formatDate` 对 Invalid Date 抛出 `RangeError`，视为数据缺陷，须由 Mock 数据修订而非代码兜底
 - And 该条必须在 `mock-data.ts` 中修正，不允许在生产数据中留空
 
 ---
@@ -176,9 +178,10 @@ export interface HomeRepository {
 | `isCitySlug` | `(value: string) => value is CitySlug` | 纯类型守卫，不做 trim / 大小写归一 |
 | `parseCity` | `(value: string \| string[] \| undefined) => CitySlug` | 数组取首元素；缺失或非法 → `DEFAULT_CITY` |
 | `cityName` | `(slug: CitySlug) => string` | 未收录 → `'全部'` |
+| `cityNameEn` | `(slug: CitySlug) => string` | 未收录 → `'All cities'`；界面只用这一个 |
 | `mockRepository.*` | 见 3.1 | 均为 `async`，**同步 resolve**；永不 reject，除非 Mock 数据被破坏 |
-| `formatCount` | `(value: number) => string` | `>= 10000` 转「万」，保留 1 位并去尾 `.0`；否则千分位 |
-| `formatDate` | `(iso: string) => string` | 本地时区 `M 月 D 日`，不补零 |
+| `formatCount` | `(value: number) => string` | `en-US` 千分位，不缩写成「万」 |
+| `formatDate` | `(iso: string) => string` | `en-US` 的 `MMM D`，时区固定 `Asia/Shanghai`，不含年份 |
 
 ---
 
@@ -186,7 +189,7 @@ export interface HomeRepository {
 
 ### 4.1 类型与常量
 
-- [ ] `CitySlug` 恰为 8 个值，且 `CITIES` 顺序为 全部→北京→上海→广州→成都→西安→杭州→三亚
+- [ ] `CitySlug` 恰为 8 个值，且 `CITIES` 顺序为 `all`、`beijing`、`shanghai`、`guangzhou`、`chengdu`、`xian`、`hangzhou`、`sanya`（界面英文名依次 All cities → Beijing → Shanghai → Guangzhou → Chengdu → Xi'an → Hangzhou → Sanya）
 - [ ] `ContentStatus` 恰为 `published` / `draft` / `removed`
 - [ ] 三个上限常量分别为 6 / 10 / 5
 - [ ] `HomeRepository` 三个方法签名与 3.1 一致，组件不直接引用 `mock-data`
@@ -200,8 +203,8 @@ export interface HomeRepository {
 - [ ] `total` 为截断前总数，`items.length <= limit`
 - [ ] `draft` / `removed` 的帖子与景点不出现且不计入 `total`
 - [ ] 空结果返回 `{ items: [], total: 0 }`
-- [ ] `formatCount(20000) === '2 万'`、`formatCount(12345) === '1.2 万'`、`formatCount(999) === '999'`
-- [ ] `formatDate` 输出形如 `'10 月 5 日'`
+- [ ] `formatCount(20000) === '20,000'`、`formatCount(12345) === '12,345'`、`formatCount(999) === '999'`
+- [ ] `formatDate` 输出形如 `'Oct 5'`
 
 ### 4.3 工程
 

@@ -12,6 +12,8 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；卡片只渲染 `titleEn` / `summaryEn` / `editorEn`，城市标只读 `cityNameEn`。
+
 ### 1.1 包含
 
 | # | 能力 | 说明 |
@@ -21,8 +23,8 @@
 | 3 | 排序 | `sortOrder` 升序，并列按 `id` 升序（由 U0 仓储保证） |
 | 4 | 上限 6 条 | `EDITOR_PICKS_LIMIT`，截断由仓储完成 |
 | 5 | 三态：加载 / 错误 / 空 | 复用 U2 的 `SectionLoading` / `SectionError` / `EmptyState` |
-| 6 | 城市标签文案 | `all` 显示「全城」，其余显示中文城市名 |
-| 7 | 封面图 | 固定 4:3，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<标题>封面"` |
+| 6 | 城市标签文案 | `all` 显示 `All cities`，其余显示 `cityNameEn` |
+| 7 | 封面图 | 固定 4:3，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<title> cover"` |
 
 ### 1.2 不包含
 
@@ -69,7 +71,7 @@
 **S3 · 城市过滤**
 - When `city='beijing'`
 - Then 只展示 `city === 'beijing'` 与 `city === 'all'` 的精选
-- And 精选上的城市标：`all` 显示「全城」，其余显示中文名
+- And 精选上的城市标：`all` 显示 `All cities`，其余显示英文城市名
 
 **S4 · 切换城市重取**
 - When `city` 由 `beijing` 变为 `shanghai`
@@ -77,19 +79,19 @@
 
 **S5 · 加载态**
 - When 首次渲染或 `city` 变化
-- Then 展示 `role="status"` 的「编辑正在挑这一期的路线…」
+- Then 展示 `role="status"` 的 `Our editors are picking this week's routes…`
 
 ### 2.2 异常路径
 
 **S6 · 取数失败**
 - When 仓储 reject
-- Then 展示 `role="alert"` 的「编辑推荐暂时没能加载出来，稍后再试试。」
+- Then 展示 `role="alert"` 的 `Editor's picks could not load. Please try again later.`
 - And 不展示任何卡片，也不展示空态
 
 **S7 · 空结果**
 - When 该城市无精选
-- Then 展示「<城市名>还没有编辑精选，换座城市看看。」
-- And 不展示错误提示；城市名取自 `cityName(city)`，`all` 时为「全部」
+- Then 展示 `No editor's picks in <city> yet. Try another city.`
+- And 不展示错误提示；城市名取自 `cityNameEn(city)`，`all` 时为 `All cities`
 
 **S8 · 图片加载失败**
 - When 封面 URL 404 或网络中断
@@ -97,7 +99,7 @@
 - And 其余卡片不受影响
 
 **S9 · 超长文本**
-- When 标题超过 20 字或摘要超过 60 字
+- When 英文标题超过 2 行或摘要超过 3 行
 - Then 文本正常换行，卡片高度由内容决定，不出现横向溢出
 - And 不静默截断（不得使用 `line-clamp` 隐藏语义）
 
@@ -135,11 +137,14 @@ export function EditorPicks({ city }: EditorPicksProps): JSX.Element
 ```ts
 interface EditorPick {
   id: number
-  title: string
-  summary: string
+  title: string      // 中文标题（内容资产，不渲染）
+  titleEn: string    // 英文标题（界面唯一可读标题）
+  summary: string    // 中文摘要（内容资产，不渲染）
+  summaryEn: string  // 英文摘要
   city: CitySlug
   coverUrl: string
-  editor: string
+  editor: string     // 中文署名（内容资产，不渲染）
+  editorEn: string   // 英文署名
   sortOrder: number
 }
 
@@ -148,20 +153,20 @@ interface ListResult<T> { items: T[]; total: number }
 
 | 字段 | 约束 | 展示规则 |
 |---|---|---|
-| `title` | 非空，≤ 24 字 | h3，允许换行 |
-| `summary` | 非空，≤ 80 字 | 正文段落，最多展示 3 行（视觉裁切，不做字符串截断） |
-| `city` | `CitySlug` | `all` → 「全城」；否则 → 中文名 |
+| `titleEn` | 非空，2–10 个英文单词 | h3，允许换行 |
+| `summaryEn` | 非空，一句话 | 正文段落，最多展示 3 行（视觉裁切，不做字符串截断） |
+| `city` | `CitySlug` | `all` → `All cities`；否则 → `cityNameEn` |
 | `coverUrl` | 绝对 URL | 4:3，`loading="lazy"`，经自定义 loader 按档位改写 `w` |
-| `editor` | 非空，2–8 字 | 署名，前缀「编辑 · 」由展示层决定（当前仅展示名字） |
+| `editorEn` | 非空，人名 | 署名，前缀 `Editor · ` 由展示层决定（当前仅展示名字） |
 | `sortOrder` | 可负数 | 不展示，仅参与排序 |
 
 ### 3.3 状态映射
 
 | `state.status` | 展示 |
 |---|---|
-| `loading` | `<SectionLoading label="编辑正在挑这一期的路线…" />` |
-| `error` | `<SectionError message="编辑推荐暂时没能加载出来，稍后再试试。" />` |
-| `ready` + `items=[]` | `<EmptyState message="{cityName(city)}还没有编辑精选，换座城市看看。" />` |
+| `loading` | `<SectionLoading label="Our editors are picking this week's routes…" />` |
+| `error` | `<SectionError message="Editor's picks could not load. Please try again later." />` |
+| `ready` + `items=[]` | `<EmptyState message="No editor's picks in {cityNameEn(city)} yet. Try another city." />` |
 | `ready` + `items>0` | 卡片网格 |
 
 ---
@@ -173,13 +178,13 @@ interface ListResult<T> { items: T[]; total: number }
 - [ ] 卡片含封面、城市标、标题、摘要、编辑署名五要素
 - [ ] 卡片数量 = `items.length` 且 ≤ 6
 - [ ] `sortOrder` 升序，并列按 `id` 升序
-- [ ] 城市标：`all` 显示「全城」，其余显示中文城市名
-- [ ] 区块 eyebrow 为 `Editor's picks`，h2 为「编辑推荐」，说明文案一致
+- [ ] 城市标：`all` 显示 `All cities`，其余显示英文城市名
+- [ ] 区块 eyebrow 为 `Editor's picks`，h2 为 `Editor's picks`，说明文案一致
 
 ### 4.2 状态
 
-- [ ] 加载态为 `role="status"` 且文案「编辑正在挑这一期的路线…」
-- [ ] 错误态为 `role="alert"` 且文案「编辑推荐暂时没能加载出来，稍后再试试。」
+- [ ] 加载态为 `role="status"` 且文案 `Our editors are picking this week's routes…`
+- [ ] 错误态为 `role="alert"` 且文案 `Editor's picks could not load. Please try again later.`
 - [ ] 空态文案含当前城市名，且不出现错误提示
 - [ ] 切换城市触发重新取数，旧结果不会覆盖新城市
 

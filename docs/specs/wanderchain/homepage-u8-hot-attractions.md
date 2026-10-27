@@ -12,6 +12,8 @@
 
 ## 1. 模块边界
 
+界面语言：英文单语（不做 i18n 框架）；卡片只渲染 `nameEn`，城市只读 `cityNameEn`。
+
 ### 1.1 包含
 
 | # | 能力 | 说明 |
@@ -22,9 +24,9 @@
 | 4 | 城市过滤 | 当前城市 + 全城通用（`all`） |
 | 5 | 上限 5 条 | `HOT_ATTRACTIONS_LIMIT` |
 | 6 | 评分展示 | 固定一位小数（`toFixed(1)`） |
-| 7 | 浏览数格式化 | `formatCount`（万位缩写） |
+| 7 | 浏览数格式化 | `formatCount`（`en-US` 千分位） |
 | 8 | 三态 | 复用 U2 的 `SectionLoading` / `SectionError` / `EmptyState` |
-| 9 | 封面图 | 固定 1:1，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<名称>封面"` |
+| 9 | 封面图 | 固定 1:1，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<name> cover"` |
 
 ### 1.2 不包含
 
@@ -74,20 +76,20 @@
 
 **S4 · 城市过滤**
 - When `city='xian'`
-- Then 只展示西安与全城通用的已发布景点
+- Then 只展示 `Xi'an` 与全城通用的已发布景点
 
 **S5 · 评分展示**
 - When `rating = 4.25`
-- Then 显示「评分 4.3」（`toFixed(1)` 四舍五入）
+- Then 显示 `Rating 4.3`（`toFixed(1)` 四舍五入）
 - And 评分只读，不可点击
 
 **S6 · 浏览数格式化**
 - When `viewCount = 38000`
-- Then 显示「3.8 万 浏览」；`viewCount = 860` 时显示「860 浏览」
+- Then 显示 `38,000 views`；`viewCount = 860` 时显示 `860 views`
 
 **S7 · 元信息拼接**
 - When 景点在 `hangzhou`、评分 4.6
-- Then 元信息行为「杭州 · 评分 4.6」
+- Then 元信息行为 `Hangzhou · Rating 4.6`
 
 **S8 · 切换城市重取**
 - When `city` 变化
@@ -97,16 +99,16 @@
 
 **S9 · 取数失败**
 - When 仓储 reject
-- Then 展示 `role="alert"` 的「热门景点暂时没能加载出来，稍后再试试。」
+- Then 展示 `role="alert"` 的 `Popular attractions could not load. Please try again later.`
 - And 不展示空态、不残留旧卡片
 
 **S10 · 空结果**
 - When 该城市无景点
-- Then 展示「<城市名>还没有收录景点，换座城市看看。」
+- Then 展示 `Browse attractions in <city>.`
 
 **S11 · 图片加载失败**
 - When 封面 URL 失效
-- Then 保留 1:1 占位，`alt="<名称>封面"` 可读，布局不塌陷
+- Then 保留 1:1 占位，`alt="<name> cover"` 可读，布局不塌陷
 
 **S12 · 评分边界**
 - When `rating = 0` / `5` / `4.95`
@@ -144,7 +146,8 @@ export function HotAttractions({ city }: HotAttractionsProps): JSX.Element
 ```ts
 interface Attraction {
   id: number
-  name: string
+  name: string      // 中文名称（内容资产，不渲染）
+  nameEn: string    // 英文名称（界面唯一可读名称）
   city: CitySlug
   coverUrl: string
   rating: number
@@ -156,11 +159,11 @@ interface Attraction {
 
 | 字段 | 约束 | 展示规则 |
 |---|---|---|
-| `name` | 非空，2–20 字 | h3，允许换行 |
-| `city` | `CitySlug` | 中文名（`all` → 「全部」） |
-| `coverUrl` | 绝对 URL | 1:1，`loading="lazy"`，`alt="<名称>封面"`，经自定义 loader 按档位改写 `w` |
-| `rating` | 0–5 的数字 | `toFixed(1)`，前缀「评分 」 |
-| `viewCount` | 非负整数 | `formatCount` → 万位缩写，后缀「 浏览」 |
+| `nameEn` | 非空，1–6 个英文单词 | h3，允许换行 |
+| `city` | `CitySlug` | `cityNameEn`（`all` → `All cities`） |
+| `coverUrl` | 绝对 URL | 1:1，`loading="lazy"`，`alt="<name> cover"`，经自定义 loader 按档位改写 `w` |
+| `rating` | 0–5 的数字 | `toFixed(1)`，前缀 `Rating ` |
+| `viewCount` | 非负整数 | `formatCount` → `en-US` 千分位，后缀 ` views` |
 | `status` | 闭集 | 不展示；非 `published` 不进入列表 |
 | `publishedAt` | 合法 ISO | 不展示，仅参与排序 |
 | `id` | 唯一正整数 | React key + 排序兜底 |
@@ -170,13 +173,13 @@ interface Attraction {
 | 位置 | 文案 |
 |---|---|
 | eyebrow | `Places` |
-| 标题 | 热门景点 |
-| 区块说明 | 按浏览量与发布时间排序。 |
-| 加载 | 正在收集景点数据…（`role="status"`） |
-| 错误 | 热门景点暂时没能加载出来，稍后再试试。（`role="alert"`） |
-| 空态 | `{cityName(city)}还没有收录景点，换座城市看看。` |
-| 元信息 | `{cityName(city)} · 评分 {rating.toFixed(1)}` |
-| 浏览量 | `{formatCount(viewCount)} 浏览` |
+| 标题 | `Popular attractions` |
+| 区块说明 | `Ranked by views and publish time.` |
+| 加载 | `Gathering attraction data…`（`role="status"`） |
+| 错误 | `Popular attractions could not load. Please try again later.`（`role="alert"`） |
+| 空态 | `Browse attractions in {cityNameEn(city)}.` |
+| 元信息 | `{cityNameEn(city)} · Rating {rating.toFixed(1)}` |
+| 浏览量 | `{formatCount(viewCount)} views` |
 
 ---
 
@@ -186,9 +189,9 @@ interface Attraction {
 
 - [ ] 卡片数 ≤ 5 且等于 `items.length`
 - [ ] 每张卡含封面、名称、城市 + 评分、浏览量
-- [ ] 元信息格式为「城市 · 评分 4.6」
+- [ ] 元信息格式为 `{cityNameEn} · Rating 4.6`
 - [ ] 评分固定一位小数；`4.25 → 4.3`、`5 → 5.0`
-- [ ] 浏览数 ≥ 10000 时显示「N 万 浏览」
+- [ ] 浏览数按 `en-US` 千分位展示（如 `38,000 views`）
 
 ### 4.2 数据规则
 
@@ -271,7 +274,7 @@ interface Attraction {
 
 - 封面必须带 `sizes` 与多档 `srcset`；`sizes` 按双层 `.wc-container` 的真实内容宽推导，见 §4.4
 - 首屏以下保持 `loading="lazy"`，不得加 `priority`
-- `alt` 必须为「<名称>封面」；封面承载内容语义，不可置空
+- `alt` 必须为 `<name> cover`；封面承载内容语义，不可置空
 - **历史坑**：`width`/`height` 属性 + CSS `aspect-ratio` 并存时，必须保留 `.cover { height: auto }`，否则 600×600 属性会把容器高度顶死，1:1 比例失效
 
 ### 5.5 与现状的差异
