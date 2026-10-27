@@ -26,14 +26,18 @@
 - [frontend/app/search/page.tsx](file://frontend/app/search/page.tsx)
 - [frontend/lib/image-loader.ts](file://frontend/lib/image-loader.ts)
 - [frontend/next.config.ts](file://frontend/next.config.ts)
+- [frontend/lib/home/repository.ts](file://frontend/lib/home/repository.ts)
+- [frontend/lib/home/types.ts](file://frontend/lib/home/types.ts)
+- [frontend/lib/home/mock-data.ts](file://frontend/lib/home/mock-data.ts)
+- [frontend/lib/search/query.ts](file://frontend/lib/search/query.ts)
 </cite>
 
 ## 更新摘要
 **所做更改**
-- **全面英语优先本地化**：所有用户可见文本从中文转换为英文，包括 Hero 首屏、功能导航、AI 助手、编辑推荐、热门帖子和热门景点组件
-- **双语数据层支持**：在 `cities.ts` 中添加了 `nameEn` 和 `taglineEn` 字段，提供完整的英文城市名称和标语
-- **国际化架构设计**：保留中文原始数据作为内容资产，界面仅展示英文字段，为未来多语言扩展奠定基础
-- **用户体验优化**：所有交互元素、错误消息、占位符文本均使用自然流畅的英文表达
+- **评分系统统一为 0–5 制**：景点评分从 10 分制转换为 0–5 分制，保持排序顺序和数据完整性
+- **搜索标签标准化**：GROUP_META 配置中的分组标题和回链文案已标准化为英文常量
+- **数据完整性验证增强**：新增评分取值域守卫用例，确保 Mock 数据和未来真实数据源遵守统一的 0–5 评分约束
+- **主页评分显示优化**：热门景点区块现在使用统一的 0–5 评分系统，带有适当的领域验证保护
 
 ## 目录
 1. [引言](#引言)
@@ -101,7 +105,7 @@ SearchPage --> QueryEngine["查询引擎<br/>lib/search/query.ts"]
 
 ## 核心组件
 - **Hero 首屏组件（已重构）**：全新的自包含 Server Component，不再接收任何 props。包含背景大图、深色遮罩、品牌眉标、主标题、导语、原生搜索表单和文字入口行。城市规模提示动态派生自城市白名单。
-- **搜索页面（新增）**：独立的 React Server Component，处理关键词检索、结果分组和三态显示（引导态、空态、结果态）。使用纯函数 `searchContent()` 进行全量数据检索。
+- **搜索页面（新增）**：独立的 React Server Component，处理关键词检索、结果分组和三态显示。使用纯函数 `searchContent()` 进行全量数据检索。
 - 首页聚合器：解析 `searchParams`，调用 `parseCity` 得到当前城市，并将城市与查询参数透传给各区块。Hero 区域现在专注于视觉呈现和搜索入口。
 - 区块数据钩子：`useSectionData` 将异步数据源包装为 `{loading, error, ready}` 三态，避免重复拉取并处理组件卸载后的状态更新。
 - 功能导航：包含旅游社区、景点攻略两个链接卡片，以及 AI 助手按钮；后两者分别跳转到占位页或唤起同一面板。
@@ -145,6 +149,8 @@ Hook["use-section-data.ts"]
 Repo["Mock 仓储 repository.ts契约"]
 Query["查询引擎 query.ts"]
 Cities["城市数据 cities.ts"]
+Types["类型定义 types.ts"]
+MockData["模拟数据 mock-data.ts"]
 end
 subgraph "图片优化层"
 Loader["自定义 image loader<br/>image-loader.ts"]
@@ -172,6 +178,10 @@ Config --> CDN
 Picks --> Cities
 Posts --> Cities
 Attractions --> Cities
+Repo --> Types
+Repo --> MockData
+Query --> Types
+Query --> MockData
 ```
 
 **图表来源**
@@ -461,6 +471,8 @@ Limit --> Render["渲染序号、标题、作者、评论数、浏览数、发�
 
 **更新** 所有用户界面文本已本地化为英文，包括区块标题、描述、加载状态、错误消息和空态提示。数据字段使用英文版本（`nameEn`）。
 
+**评分系统更新**：景点评分现已统一为 0–5 分制，替代了之前的 10 分制。评分显示格式保持不变（`Rating {item.rating.toFixed(1)}`），但数值范围已调整以确保符合产品规范。
+
 ```mermaid
 flowchart TD
 Start["HotAttractions(city)"] --> Fetch["mockRepository.listHotAttractions({ city })"]
@@ -469,6 +481,7 @@ Sort --> Render["渲染封面、名称、城市、评分、浏览数"]
 Render --> ImageOpt["应用响应式图片优化"]
 ImageOpt --> Sizes["计算 sizes 属性"]
 Sizes --> Loader["调用自定义 image loader"]
+Render --> RatingDisplay["显示 0-5 分制评分<br/>Rating {item.rating.toFixed(1)}"]
 ```
 
 **图表来源**
@@ -504,6 +517,51 @@ interface CityOption {
 **章节来源**
 - [frontend/lib/home/cities.ts:1-96](file://frontend/lib/home/cities.ts#L1-L96)
 
+### 评分系统与数据完整性验证（新增）
+WanderChain 首页实施了严格的评分系统规范，确保所有景点评分遵循统一的 0–5 分制标准。这一变更解决了之前 Mock 数据中使用的 10 分制与产品规范不一致的问题。
+
+**核心变更：**
+
+1. **评分范围标准化**：
+   - 所有景点评分现已转换为 0–5 分制
+   - 保持了原始数据的排序顺序和数据完整性
+   - 避免了机械除以二导致的精度损失和重复值问题
+
+2. **数据完整性守卫**：
+   - 新增评分取值域验证，确保 Mock 数据符合 0–5 范围约束
+   - 通过测试用例强制执行数据契约，防止未来数据漂移
+   - 为真实数据源接入提供了明确的验证标准
+
+3. **搜索标签标准化**：
+   - GROUP_META 配置中的分组标题和回链文案已标准化为英文常量
+   - 确保了搜索结果页面的国际化一致性
+   - 消除了中英文标签混用的潜在问题
+
+**评分转换规则：**
+- 原始 10 分制评分按保序原则转换为 0–5 分制
+- 保持原始数据的相对排序关系
+- 避免产生满分 5.0 的不自然值
+
+```mermaid
+flowchart TD
+Start["景点数据输入"] --> Validation["评分范围验证<br/>0 ≤ rating ≤ 5"]
+Validation --> Format["格式化显示<br/>toFixed(1)"]
+Format --> Display["显示评分<br/>Rating X.X"]
+Validation --> Search["搜索索引构建"]
+Search --> GroupMeta["标准化分组标签<br/>GROUP_META 配置"]
+GroupMeta --> SearchResults["搜索结果展示"]
+```
+
+**图表来源**
+- [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
+- [frontend/lib/search/query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
+- [frontend/components/home/hot-attractions.tsx:58-60](file://frontend/components/home/hot-attractions.tsx#L58-L60)
+
+**章节来源**
+- [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
+- [frontend/lib/search/query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
+- [frontend/components/home/hot-attractions.tsx:58-60](file://frontend/components/home/hot-attractions.tsx#L58-L60)
+
 ## 依赖关系分析
 WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据契约"的单向依赖，避免循环耦合：
 
@@ -514,6 +572,7 @@ WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据
 - **AI 助手依赖**：Provider 上下文，被功能导航与站点头部触发。**新增无障碍依赖**：焦点管理、键盘事件监听、滚动控制。
 - **图片优化依赖**：next/image 组件、自定义 image loader、Next.js 配置。
 - **双语数据依赖**：`cities.ts` 提供中英文数据映射，所有区块组件依赖 `cityNameEn()` 函数。
+- **评分系统依赖**：`types.ts` 定义评分字段类型，`mock-data.ts` 提供标准化的 0–5 分制数据，`query.ts` 使用标准化的搜索标签。
 - 契约依赖：U0 是 U2/U3/U4/U6/U7 的基础，但 U0 不反向依赖任何 UI 组件。
 
 ```mermaid
@@ -537,7 +596,11 @@ Loader["image-loader.ts"] --> Config["next.config.ts"]
 Bilingual["双语数据层"] --> U6
 Bilingual --> U7
 Bilingual --> U8
+RatingSystem["评分系统"] --> U8
+RatingSystem --> Query
 Cities["cities.ts"] --> Bilingual
+Types["types.ts"] --> RatingSystem
+MockData["mock-data.ts"] --> RatingSystem
 ```
 
 **图表来源**
@@ -545,12 +608,16 @@ Cities["cities.ts"] --> Bilingual
 - [frontend/components/home/editor-picks.tsx:5-5](file://frontend/components/home/editor-picks.tsx#L5-L5)
 - [frontend/components/home/hot-posts.tsx:3-3](file://frontend/components/home/hot-posts.tsx#L3-L3)
 - [frontend/components/home/hot-attractions.tsx:5-5](file://frontend/components/home/hot-attractions.tsx#L5-L5)
+- [frontend/lib/home/types.ts:41-51](file://frontend/lib/home/types.ts#L41-L51)
+- [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 
 **章节来源**
 - [frontend/lib/home/cities.ts:12-96](file://frontend/lib/home/cities.ts#L12-L96)
 - [frontend/components/home/editor-picks.tsx:5-5](file://frontend/components/home/editor-picks.tsx#L5-L5)
 - [frontend/components/home/hot-posts.tsx:3-3](file://frontend/components/home/hot-posts.tsx#L3-L3)
 - [frontend/components/home/hot-attractions.tsx:5-5](file://frontend/components/home/hot-attractions.tsx#L5-L5)
+- [frontend/lib/home/types.ts:41-51](file://frontend/lib/home/types.ts#L41-L51)
+- [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 
 ## 性能与可维护性
 - **零网络请求**：当前所有区块通过 Mock 仓储提供数据，避免首屏阻塞与跨域问题；真实 API 接入时只需替换数据源。
@@ -571,6 +638,11 @@ Cities["cities.ts"] --> Bilingual
   - TypeScript 类型安全确保数据完整性
   - 单一数据源管理，简化维护流程
   - 易于扩展支持更多语言
+- **评分系统优化（新增）**：
+  - 统一的 0–5 分制确保数据一致性
+  - 数据完整性守卫防止评分范围越界
+  - 标准化的搜索标签提升国际化体验
+  - 保持向后兼容的显示格式
 
 ## 故障排查指南
 - **Hero 组件问题（已重构）**：
@@ -602,6 +674,11 @@ Cities["cities.ts"] --> Bilingual
   - 数据字段缺失：确认所有 `CityOption` 对象都包含 `nameEn` 和 `taglineEn` 字段
   - 类型错误：检查 TypeScript 编译错误，确保中英文数据类型一致
   - 内容不同步：验证中文和英文数据的一致性，避免内容差异
+- **评分系统问题（新增）**：
+  - 评分显示异常：确认景点评分已在 0–5 范围内；检查 `toFixed(1)` 格式化是否正确
+  - 搜索标签错误：检查 GROUP_META 配置中的分组标题是否为英文常量
+  - 数据完整性验证失败：确认 Mock 数据中的评分值符合 0–5 范围约束
+  - 排序异常：验证评分转换后保持了原始数据的排序关系
 - 面板无法关闭：确认遮罩点击、关闭按钮与 Esc 事件监听未被阻止；检查焦点归还逻辑。
 - 城市切换无效：确认 URL 查询参数格式为 `?city=slug`，且 `parseCity` 能识别该 slug。
 - 区块为空：检查 Mock 数据是否包含对应城市的条目；确认编辑器精选与帖子的状态过滤逻辑。
@@ -612,12 +689,16 @@ Cities["cities.ts"] --> Bilingual
 - [frontend/app/search/page.tsx:32-113](file://frontend/app/search/page.tsx#L32-L113)
 - [frontend/components/home/ai-assistant.tsx:56-177](file://frontend/components/home/ai-assistant.tsx#L56-L177)
 - [frontend/lib/home/cities.ts:88-96](file://frontend/lib/home/cities.ts#L88-L96)
+- [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
+- [frontend/lib/search/query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
 
 ## 结论
 WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**Hero 首屏组件的完全重构**带来了全新的视觉体验和搜索功能，从接受 props 的组件转变为自包含的服务器组件，移除了统计数据面板，新增了背景图片和原生搜索框。**新增的搜索页面**提供了完整的站内检索能力，支持三态显示和结果分组。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**更新的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。**特别地，热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略**，使用1080px/720px断点提供更好的桌面端体验。
 
 **重大更新** 本次变更实施了全面的英语优先本地化战略，将所有用户可见文本从中文转换为英文，同时建立了强大的双语数据层架构。这一架构不仅满足了当前的国际化需求，更为未来的多语言扩展奠定了坚实基础。所有组件的用户界面文本都已本地化，包括 Hero 首屏、功能导航、AI 助手、编辑推荐、热门帖子和热门景点。数据层采用中英文分离的设计，中文作为内容资产保留，英文用于界面展示，通过 TypeScript 类型确保数据完整性。
 
+**评分系统标准化** 本次变更还实施了严格的评分系统规范，将景点评分从 10 分制统一转换为 0–5 分制，确保数据一致性和产品规范的符合性。评分转换保持了原始数据的排序关系，并通过数据完整性守卫防止未来数据漂移。搜索标签也进行了标准化处理，GROUP_META 配置中的分组标题和回链文案已统一为英文常量，提升了国际化体验的一致性。
+
 架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。双语数据层的引入进一步增强了系统的可扩展性和可维护性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。随着 `redesign-home-hero-with-search` 变更的归档，所有规格引用现已指向生产就绪的主规格文件 `openspec/specs/wanderchain-homepage/spec.md`，确保了文档与代码实现的完全同步。
 
-**更新** 随着英语优先本地化的完成，WanderChain 首页现在为全球用户提供一致的英文体验，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。
+**更新** 随着英语优先本地化和评分系统标准化的完成，WanderChain 首页现在为全球用户提供一致的英文体验和标准化的评分显示，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。数据完整性验证机制确保了 Mock 数据和未来真实数据源都遵循统一的 0–5 评分约束，为系统的长期可维护性提供了保障。
