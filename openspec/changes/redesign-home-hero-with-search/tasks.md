@@ -30,8 +30,8 @@
 
 - [x] 5.1 前端整链自检：`cd frontend; npm run build; npm run test` 两步都以退出码 0 结束，且 `lib/search/query.test.ts`、`components/home/hero.test.tsx`、`app/search/page.test.tsx`、`app/page.test.tsx` 均出现在通过列表里。
 - [x] 5.2 起本地服务做行为取证：`cd frontend; npm run dev` 后访问 `/` 确认大图 + 搜索框可见、点击「按城市逛」滚到 `#cities`；访问 `/search?q=沙面岛`（含被首页截断的内容）、`/search?q=成都`（三类分组）、`/search?q=zzz`（空态）、`/search`（引导态）四种输入，截图留证后关掉服务。
-- [ ] 5.3 工作区总闸门：`powershell -File harness\run-all.ps1` 退出码 0（00 子模块、01 编译、02 测试、03 红线、04 前端、05 改名、06 Flyway、07 文档、08 断点全部 PASSED）。
-- [ ] 5.4 按子模块边界提交：先在 `frontend/` 子模块内提交并推送本轮代码与测试，再回工作区提交 `docs/`、`harness/` 与新的 `frontend` gitlink。验证：`git -C frontend log --oneline -1` 有新提交、`git status` 在工作区只剩预期的自有文件与 gitlink 变动。
+- [x] 5.3 工作区总闸门：`powershell -File harness\run-all.ps1` 退出码 0（00 子模块、01 编译、02 测试、03 红线、04 前端、05 改名、06 Flyway、07 文档、08 断点全部 PASSED）。
+- [x] 5.4 按子模块边界提交：先在 `frontend/` 子模块内提交并推送本轮代码与测试，再回工作区提交 `docs/`、`harness/` 与新的 `frontend` gitlink。验证：`git -C frontend log --oneline -1` 有新提交、`git status` 在工作区只剩预期的自有文件与 gitlink 变动。
 
 ## Workflow follow-up
 
