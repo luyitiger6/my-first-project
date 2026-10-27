@@ -34,6 +34,7 @@
 - [x] 5.2 行为取证：`cd frontend; npm run dev` 后截图 `/`（英文界面、城市英文名）、`/?city=chengdu`（Chengdu 高亮）、`/search?q=chengdu`（英文命中三类）、`/search?q=成都`（中文仍命中）、`/search?q=zzz`（英文空态）、`/search`（英文引导态），随后关闭服务。验证：截图文件存在且与预期一致。
 - [x] 5.3 工作区总闸门：`powershell -File harness\run-all.ps1` 退出码 0（九道闸门全部 PASSED）。验证：`$LASTEXITCODE` 为 0。
 - [x] 5.4 按子模块边界提交：先在 `frontend/` 提交并推送本轮代码与测试，再回工作区提交 `docs/` 与新 `frontend` gitlink。验证：`git -C frontend log --oneline -1` 有新提交，工作区 `git status` 只剩预期的自有文件与 gitlink 变动。
+- [x] 5.5 归档前规格自洽修正：`wanderchain-search` 主 spec 的「结果展示与空态」仍要求条目展示中文名，与本 change 的实现及新增「英文界面语言」条款冲突，补一份 REMOVED + ADDED delta 以英文字段版承接。验证：`openspec validate english-first-home --strict --no-interactive` 退出码 0，且 delta 中 REMOVED 与 ADDED 各含该条款。
 
 ## Workflow follow-up
 
