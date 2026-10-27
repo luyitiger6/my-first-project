@@ -36,7 +36,7 @@
 
 - [x] 6.1 起前端生产服务抽查两档视口：320px 下热门景点为单列、`/community` 有顶栏页脚且无横向滚动；验证：截图或 DOM 报告，抽查后关闭自起进程
 - [x] 6.2 `powershell -File harness\run-all.ps1` 退出码 0，九门全 PASS；验证：退出码与各门输出
-- [ ] 6.3 `frontend` 子模块内提交并推送，回工作区提交新 gitlink 与文档改动；验证：`git submodule status` 与工作区 `git status` 一致
+- [x] 6.3 `frontend` 子模块内提交并推送，回工作区提交新 gitlink 与文档改动；验证：`git submodule status` 与工作区 `git status` 一致
 
 ## Workflow follow-up
 
