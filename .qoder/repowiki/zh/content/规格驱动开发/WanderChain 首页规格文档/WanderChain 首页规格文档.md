@@ -30,14 +30,19 @@
 - [frontend/lib/home/types.ts](file://frontend/lib/home/types.ts)
 - [frontend/lib/home/mock-data.ts](file://frontend/lib/home/mock-data.ts)
 - [frontend/lib/search/query.ts](file://frontend/lib/search/query.ts)
+- [frontend/app/community/page.tsx](file://frontend/app/community/page.tsx)
+- [frontend/app/attractions/page.tsx](file://frontend/app/attractions/page.tsx)
+- [frontend/components/site/placeholder.tsx](file://frontend/components/site/placeholder.tsx)
+- [frontend/components/home/hot-attractions.test.tsx](file://frontend/components/home/hot-attractions.test.tsx)
+- [frontend/app/placeholders.test.tsx](file://frontend/app/placeholders.test.tsx)
 </cite>
 
 ## 更新摘要
 **所做更改**
-- **评分系统统一为 0–5 制**：景点评分从 10 分制转换为 0–5 分制，保持排序顺序和数据完整性
-- **搜索标签标准化**：GROUP_META 配置中的分组标题和回链文案已标准化为英文常量
-- **数据完整性验证增强**：新增评分取值域守卫用例，确保 Mock 数据和未来真实数据源遵守统一的 0–5 评分约束
-- **主页评分显示优化**：热门景点区块现在使用统一的 0–5 评分系统，带有适当的领域验证保护
+- **热门景点单列断点增强**：为热门景点组件新增 480px 视口下的单列布局断点，优化超小屏幕显示体验
+- **占位页站点框架增强**：社区和景点占位页现在包含完整的站点头部、页脚和 main-content 区域
+- **AI 助手错误消息标准化**：统一 AI 助手相关错误消息的英文文案，确保国际化一致性
+- **测试覆盖率提升**：从 208 个测试提升至约 228 个测试，增强了热点景点响应式行为和占位页框架覆盖
 
 ## 目录
 1. [引言](#引言)
@@ -68,7 +73,7 @@ WanderChain 首页由一个页面级路由和多个可复用区块组成：
 - 共享 Hook：`useSectionData` 统一封装加载、就绪、错误三态。
 - **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭、遮罩点击关闭，以及完整的键盘导航支持。
 - **响应式图片优化**：自定义 image loader、srcset 生成、sizes 属性计算，针对封面图进行性能优化。
-- 占位页：`/community` 与 `/attractions` 为板块建设中的占位页面。
+- **增强的占位页**：`/community` 与 `/attractions` 为板块建设中的占位页面，现已集成完整站点框架。
 
 ```mermaid
 graph TB
@@ -92,6 +97,10 @@ ImageOptimization --> NextConfig["Next.js 配置<br/>next.config.ts"]
 Hero --> SearchForm["搜索表单<br/>原生 form 提交"]
 SearchForm --> SearchPage["搜索页面<br/>search/page.tsx"]
 SearchPage --> QueryEngine["查询引擎<br/>lib/search/query.ts"]
+CommunityPage["社区占位页<br/>community/page.tsx"] --> Placeholder["占位符组件<br/>placeholder.tsx"]
+AttractionsPage["景点占位页<br/>attractions/page.tsx"] --> Placeholder
+Placeholder --> SiteHeader
+Placeholder --> SiteFooter
 ```
 
 **图表来源**
@@ -102,6 +111,9 @@ SearchPage --> QueryEngine["查询引擎<br/>lib/search/query.ts"]
 - [frontend/components/home/hot-posts.tsx:1-66](file://frontend/components/home/hot-posts.tsx#L1-L66)
 - [frontend/components/home/hot-attractions.tsx:1-71](file://frontend/components/home/hot-attractions.tsx#L1-L71)
 - [frontend/app/search/page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
+- [frontend/app/community/page.tsx:1-18](file://frontend/app/community/page.tsx#L1-L18)
+- [frontend/app/attractions/page.tsx:1-18](file://frontend/app/attractions/page.tsx#L1-L18)
+- [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
 
 ## 核心组件
 - **Hero 首屏组件（已重构）**：全新的自包含 Server Component，不再接收任何 props。包含背景大图、深色遮罩、品牌眉标、主标题、导语、原生搜索表单和文字入口行。城市规模提示动态派生自城市白名单。
@@ -113,6 +125,7 @@ SearchPage --> QueryEngine["查询引擎<br/>lib/search/query.ts"]
 - 城市切换：根据 URL `?city=` 渲染选中项，点击时替换查询参数，保持其他查询键不变。
 - 内容区块：编辑推荐、热门帖子、热门景点均通过 `mockRepository` 获取数据，并按各自排序与过滤规则展示。
 - **响应式图片优化系统**：自定义 next/image loader 将宽度档位直接写入 Unsplash CDN 参数，结合 srcset 和 sizes 属性实现智能图片加载。
+- **增强的占位页系统**：社区和景点占位页现在使用统一的 `PlaceholderPage` 组件，包含完整的站点框架元素。
 
 **章节来源**
 - [frontend/components/home/hero.tsx:14-76](file://frontend/components/home/hero.tsx#L14-L76)
@@ -122,6 +135,7 @@ SearchPage --> QueryEngine["查询引擎<br/>lib/search/query.ts"]
 - [frontend/components/home/editor-picks.tsx:12-75](file://frontend/components/home/editor-picks.tsx#L12-L75)
 - [frontend/components/home/hot-posts.tsx:11-66](file://frontend/components/home/hot-posts.tsx#L11-L66)
 - [frontend/components/home/hot-attractions.tsx:13-71](file://frontend/components/home/hot-attractions.tsx#L13-L71)
+- [frontend/components/site/placeholder.tsx:13-35](file://frontend/components/site/placeholder.tsx#L13-L35)
 
 ## 架构总览
 WanderChain 首页采用"页面装配 + 区块消费 + Mock 仓储"的分层结构。当前阶段不依赖真实后端，所有数据契约以类型与 Mock 数据固定，后续替换为真实 API 时，组件与测试无需重写。
@@ -132,6 +146,8 @@ subgraph "页面层"
 Page["首页 page.tsx"]
 Layout["根布局 layout.tsx"]
 SearchPage["搜索页面 search/page.tsx"]
+CommunityPage["社区占位页 community/page.tsx"]
+AttractionsPage["景点占位页 attractions/page.tsx"]
 end
 subgraph "交互层"
 Hero["Hero 首屏重构 hero.tsx"]
@@ -143,6 +159,11 @@ subgraph "内容区块"
 Picks["编辑推荐 editor-picks.tsx"]
 Posts["热门帖子 hot-posts.tsx"]
 Attractions["热门景点 hot-attractions.tsx"]
+end
+subgraph "占位页框架"
+Placeholder["占位符组件 placeholder.tsx"]
+SiteHeader["站点头部 site-header.tsx"]
+SiteFooter["站点底部 site-footer.tsx"]
 end
 subgraph "数据层"
 Hook["use-section-data.ts"]
@@ -182,6 +203,10 @@ Repo --> Types
 Repo --> MockData
 Query --> Types
 Query --> MockData
+CommunityPage --> Placeholder
+AttractionsPage --> Placeholder
+Placeholder --> SiteHeader
+Placeholder --> SiteFooter
 ```
 
 **图表来源**
@@ -193,7 +218,9 @@ Query --> MockData
 - [frontend/components/home/hot-posts.tsx:11-66](file://frontend/components/home/hot-posts.tsx#L11-L66)
 - [frontend/components/home/hot-attractions.tsx:13-71](file://frontend/components/home/hot-attractions.tsx#L13-L71)
 - [frontend/app/search/page.tsx:32-113](file://frontend/app/search/page.tsx#L32-L113)
-- [frontend/lib/home/cities.ts:12-96](file://frontend/lib/home/cities.ts#L12-L96)
+- [frontend/app/community/page.tsx:9-17](file://frontend/app/community/page.tsx#L9-L17)
+- [frontend/app/attractions/page.tsx:9-17](file://frontend/app/attractions/page.tsx#L9-L17)
+- [frontend/components/site/placeholder.tsx:13-35](file://frontend/components/site/placeholder.tsx#L13-L35)
 
 ## 详细组件分析
 
@@ -358,13 +385,13 @@ WanderChain 首页实现了完整的响应式图片优化系统，专门针对�
 
 2. **Sizes 属性计算**：
    - 编辑推荐：`(max-width: 640px) calc(100vw - 64px), (max-width: 900px) calc(50vw - 50px), (min-width: 1160px) 347px, calc(33.33vw - 40px)`
-   - **热门景点（已更新）**：`(max-width: 720px) calc(50vw - 40px), (max-width: 1080px) calc(33.33vw - 38px), (min-width: 1160px) 204px, calc(20vw - 29px)`
+   - **热门景点（已更新）**：`(max-width: 480px) calc(100vw - 64px), (max-width: 720px) calc(50vw - 40px), (max-width: 1080px) calc(33.33vw - 38px), (min-width: 1160px) 204px, calc(20vw - 29px)`
 
 3. **CSS 适配（已更新）**：
    - 编辑推荐：3列网格（桌面）→ 2列（平板）→ 1列（移动）
-   - **热门景点（已更新）**：5列网格（桌面）→ 3列（1080px断点）→ 2列（720px断点）
+   - **热门景点（已更新）**：5列网格（桌面）→ 3列（1080px断点）→ 2列（720px断点）→ 1列（480px断点）
 
-**更新** 热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略，断点从原来的640px/1024px调整为1080px/720px，提供更优的桌面端体验。
+**更新** 热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略，断点从原来的640px/1024px调整为1080px/720px/480px，提供更优的桌面端体验和超小屏幕支持。
 
 ```mermaid
 flowchart TD
@@ -381,10 +408,11 @@ EP3["> 1160px: 347px"]
 EP4["默认: 33.33vw - 40px"]
 end
 subgraph "热门景点 sizes 计算已更新"
-HA1["< 720px: 50vw - 40px"]
-HA2["< 1080px: 33.33vw - 38px"]
-HA3["> 1160px: 204px"]
-HA4["默认: 20vw - 29px"]
+HA1["< 480px: 100vw - 64px"]
+HA2["< 720px: 50vw - 40px"]
+HA3["< 1080px: 33.33vw - 38px"]
+HA4["> 1160px: 204px"]
+HA5["默认: 20vw - 29px"]
 end
 ```
 
@@ -468,10 +496,13 @@ Limit --> Render["渲染序号、标题、作者、评论数、浏览数、发�
 - 桌面端：5列网格布局
 - 平板端（≤1080px）：3列网格布局  
 - 移动端（≤720px）：2列网格布局
+- **超小屏幕（≤480px）**：1列网格布局（新增）
 
 **更新** 所有用户界面文本已本地化为英文，包括区块标题、描述、加载状态、错误消息和空态提示。数据字段使用英文版本（`nameEn`）。
 
 **评分系统更新**：景点评分现已统一为 0–5 分制，替代了之前的 10 分制。评分显示格式保持不变（`Rating {item.rating.toFixed(1)}`），但数值范围已调整以确保符合产品规范。
+
+**新增单列断点**：在 480px 视口下，热门景点区块现在使用单列布局，确保在超小屏幕设备上获得最佳的阅读体验。
 
 ```mermaid
 flowchart TD
@@ -482,14 +513,17 @@ Render --> ImageOpt["应用响应式图片优化"]
 ImageOpt --> Sizes["计算 sizes 属性"]
 Sizes --> Loader["调用自定义 image loader"]
 Render --> RatingDisplay["显示 0-5 分制评分<br/>Rating {item.rating.toFixed(1)}"]
+Render --> ResponsiveGrid["响应式网格布局<br/>5列 → 3列 → 2列 → 1列"]
 ```
 
 **图表来源**
 - [frontend/components/home/hot-attractions.tsx:13-71](file://frontend/components/home/hot-attractions.tsx#L13-L71)
 - [frontend/components/home/hot-attractions.tsx:46-55](file://frontend/components/home/hot-attractions.tsx#L46-L55)
+- [frontend/components/home/hot-attractions.module.css:54-70](file://frontend/components/home/hot-attractions.module.css#L54-L70)
 
 **章节来源**
 - [frontend/components/home/hot-attractions.tsx:1-71](file://frontend/components/home/hot-attractions.tsx#L1-L71)
+- [frontend/components/home/hot-attractions.module.css:1-71](file://frontend/components/home/hot-attractions.module.css#L1-L71)
 
 ### 双语数据层架构（新增）
 WanderChain 首页采用了创新的双语数据层架构，为未来的多语言扩展奠定了坚实基础。
@@ -562,6 +596,41 @@ GroupMeta --> SearchResults["搜索结果展示"]
 - [frontend/lib/search/query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
 - [frontend/components/home/hot-attractions.tsx:58-60](file://frontend/components/home/hot-attractions.tsx#L58-L60)
 
+### 占位页站点框架增强（新增）
+社区和景点占位页现在使用统一的 `PlaceholderPage` 组件，提供一致的站点框架体验。每个占位页都包含完整的站点头部、页脚和 main-content 区域，确保用户在任何入口都能获得一致的导航体验。
+
+**核心特性：**
+- **统一框架**：所有占位页使用相同的 `PlaceholderPage` 组件
+- **完整站点元素**：包含 SiteHeader、SiteFooter 和 main-content 区域
+- **语义化结构**：使用正确的 ARIA 角色和语义化 HTML 标签
+- **响应式设计**：适配不同屏幕尺寸的布局需求
+
+**页面结构：**
+```mermaid
+flowchart TD
+CommunityPage["社区占位页"] --> Placeholder["PlaceholderPage 组件"]
+AttractionsPage["景点占位页"] --> Placeholder
+Placeholder --> SiteHeader["SiteHeader 站点头部"]
+Placeholder --> MainContent["main-content 主内容区"]
+Placeholder --> SiteFooter["SiteFooter 站点底部"]
+MainContent --> Card["内容卡片"]
+Card --> Eyebrow["眉标文本"]
+Card --> Title["页面标题"]
+Card --> Description["描述文本"]
+Card --> Note["建设提示"]
+Card --> Action["返回首页按钮"]
+```
+
+**图表来源**
+- [frontend/app/community/page.tsx:9-17](file://frontend/app/community/page.tsx#L9-L17)
+- [frontend/app/attractions/page.tsx:9-17](file://frontend/app/attractions/page.tsx#L9-L17)
+- [frontend/components/site/placeholder.tsx:13-35](file://frontend/components/site/placeholder.tsx#L13-L35)
+
+**章节来源**
+- [frontend/app/community/page.tsx:1-18](file://frontend/app/community/page.tsx#L1-L18)
+- [frontend/app/attractions/page.tsx:1-18](file://frontend/app/attractions/page.tsx#L1-L18)
+- [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
+
 ## 依赖关系分析
 WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据契约"的单向依赖，避免循环耦合：
 
@@ -573,6 +642,7 @@ WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据
 - **图片优化依赖**：next/image 组件、自定义 image loader、Next.js 配置。
 - **双语数据依赖**：`cities.ts` 提供中英文数据映射，所有区块组件依赖 `cityNameEn()` 函数。
 - **评分系统依赖**：`types.ts` 定义评分字段类型，`mock-data.ts` 提供标准化的 0–5 分制数据，`query.ts` 使用标准化的搜索标签。
+- **占位页依赖**：`PlaceholderPage` 组件依赖 `SiteHeader` 和 `SiteFooter`，提供完整的站点框架。
 - 契约依赖：U0 是 U2/U3/U4/U6/U7 的基础，但 U0 不反向依赖任何 UI 组件。
 
 ```mermaid
@@ -601,6 +671,10 @@ RatingSystem --> Query
 Cities["cities.ts"] --> Bilingual
 Types["types.ts"] --> RatingSystem
 MockData["mock-data.ts"] --> RatingSystem
+Placeholder["占位页框架"] --> SiteHeader
+Placeholder --> SiteFooter
+CommunityPage["社区占位页"] --> Placeholder
+AttractionsPage["景点占位页"] --> Placeholder
 ```
 
 **图表来源**
@@ -610,6 +684,7 @@ MockData["mock-data.ts"] --> RatingSystem
 - [frontend/components/home/hot-attractions.tsx:5-5](file://frontend/components/home/hot-attractions.tsx#L5-L5)
 - [frontend/lib/home/types.ts:41-51](file://frontend/lib/home/types.ts#L41-L51)
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
+- [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
 
 **章节来源**
 - [frontend/lib/home/cities.ts:12-96](file://frontend/lib/home/cities.ts#L12-L96)
@@ -618,6 +693,7 @@ MockData["mock-data.ts"] --> RatingSystem
 - [frontend/components/home/hot-attractions.tsx:5-5](file://frontend/components/home/hot-attractions.tsx#L5-L5)
 - [frontend/lib/home/types.ts:41-51](file://frontend/lib/home/types.ts#L41-L51)
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
+- [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
 
 ## 性能与可维护性
 - **零网络请求**：当前所有区块通过 Mock 仓储提供数据，避免首屏阻塞与跨域问题；真实 API 接入时只需替换数据源。
@@ -630,7 +706,7 @@ MockData["mock-data.ts"] --> RatingSystem
   - 精确的 sizes 属性计算确保浏览器选择最优图片尺寸
   - 懒加载和异步解码提升首屏性能
   - CSS aspect-ratio 和 object-fit 确保图片在不同屏幕尺寸下的显示效果
-  - **热门景点区块**：优化的桌面优先响应式策略提供更好的大屏幕上体验
+  - **热门景点区块**：优化的桌面优先响应式策略提供更好的大屏幕上体验，新增 480px 单列断点确保超小屏幕体验
 - **可替换数据层**：类型与 `ListResult<T>` 契约使 Mock 与真实 API 可互换，组件与测试无需改动。
 - **无障碍性能优化**：AI 助手模态框使用运行期查询而非缓存的可聚焦元素列表，避免内存泄漏和性能问题。
 - **双语数据层优化**：
@@ -643,6 +719,11 @@ MockData["mock-data.ts"] --> RatingSystem
   - 数据完整性守卫防止评分范围越界
   - 标准化的搜索标签提升国际化体验
   - 保持向后兼容的显示格式
+- **占位页框架优化（新增）**：
+  - 统一的 PlaceholderPage 组件减少代码重复
+  - 完整的站点框架确保一致的用户体验
+  - 语义化 HTML 结构提升可访问性
+  - 响应式设计适配各种设备尺寸
 
 ## 故障排查指南
 - **Hero 组件问题（已重构）**：
@@ -666,7 +747,8 @@ MockData["mock-data.ts"] --> RatingSystem
 - **图片优化问题（已更新）**：
   - 图片未优化：确认 next.config.ts 中已配置自定义 loader；检查 image-loader.ts 是否正确导出。
   - 图片尺寸不正确：检查 sizes 属性是否与 CSS 网格布局匹配；确认 width/height 属性设置合理。
-  - **热门景点响应式问题**：确认断点设置（1080px/720px）与 CSS 媒体查询一致；检查桌面优先策略是否正确应用。
+  - **热门景点响应式问题**：确认断点设置（1080px/720px/480px）与 CSS 媒体查询一致；检查桌面优先策略是否正确应用。
+  - **单列断点问题**：确认 480px 断点的单列布局是否正确生效；检查 CSS 媒体查询语法。
   - CDN 请求失败：检查图片 URL 是否为有效的 https URL；确认 Unsplash CDN 可访问。
   - 性能问题：检查是否正确使用 loading="lazy" 和 decoding="async"；确认 sizes 属性计算准确。
 - **双语数据层问题（新增）**：
@@ -679,6 +761,11 @@ MockData["mock-data.ts"] --> RatingSystem
   - 搜索标签错误：检查 GROUP_META 配置中的分组标题是否为英文常量
   - 数据完整性验证失败：确认 Mock 数据中的评分值符合 0–5 范围约束
   - 排序异常：验证评分转换后保持了原始数据的排序关系
+- **占位页问题（新增）**：
+  - 站点框架缺失：确认 PlaceholderPage 组件正确渲染 SiteHeader 和 SiteFooter
+  - 语义化结构异常：检查 main-content 区域的 role 属性是否正确设置
+  - 样式问题：确认占位页的 CSS 类名是否正确应用
+  - 导航链接失效：检查"返回首页"按钮的 href 属性是否正确指向 "/"
 - 面板无法关闭：确认遮罩点击、关闭按钮与 Esc 事件监听未被阻止；检查焦点归还逻辑。
 - 城市切换无效：确认 URL 查询参数格式为 `?city=slug`，且 `parseCity` 能识别该 slug。
 - 区块为空：检查 Mock 数据是否包含对应城市的条目；确认编辑器精选与帖子的状态过滤逻辑。
@@ -691,14 +778,19 @@ MockData["mock-data.ts"] --> RatingSystem
 - [frontend/lib/home/cities.ts:88-96](file://frontend/lib/home/cities.ts#L88-L96)
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 - [frontend/lib/search/query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
+- [frontend/components/site/placeholder.tsx:13-35](file://frontend/components/site/placeholder.tsx#L13-L35)
 
 ## 结论
-WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**Hero 首屏组件的完全重构**带来了全新的视觉体验和搜索功能，从接受 props 的组件转变为自包含的服务器组件，移除了统计数据面板，新增了背景图片和原生搜索框。**新增的搜索页面**提供了完整的站内检索能力，支持三态显示和结果分组。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**更新的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。**特别地，热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略**，使用1080px/720px断点提供更好的桌面端体验。
+WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**Hero 首屏组件的完全重构**带来了全新的视觉体验和搜索功能，从接受 props 的组件转变为自包含的服务器组件，移除了统计数据面板，新增了背景图片和原生搜索框。**新增的搜索页面**提供了完整的站内检索能力，支持三态显示和结果分组。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**更新的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。**特别地，热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略**，使用1080px/720px/480px断点提供更好的桌面端体验和超小屏幕支持。
 
 **重大更新** 本次变更实施了全面的英语优先本地化战略，将所有用户可见文本从中文转换为英文，同时建立了强大的双语数据层架构。这一架构不仅满足了当前的国际化需求，更为未来的多语言扩展奠定了坚实基础。所有组件的用户界面文本都已本地化，包括 Hero 首屏、功能导航、AI 助手、编辑推荐、热门帖子和热门景点。数据层采用中英文分离的设计，中文作为内容资产保留，英文用于界面展示，通过 TypeScript 类型确保数据完整性。
 
 **评分系统标准化** 本次变更还实施了严格的评分系统规范，将景点评分从 10 分制统一转换为 0–5 分制，确保数据一致性和产品规范的符合性。评分转换保持了原始数据的排序关系，并通过数据完整性守卫防止未来数据漂移。搜索标签也进行了标准化处理，GROUP_META 配置中的分组标题和回链文案已统一为英文常量，提升了国际化体验的一致性。
 
+**占位页框架增强** 社区和景点占位页现在使用统一的 PlaceholderPage 组件，提供完整的站点框架体验，包括站点头部、页脚和 main-content 区域，确保用户在任何入口都能获得一致的导航体验。
+
+**测试覆盖率提升** 测试套件从 208 个测试提升至约 228 个测试，新增了对热门景点响应式行为、占位页站点框架和 AI 助手错误消息的覆盖，显著提升了代码质量和可靠性。
+
 架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。双语数据层的引入进一步增强了系统的可扩展性和可维护性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。随着 `redesign-home-hero-with-search` 变更的归档，所有规格引用现已指向生产就绪的主规格文件 `openspec/specs/wanderchain-homepage/spec.md`，确保了文档与代码实现的完全同步。
 
-**更新** 随着英语优先本地化和评分系统标准化的完成，WanderChain 首页现在为全球用户提供一致的英文体验和标准化的评分显示，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。数据完整性验证机制确保了 Mock 数据和未来真实数据源都遵循统一的 0–5 评分约束，为系统的长期可维护性提供了保障。
+**更新** 随着英语优先本地化、评分系统标准化、占位页框架增强和测试覆盖率提升的完成，WanderChain 首页现在为全球用户提供一致的英文体验和标准化的评分显示，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。数据完整性验证机制确保了 Mock 数据和未来真实数据源都遵循统一的 0–5 评分约束，为系统的长期可维护性提供了保障。新增的单列断点和增强的站点框架进一步提升了用户体验的一致性和可访问性。
