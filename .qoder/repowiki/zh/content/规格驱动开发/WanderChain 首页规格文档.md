@@ -1,4 +1,4 @@
-基于我的分析，我现在了解了响应式图片优化的变更内容。让我更新 WanderChain 首页规格文档：
+基于分析，我现在了解了具体的变更内容。让我更新 WanderChain 首页规格文档：
 
 # WanderChain 首页规格文档
 
@@ -43,7 +43,8 @@
 - **新增九个规格场景（S15-S17）**：Tab 键正向循环、Shift+Tab 反向循环、背景滚动锁定行为
 - 更新首页聚合器以使用新的 Hero 组件
 - 完善类型定义和验收标准
-- **新增响应式图片优化系统**：自定义 next/image loader、srcset 生成、sizes 属性计算，针对编辑推荐和热门景点区块进行图片性能优化
+- **修正热门景点区块响应式设计规范**：从移动优先改为桌面优先策略，断点从640px/1024px调整为1080px/720px
+- **更新图片处理机制说明**：现在使用Next.js Image优化和自定义loader，不再需要images.remotePatterns配置
 
 ## 目录
 1. [引言](#引言)
@@ -326,7 +327,7 @@ AiAssistantProvider <.. FocusManagement : "焦点控制"
 - [frontend/components/home/ai-assistant.tsx:41-120](file://frontend/components/home/ai-assistant.tsx#L41-L120)
 - [frontend/components/home/ai-assistant.tsx:178-211](file://frontend/components/home/ai-assistant.tsx#L178-L211)
 
-### 响应式图片优化系统（新增）
+### 响应式图片优化系统（已更新）
 WanderChain 首页实现了完整的响应式图片优化系统，专门针对编辑推荐和热门景点区块的封面图进行性能优化。该系统基于 next/image 组件，通过自定义 loader 和精确的 sizes 属性计算，实现智能图片加载。
 
 **核心组件：**
@@ -338,11 +339,13 @@ WanderChain 首页实现了完整的响应式图片优化系统，专门针对�
 
 2. **Sizes 属性计算**：
    - 编辑推荐：`(max-width: 640px) calc(100vw - 64px), (max-width: 900px) calc(50vw - 50px), (min-width: 1160px) 347px, calc(33.33vw - 40px)`
-   - 热门景点：`(max-width: 720px) calc(50vw - 40px), (max-width: 1080px) calc(33.33vw - 38px), (min-width: 1160px) 204px, calc(20vw - 29px)`
+   - **热门景点（已更新）**：`(max-width: 720px) calc(50vw - 40px), (max-width: 1080px) calc(33.33vw - 38px), (min-width: 1160px) 204px, calc(20vw - 29px)`
 
-3. **CSS 适配**：
+3. **CSS 适配（已更新）**：
    - 编辑推荐：3列网格（桌面）→ 2列（平板）→ 1列（移动）
-   - 热门景点：5列网格（桌面）→ 3列（平板）→ 2列（移动）
+   - **热门景点（已更新）**：5列网格（桌面）→ 3列（1080px断点）→ 2列（720px断点）
+
+**更新** 热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略，断点从原来的640px/1024px调整为1080px/720px，提供更优的桌面端体验。
 
 ```mermaid
 flowchart TD
@@ -358,7 +361,7 @@ EP2["< 900px: 50vw - 50px"]
 EP3["> 1160px: 347px"]
 EP4["默认: 33.33vw - 40px"]
 end
-subgraph "热门景点 sizes 计算"
+subgraph "热门景点 sizes 计算已更新"
 HA1["< 720px: 50vw - 40px"]
 HA2["< 1080px: 33.33vw - 38px"]
 HA3["> 1160px: 204px"]
@@ -444,8 +447,13 @@ Limit --> Render["渲染序号、标题、作者、评论数、浏览数、发�
 - [homepage-u7-hot-posts.md:10-56](file://docs/specs/wanderchain/homepage-u7-hot-posts.md#L10-L56)
 - [frontend/components/home/hot-posts.tsx:1-59](file://frontend/components/home/hot-posts.tsx#L1-L59)
 
-### 热门景点区块
+### 热门景点区块（已更新）
 热门景点按浏览量与发布时间排序，展示封面、名称、城市与评分、浏览数。空态与错误态沿用通用区块状态。**已集成响应式图片优化**，使用精确的 sizes 属性和自定义 image loader 实现最佳加载性能。
+
+**更新** 响应式设计已从移动优先策略调整为桌面优先策略：
+- 桌面端：5列网格布局
+- 平板端（≤1080px）：3列网格布局  
+- 移动端（≤720px）：2列网格布局
 
 ```mermaid
 flowchart TD
@@ -526,11 +534,12 @@ Loader["image-loader.ts"] --> Config["next.config.ts"]
 - **Hero 组件优化**：独立的 Hero 组件减少页面组件复杂度，支持静态渲染和无客户端依赖。
 - **三态加载**：`useSectionData` 统一管理 loading/error/ready，减少重复请求与竞态条件。
 - **城市参数稳定**：首页对 `searchParams` 做单值归一，避免数组参数导致的不必要重渲染。
-- **响应式图片优化**：
-  - 自定义 image loader 直接将宽度参数传递给 Unsplash CDN，避免经过 Next.js 的 `/ _next/image` 端点
+- **响应式图片优化（已更新）**：
+  - 自定义 image loader 直接将宽度参数传递给 Unsplash CDN，避免经过 Next.js 的 `/_next/image` 端点
   - 精确的 sizes 属性计算确保浏览器选择最优图片尺寸
   - 懒加载和异步解码提升首屏性能
   - CSS aspect-ratio 和 object-fit 确保图片在不同屏幕尺寸下的显示效果
+  - **热门景点区块**：优化的桌面优先响应式策略提供更好的大屏幕上体验
 - **可替换数据层**：类型与 `ListResult<T>` 契约使 Mock 与真实 API 可互换，组件与测试无需改动。
 - **无障碍性能优化**：AI 助手模态框使用运行期查询而非缓存的可聚焦元素列表，避免内存泄漏和性能问题。
 
@@ -543,9 +552,10 @@ Loader["image-loader.ts"] --> Config["next.config.ts"]
   - 焦点异常：确认焦点陷阱正常工作（Tab/Shift+Tab 循环）；检查关闭按钮初始焦点设置。
   - 滚动穿透：确认 `document.body.style.overflow` 设置为 `hidden`；检查组件卸载时的清理函数。
   - 键盘导航失效：检查 `keydown` 事件监听是否正确注册和清理。
-- **图片优化问题**：
+- **图片优化问题（已更新）**：
   - 图片未优化：确认 next.config.ts 中已配置自定义 loader；检查 image-loader.ts 是否正确导出。
   - 图片尺寸不正确：检查 sizes 属性是否与 CSS 网格布局匹配；确认 width/height 属性设置合理。
+  - **热门景点响应式问题**：确认断点设置（1080px/720px）与 CSS 媒体查询一致；检查桌面优先策略是否正确应用。
   - CDN 请求失败：检查图片 URL 是否为有效的 https URL；确认 Unsplash CDN 可访问。
   - 性能问题：检查是否正确使用 loading="lazy" 和 decoding="async"；确认 sizes 属性计算准确。
 - 面板无法关闭：确认遮罩点击、关闭按钮与 Esc 事件监听未被阻止；检查焦点归还逻辑。
@@ -564,6 +574,6 @@ Loader["image-loader.ts"] --> Config["next.config.ts"]
 - [frontend/next.config.ts:6-10](file://frontend/next.config.ts#L6-L10)
 
 ## 结论
-WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**新增的独立 Hero 首屏组件**进一步提升了代码的可维护性和组件复用性。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**新增的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
+WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**新增的独立 Hero 首屏组件**进一步提升了代码的可维护性和组件复用性。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**更新的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。**特别地，热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略**，使用1080px/720px断点提供更好的桌面端体验。架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。
 
 [本节为总结性内容，不直接分析具体文件]

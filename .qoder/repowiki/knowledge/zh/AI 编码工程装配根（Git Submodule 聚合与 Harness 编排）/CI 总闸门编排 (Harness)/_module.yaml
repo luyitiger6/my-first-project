@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: harness
-title: CI 总闸门编排（Harness）
+title: CI 总闸门编排 (Harness)
 scope:
     - harness/
 source_files: []
