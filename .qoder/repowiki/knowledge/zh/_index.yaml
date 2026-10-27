@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-10-27T09:18:44Z"
+exported_at: "2026-10-27T10:47:57Z"
 modules:
     "":
-        dir_name: AI 编码工程装配根 (Submodule + OpenSpec + Harness)
-        title: AI 编码工程装配根 (Submodule + OpenSpec + Harness)
+        dir_name: AI 编码工程装配点（Git Submodule 聚合根）
+        title: AI 编码工程装配点（Git Submodule 聚合根）
         scope:
             - README.md
             - AGENTS.md
