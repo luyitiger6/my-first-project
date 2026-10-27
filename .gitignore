@@ -8,6 +8,11 @@ target/
 node_modules/
 frontend/dist/
 
+# E2E：运行产物不入库（截图仅用于失败定位与本地复核）
+docs/e2e/test-results/
+docs/e2e/playwright-report/
+docs/e2e/screenshots/
+
 # IDE
 .idea/
 *.iml
