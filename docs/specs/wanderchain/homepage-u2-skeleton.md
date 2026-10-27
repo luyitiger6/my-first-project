@@ -76,9 +76,10 @@
 - Then `city='chengdu'`，其余单值参数保留在原 `query` 对象中供切换时沿用
 
 **S4 · 页面框架完整**
-- When 访问任意路径
+- When 访问首页、`/search`、`/community` 或 `/attractions`
 - Then 顶栏、页脚、浮动 AI 按钮、跳过导航链接均存在
 - And 主内容区带 `id="main-content"`，跳过链接可直达
+- And 登录、注册是独立品牌页，只保留跳过链接与主内容锚点，不套站点头尾
 
 **S5 · 区块数据就绪**
 - When 区块数据 resolve
@@ -192,7 +193,8 @@ function useSectionData<T>(
 
 - [ ] `[data-section]` 顺序恒为 feature-nav → city-switcher → editor-picks → hot-posts → hot-attractions
 - [ ] 五个区块标题文案与 §2.1 S1 一致
-- [ ] 顶栏、页脚、浮动 AI 按钮、跳过链接在所有路由可见（英文文案）
+- [ ] 顶栏、页脚、浮动 AI 按钮在首页、`/search` 与两个占位页可见；跳过链接在所有路由可见（英文文案）
+- [ ] `/login`、`/register` 不套站点头尾，仅保留跳过链接与 `id="main-content"`
 - [ ] 主内容区 `id="main-content"` 存在，跳过链接点击后聚焦到主内容
 
 ### 4.2 参数

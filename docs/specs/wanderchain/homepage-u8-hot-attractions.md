@@ -209,11 +209,11 @@ interface Attraction {
 ### 4.4 图片与响应式
 
 - [ ] 封面为 1:1；`alt="<名称>封面"`
-- [ ] 封面走 `next/image`，带多档 `srcset`；`sizes` 为 `(max-width: 720px) calc(50vw - 40px), (max-width: 1080px) calc(33.33vw - 38px), (min-width: 1160px) 204px, calc(20vw - 29px)`
+- [ ] 封面走 `next/image`，带多档 `srcset`；`sizes` 为 `(max-width: 480px) calc(100vw - 64px), (max-width: 720px) calc(50vw - 40px), (max-width: 1080px) calc(33.33vw - 38px), (min-width: 1160px) 204px, calc(20vw - 29px)`
 - [ ] 封面 `loading="lazy"` + `decoding="async"`
 - [ ] `.cover` 含 `height: auto`（防 `aspect-ratio` 被宽高属性顶死）
 - [ ] 图片失败时占位不塌陷
-- [ ] 320px 视口无横向滚动；> 1080px 五列、≤ 1080px 三列、≤ 720px 两列
+- [ ] 320px 视口无横向滚动；> 1080px 五列、≤ 1080px 三列、≤ 720px 两列、≤ 480px 单列
 
 ### 4.5 工程
 
@@ -260,6 +260,7 @@ interface Attraction {
 | `> 1080px` | 5 |
 | `≤ 1080px` | 3 |
 | `≤ 720px` | 2 |
+| `≤ 480px` | 1 |
 
 - 实现是 desktop-first：默认五列，用累进的 `max-width` 逐级收窄；间距恒为 `16px`，不随断点变化
 - 与 U6 的列数断点不同（U6 以 900px 为界，本单元以 1080px 为界）。**不要**为「统一」而改动本单元的断点，除非两处同时验收

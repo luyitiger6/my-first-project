@@ -115,7 +115,7 @@
 
 **S9 · 上下文缺失**
 - When `useAiAssistant()` 在 `AiAssistantProvider` 之外调用
-- Then 抛出 `useAiAssistant 必须在 AiAssistantProvider 内使用`
+- Then 抛出 `useAiAssistant must be used inside AiAssistantProvider`
 - And 不允许返回默认空实现
 
 **S10 · 重复打开**
