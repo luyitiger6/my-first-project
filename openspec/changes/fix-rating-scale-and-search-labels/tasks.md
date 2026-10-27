@@ -16,9 +16,9 @@
 
 ## 4. 子模块边界与总闸门
 
-- [ ] 4.1 按子模块边界在 `frontend/` 内提交并推送。验证：`git -C frontend log --oneline -1` 出现本轮提交，推送后 `git -C frontend status -sb` 无 `ahead`。
-- [ ] 4.2 回工作区提交 change 产物与新 gitlink，只暂存 `openspec/changes/fix-rating-scale-and-search-labels/` 与 `frontend`。验证：`git ls-files -s frontend` 的提交号等于 `git -C frontend rev-parse HEAD`，`git status --short` 不出现 `.qoder/repowiki/`。
-- [ ] 4.3 跑总闸门 `powershell -File harness\run-all.ps1`。验证：退出码为 0 且输出 `RESULT: ALL CHECKS PASSED`；跑完 `git status --short` 为空（05 闸门已还原 `AGENTS.md` / `README.md`）。
+- [x] 4.1 按子模块边界在 `frontend/` 内提交并推送。验证：`git -C frontend log --oneline -1` 出现本轮提交，推送后 `git -C frontend status -sb` 无 `ahead`。
+- [x] 4.2 回工作区提交 change 产物与新 gitlink，只暂存 `openspec/changes/fix-rating-scale-and-search-labels/` 与 `frontend`。验证：`git ls-files -s frontend` 的提交号等于 `git -C frontend rev-parse HEAD`，`git status --short` 不出现 `.qoder/repowiki/`。
+- [x] 4.3 跑总闸门 `powershell -File harness\run-all.ps1`。验证：退出码为 0 且输出 `RESULT: ALL CHECKS PASSED`；跑完 `git status --short` 为空（05 闸门已还原 `AGENTS.md` / `README.md`）。
 
 ## Workflow follow-up
 
