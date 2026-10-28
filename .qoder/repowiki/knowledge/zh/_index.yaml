@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-10-28T09:33:46Z"
+exported_at: "2026-10-28T10:04:22Z"
 modules:
     "":
-        dir_name: AI 编码工程装配根 (Submodule + OpenSpec + Harness)
-        title: AI 编码工程装配根 (Submodule + OpenSpec + Harness)
+        dir_name: AI 编码工程装配点（根工作区）
+        title: AI 编码工程装配点（根工作区）
         scope:
             - README.md
             - AGENTS.md
@@ -51,8 +51,8 @@ modules:
         depends_on: []
         related_to: []
     openspec:
-        dir_name: OpenSpec 结构化变更与能力规格仓库
-        title: OpenSpec 结构化变更与能力规格仓库
+        dir_name: OpenSpec 变更与能力规格仓库
+        title: OpenSpec 变更与能力规格仓库
         scope:
             - openspec/
         source_files: []
