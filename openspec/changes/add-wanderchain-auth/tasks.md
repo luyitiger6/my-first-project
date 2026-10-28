@@ -18,8 +18,8 @@
 - [x] 2.2 实现具名迁移方法（注销），验证每条迁移的单测覆盖合法与非法两种入口
 - [x] 2.3 实现密码 bcrypt 哈希与校验，验证持久化记录中不存在明文密码的单测通过（`common/security/PasswordHasher` 接口 + `BcryptPasswordHasher` 强度 10；`Account.passwordMatches` 以「传入校验器」方式比对，哈希不出实体（D5）；`BcryptPasswordHasherTest` 4 例验证盐内嵌、同明文两次哈希不同、非法输入返回 false，`AccountTest.passwordIsPersistedAsHashOnly` 反射读 `passwordHash` 断言不含明文）
 - [x] 2.4 实现账户维度连续失败计数（成功登录清零、计满后要求图形码）与来源维度限流窗口（超阈返回 429），用小阈值验证「达阈值后要求图形码」「成功登录后不再要求」「来源超阈 429」三个单测（`service/auth/LoginThrottle`：账户键 `wc:login:fail:acct:<id>` 只由成功登录清零，TTL 30 天仅防键堆积；来源键 `wc:login:fail:src:<key>` TTL 取 `source-window`；INCR 与 PEXPIRE 合成一个 Lua 脚本保证原子，避免进程中断后该来源被永久拒绝；邮箱不存在时用 `recordSourceFailure` 只占来源额度。`LoginThrottleTest` 4 例连真实 Redis、阈值取 2/3，覆盖达阈值要求图形码、成功清零、来源超阈携带 Retry-After、单来源撞多账户共用额度。spec 第 104 行的「递增的等待」不在本任务，实施 5.4 时按裁定删除（理由见 5.4 备注与 design D3））
-- [ ] 2.5 验证 `deleted` 为终态：对已注销账户执行登录、取码、注册的组合，单测断言状态不被改写；同时验证同一邮箱可注册出新账户（新对外标识），旧账户行保持 `deleted`
-- [ ] 2.6 断言本变更无任何端点会置入 `email_unverified`：遍历端点清单用合法输入调用，库内状态无新建或变更；并用测试夹具造出该状态验证登录返回 `403` + `EMAIL_UNVERIFIED` 且状态不变
+- [x] 2.5 验证 `deleted` 为终态：对已注销账户执行登录、取码、注册的组合，单测断言状态不被改写；同时验证同一邮箱可注册出新账户（新对外标识），旧账户行保持 `deleted`（`AccountTest` 已在实体层证 `delete()` 拒二次注销，`LoginTest`/`RegisterEnumerationTest` 各证单一端点；本轮 `DeletedTerminalStateTest` 2 例补上它们都没有的那件事——把登录+取码+注册三步组合打在同一个已注销行上，每一步之后都断言该行 status/publicId/deletedAt/tokenVersion/version 逐字不变，注册只新增一行（新 publicId 为 active，同邮箱恰两行）；另一条枚举层用例断言 `DELETED.canTransitionTo(x)` 对三个目标均为 false，即无出边）
+- [x] 2.6 断言本变更无任何端点会置入 `email_unverified`：遍历端点清单用合法输入调用，库内状态无新建或变更；并用测试夹具造出该状态验证登录返回 `403` + `EMAIL_UNVERIFIED` 且状态不变
 
 ## 3. 令牌签发与即时失效（JWT + 服务端校验点）
 
@@ -37,7 +37,7 @@
 - [x] 4.4 验证比对成功后在同一次处理内删除该缓存键（不依赖 TTL），并验证重复提交同一码仍被拒绝（`deletesKeyInSameCallWithoutWaitingForTtl`：发码后先断言剩余 TTL > 1 秒，`verify` 返回后键已不在——「删了」与「过期了」在 `hasKey` 看来是同一件事，只有 TTL 能区分；`repeatedSubmissionIsRejectedWithoutCountingAsFailure`：重复提交不仅被拒，也不记一次失败——键已不在时 Lua 返回 `-1`，根本不进计数分支，否则用户手抖重发一次就白丢一次机会。两条断言都落在 `RegisterCodeVerifyTest`，共 11 例）
 - [x] 4.5 验证重新发码使旧码主动失效、且冷却窗口内重发返回 429 与 `Retry-After` 且不生成新码（冷却键 `wc:cooldown:register:` + 邮箱摘要，TTL = `resend-cooldown`（60 秒），包级 `cooldownKeyOf` 供测试夹具使用。顺序是「先查、后设，且设在图形码通过之后」：先设的话一个填错的图形码就把用户锁在冷却里 60 秒；只在图形码之后才查，又会让「白烧一张图形码」成为探测冷却状态的门票。落键用 `setIfAbsent` —— 并发重发时只让一个落下。`Retry-After` 取剩余毫秒向上取整，「还要等几秒」向下取整会让客户端踩在秒边界上提前到达。重新发码使旧码失效是覆盖写的自然结果，不靠额外删除。`RegisterCodeCooldownTest` 5 例（走 HTTP：`Retry-After` 是响应头，只有穿过 `GlobalExceptionHandler` 才算真的发得出去）：冷却内 429 + `Retry-After` 在 1~60 且主键摘要未变、冷却命中不烧图形码、图形码填错不启动冷却、冷却按邮箱计、冷却到期后重发且旧码失效。夹具在 `@BeforeEach` 主动重置三个键而不是只靠事后清理——冷却键一旦漏登记会以 60 秒寿命跨过好几个测试方法，让下一个测试在第一个请求就 429，那种失败现场极难归因（本轮就是这么踩到的）。连带修正 `RegisterCodeTest.consumesCaptchaOnFirstUse`：同邮箱再提会先撞冷却，改换一个邮箱才看得到「图形码已被消耗」这件事本身）
 - [x] 4.6 验证反复调 `GET /api/auth/captcha` 均返回新 `captchaId`、各张图形码在各自存活时间内独立可校验，且不影响已发出的邮箱注册码（「旧 `captchaId` 立即失效」在本任务处修订为「并存」：该端点纯无状态，请求里没有任何字段能说明「这是刚刚刷新页面的那个人」，服务端无从知道该作废哪一张；强制作废需下发 cookie 记住当前 `captchaId`，为一个收益接近零的约束引入服务端会话状态，且会让两个标签页互相作废对方的图形码。spec 的 Scenario 与 design D9 已同步修订并写明理由。`CaptchaRefreshTest` 4 例：连调两次拿到不同 UUID 且两个键都在缓存里、响应是 `data:image/png;base64,` 形式、并存的两张各自能换码（这条只能在服务层验——走 HTTP 拿到的图形码没有答案，答案生成后立刻被摘要且图里无文本）、先发码再刷两次后摘要不变且码仍可校验）
-- [ ] 4.7 定义发信端口并实现一个模拟发码程序（写入 outbox 或投递记录表），验证不联网即可跑通「取图形码 → 换注册码 → 注册」全链路
+- [x] 4.7 定义发信端口并实现一个模拟发码程序（写入 outbox 或投递记录表），验证不联网即可跑通「取图形码 → 换注册码 → 注册」全链路（发信端口 `VerificationCodeSender` 与模拟实现 `OutboxVerificationCodeSender`（进程内 outbox、`@Profile("!prod")`）已随 4.2 落地；本轮补上全链路验证 `RegisterFlowFullChainTest` 2 例：一条断言 `GET /api/auth/captcha` 离线可用且响应不泄露答案，一条把「换注册码」也走真实 HTTP `POST /api/auth/register-code`（而非像 5.1 那样在服务层直调），码投递进程内 outbox 后再走 `POST /api/auth/register` 建 active 账户、当场下发 cookie、令牌可验回且会话行落库）
 - [x] 4.8 验证模拟实现仅在非生产 profile 生效、且不存在任何返回验证码的 HTTP 接口，用启动测试与端点清单断言两者（`OutboxVerificationCodeSender` 加 `@Profile("!prod")`：生产环境缺真实实现时 `RegisterCodeService` 注入不到 `VerificationCodeSender`，应用直接启动失败——一个看上去能用、却在用户填完表单后才暴露「码没发出去」的认证服务，比启不来糟得多。`SimulatedSenderGuardTest` 4 例：`prod` profile 下真实启动一次并断言异常栈含 `VerificationCodeSender`（用 `SpringApplicationBuilder` + `WebApplicationType.NONE`，不占端口；能启动成功反而说明护栏失手）、`/api/auth` 端点清单白名单（当前恰好两个：`GET /api/auth/captcha`、`POST /api/auth/register-code`，将来多加一个就会红）、换发注册码的响应体为空、图形码响应不含已发出的码。用清单而不是逐个体检响应体：清单是白名单，能拦住「悄悄加一个读码端点」这类新增）
 - [x] 4.9 实现邮箱发码日配额（默认 5 封/自然日，注册码与重置码合并计数，键用邮箱摘要 + 日期，冷却与图形码错误不计数），验证「用尽后 429 + `Retry-After` 指向次日零点」「跨日重置」「不区分注册状态」「键不含明文」四条断言（`service/auth/EmailQuotaGuard`：键 `wc:quota:email:` + 邮箱摘要 + `yyyy-MM-dd`；摘要而非明文，因为缓存键会出现在运维工具、慢查询日志与 `KEYS` 输出里。日期进键而不是滚动 24 小时——「每天 N 次」若实现成滚动窗口，用户永远算不出要等到什么时候，自然日边界才能让 `Retry-After` 给出确定时刻。比对与自增在同一个 Lua 脚本里，超限时不增计数（否则计数会涨到没人看得懂的数值）。注册码与重置码共用同一前缀，因此天然合并计数。`Clock` 通过包级构造器注入，让「跨日」与「次日零点」可被固定时钟断言。配额校验位于图形码校验之后、冷却落键之前：spec 要求「图形码错误或冷却命中的请求 MUST NOT 消耗配额」，代价是配额耗尽时图形码已被烧掉，但把配额提到图形码之前就等于允许任何人用任意答案探测「这个邮箱今天发了几封」。`EmailQuotaTest` 6 例：用尽后 429 + `Retry-After` 且不再投递、固定时钟下 10:00 的 `Retry-After` 等于 14 小时、跨日后额度重置、图形码填错不消耗配额、冷却命中不消耗配额（计数仍为 1 且第二张图形码还在，证明拦住它的是冷却）、键不含明文邮箱但带当天日期。「不区分注册状态」随 5.2 的防枚举一起验——那需要「已注册邮箱不投递」的分支）
 
@@ -55,11 +55,11 @@
 
 ## 6. 响应安全边界（覆盖用户信息接口）
 
-- [ ] 6.1 实现全局响应包装作为唯一出站通道，验证不经包装的端点写响应无法通过编译或被拦下
-- [ ] 6.2 为 `GET /api/auth/me` 建立字段白名单与递归字段路径收集器，验证白名单覆盖 `/me` 全部已返回字段
-- [ ] 6.3 断言 `/me` 响应字段路径差集为空、且不含 `password_hash`、`salt`、`verification_code`
-- [ ] 6.4 断言 `/me` 响应原文不含已存储的密码哈希字面值，并用一个刻意构造的用例证明该断言会失败
-- [ ] 6.5 断言错误响应不含字段值、哈希片段与堆栈信息，验证 4xx/5xx 分支的测试通过（对应 Req 9，不属于 `/me` 字段白名单范围）
+- [x] 6.1 实现全局响应包装作为唯一出站通道，验证不经包装的端点写响应无法通过编译或被拦下
+- [x] 6.2 为 `GET /api/auth/me` 建立字段白名单与递归字段路径收集器，验证白名单覆盖 `/me` 全部已返回字段
+- [x] 6.3 断言 `/me` 响应字段路径差集为空、且不含 `password_hash`、`salt`、`verification_code`
+- [x] 6.4 断言 `/me` 响应原文不含已存储的密码哈希字面值，并用一个刻意构造的用例证明该断言会失败
+- [x] 6.5 断言错误响应不含字段值、哈希片段与堆栈信息，验证 4xx/5xx 分支的测试通过（对应 Req 9，不属于 `/me` 字段白名单范围）
 
 ## 7. 密码找回（复用两层码链路）
 
@@ -72,11 +72,11 @@
 
 ## 8. 集成验收
 
-- [ ] 8.1 在真实数据库与 Redis 上跑通「取图形码 → 换注册码 → 注册（收 cookie） → 登录 → 登出（清 cookie） → 重置密码」全链路，验证每一步的响应码、cookie 属性与契约一致
-- [ ] 8.2 跑通「连续失败达阈值 → 要求图形码 → 来源超阈 429 → 用正确凭证仍可登录成功」全链路，验证账户状态全程不变、前端同源代理透传 429
-- [ ] 8.3 执行 `powershell -File harness\run-all.ps1`，退出码为 0
-- [ ] 8.4 用 `powershell -File harness\checks\02-test.ps1` 单独复跑，确认契约测试随之执行且非 0 退出码可被检出
-- [ ] 8.5 验证缓存不可达时注册与登录链路整体失败而非静默放行：把 Redis 指向不可达端口，断言请求返回 5xx、不创建账户、不签发令牌
+- [x] 8.1 在真实数据库与 Redis 上跑通「取图形码 → 换注册码 → 注册（收 cookie） → 登录 → 登出（清 cookie） → 重置密码」全链路，验证每一步的响应码、cookie 属性与契约一致
+- [x] 8.2 跑通「连续失败达阈值 → 要求图形码 → 来源超阈 429 → 用正确凭证仍可登录成功」全链路，验证账户状态全程不变、前端同源代理透传 429
+- [x] 8.3 执行 `powershell -File harness\run-all.ps1`，退出码为 0（实测 EXIT=0、RESULT: ALL CHECKS PASSED，10 道闸门全绿：00-submodule-check 1.2s / 01-compile 4.3s / 02-test 74.4s / 03-static-guard 1.4s / 04-frontend 43.8s / 05-scaffold-check 0.9s / 06-schema-check 6.7s / 07-doc-consistency 6.1s / 08-spec-doc-breakpoints 0.8s / 09-redis-check 1.1s。首跑曾在 02-test 因 8.2 集成用例的测试隔离缺陷红（`expected 401 got 400`，line 134），经 systematic-debugging 四阶段定位根因为「共享 Redis 陈旧账户计数 × 空账户表低 auto_increment id 复用」，修复见 backend 提交 4a94d16，重跑全绿。）
+- [x] 8.4 用 `powershell -File harness\checks\02-test.ps1` 单独复跑，确认契约测试随之执行且非 0 退出码可被检出（单跑 EXIT=0、BUILD SUCCESS、Test gate passed，`Tests run: 224, Failures: 0, Errors: 0, Skipped: 0`。**契约测试确随闸门执行**：容器装配契约 `ApplicationContextTest` 1 例绿（日志 `Started ApplicationContextTest in 10.79 seconds`，`@SpringBootTest` 真实拉起上下文），本变更的 `RedisUnavailableIntegrationTest` 2 例、修复后的 `LoginThrottleChainIntegrationTest` 1 例均在其中跑绿。**「非 0 退出码可被检出」由本会话真实事故反证**：修复前同一 02-test 闸门让 run-all 以退出码 1 early-stop；闸门脚本 `$code = $LASTEXITCODE` → `if ($code -ne 0) { exit 1 }`（02-test.ps1 第 82–96 行）的传导路径亦经 Read 核对。）
+- [x] 8.5 验证缓存不可达时注册与登录链路整体失败而非静默放行：把 Redis 指向不可达端口，断言请求返回 5xx、不创建账户、不签发令牌
 
 ## Workflow follow-up
 

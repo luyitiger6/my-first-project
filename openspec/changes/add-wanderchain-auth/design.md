@@ -241,6 +241,10 @@ auth_sessions  会话与吊销记录：账户外键、jti、过期时间、吊�
 
 **测试直连真库**（用户定）：`mvn test` 直连 `127.0.0.1:8806` 与 `127.0.0.1:6606`，不用 H2 或嵌入式 Redis。理由是 1.1 的核心断言「插入两条相同有效邮箱必定失败」依赖 MySQL 的生成列与唯一索引语义，H2 不保证同样行为，用它测等于没测。代价是 `02-test` 从此要求两个实例可达。
 
+**5xx 错误体不新造第八个错误码（tasks 6.5 落地时的裁定）**：Req 9 的「错误响应结构一致」Scenario 写的是「WHEN 4xx 或 5xx THEN body 含 `code` 与 `message` 两字段、不含任何用户凭证或内部标识」。但 Q8 定下的错误码封闭集合恰为七个，全部落在 400/401/403/429，**没有任何 5xx 码**；`ErrorContractTest.errorCodesAreExactlyTheSevenFromTheSpec` 用 `hasSize(7)` 钉死这一点，加一个 `INTERNAL_ERROR` 码既破坏该断言、又违反「码取自固定集合」。同时既有 `GlobalExceptionHandler` 的设计注释明确「其它异常不兜底改写——让 Spring 的默认 500 暴露出来，比替它编一个看起来正常的错误码更容易在联调时被发现」。因此本系统在设计上**从不主动产出带 `{code, message}` 的 5xx**：任何 5xx 都是未收口的意外崩溃，走 Spring Boot 默认错误页（`application.yml` 未开启 `server.error.include-message`/`include-stacktrace`，默认 `never`，body 为 `{timestamp, status, error, path}`）。据此，6.5 对 5xx 分支只断言 Scenario 中**可落地且更重要的那一半**——「不含任何用户凭证或内部标识」（`ErrorResponseLeakTest` 用真实服务器让 `CaptchaService.issue()` 抛出消息里塞满邮箱、哈希与伪堆栈的异常，验证默认错误页一律不回显），不改造 5xx 的响应结构、不新增错误码。**这是实现阶段发现 Req 9 的「5xx → `{code, message}`」与七码封闭集合无法同时成立的张力后做出的解释性裁定，未修改 spec.md 的 Scenario 文本（验收标准解释权归 spec）；归档前须向用户确认这一读法。**
+
+**前端同源代理必须透传 429 的 Retry-After（tasks 8.2 落地时的裁定）**：spec 的限流 Scenario 要求「限流响应可被客户端解读」——429 必须带 Retry-After，客户端才知道该等多久。但前端是同源代理架构（`app/api/[...path]/route.ts`）：浏览器直连的是这个 Next Route Handler，不是后端。代理此前只回传上游的 `content-type`，把 `Retry-After` 丢掉了——后端在 5.7/7.6 特意设的这个头，到浏览器这一跳就蒸发，「可被客户端解读」在代理层失效。裁定为附加式修复：仅在响应头存在时多拷一项 `retry-after`，不改其余上游响应的处理；`route.test.ts` 补一条用例钉住「上游 429 + Retry-After + RATE_LIMITED 体被原样透传，不吞成 2xx/502」。这是让 spec 的既有要求在真实拓扑下成立，不是新增行为。
+
 ## Risks / Trade-offs
 
 - **`403` 仍暴露「账户存在且未验证」** → 已用「密码校验先行」把可利用性压到零；但若未来出现「忘记密码 + 未验证提示」组合，会重新打开枚举面，届时需专门设计。
