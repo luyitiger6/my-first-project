@@ -27,22 +27,22 @@ git clone --recurse-submodules <工作区仓库地址>
 git submodule update --init --recursive
 
 # 1. 验收当前代码是否健康（应该是 ALL CHECKS PASSED）
-#    跑完整条闸门链；06 复用 127.0.0.1:8806 的既有 MySQL 8
+#    跑完整条闸门链；06 复用 127.0.0.1:8806 的 MySQL 8，09 复用 127.0.0.1:6606 的 Redis
 powershell -File harness\run-all.ps1
 
-# 只跑迁移闸门（仍使用同一 8806 实例与 ai_chat_gate schema）
-powershell -File harness\checks\06-flyway.ps1
+# 只跑建表闸门（仍使用同一 8806 实例，操作 ai_chat_gate 与 wanderchain 两个专用 schema）
+powershell -File harness\checks\06-schema-check.ps1
 
-# 2. 启动后端服务
+# 2. 启动后端服务（需先设置 WANDERCHAIN_DB_USER / WANDERCHAIN_DB_PASSWORD / WANDERCHAIN_REDIS_PASSWORD / WANDERCHAIN_JWT_SECRET）
 mvn -f backend/pom.xml spring-boot:run
-# 浏览器 / curl 访问 http://localhost:8989/api/todos
+# 服务监听 http://localhost:8989
 
 # 3. 启动前端（同源代理 /api → 8989）
 cd frontend; npm ci; npm run dev
 # 浏览器访问 http://localhost:3000
 
 # 4. 提一个新需求（会生成规格，不写代码）
-#    在 AI 工具里执行：/opsx:propose 增加按完成状态过滤的查询
+#    在 AI 工具里执行：/opsx:propose <一句话描述你要的能力>
 ```
 
 ## 工作区改名（clone 后第一步）
@@ -52,7 +52,7 @@ cd frontend; npm ci; npm run dev
 
 ```powershell
 node scaffold/rename.mjs --name <新 slug> --display "<新展示名>"
-# 例：node scaffold/rename.mjs --name todo-workbench --display "Todo Workbench"
+# 例：node scaffold/rename.mjs --name example-workspace --display "Example Workspace"
 ```
 
 - `--name`：kebab-case slug（仓库与文档标识）
@@ -75,10 +75,12 @@ propose（定规格）→ 人工审阅 → apply（实施）→ harness（验收
 
 ```
 openspec/    规格与变更（proposal / specs / design / tasks / archive）
-harness/     闸门链：submodule → compile → test → static-guard → frontend → scaffold-check → flyway → doc-consistency
+harness/     闸门链（按文件名顺序执行，遇错即停）：00-submodule-check → 01-compile → 02-test
+             → 03-static-guard → 04-frontend → 05-scaffold-check → 06-schema-check
+             → 07-doc-consistency → 08-spec-doc-breakpoints → 09-redis-check
 scaffold/    工作区身份改名脚本（分发出去后第一步执行）
 .agents/     两个技能：systematic-debugging、verification-before-completion
-backend/     [submodule] 独立仓库：Spring Boot 后端（Todo 领域，Maven 项目根）
+backend/     [submodule] 独立仓库：Spring Boot 后端（wanderchain 账户认证，Maven 项目根）
 frontend/    [submodule] 独立仓库：Next.js 16 前端（wanderchain 首页 + 同源 API 代理，npm 项目根）
 .gitmodules  两个子模块的 URL（使用者可替换，工作区改名不触碰）
 AGENTS.md    AI 的入口契约，先读这个
@@ -91,20 +93,34 @@ AGENTS.md    AI 的入口契约，先读这个
 - Node.js 20.19+（前端构建、`openspec` CLI 与工作区改名脚本需要；Next.js 16 的最低要求为 20.9.0）
 - Git 2.x（子模块需要；新克隆用 `--recurse-submodules`）
 - 可访问两个子模块远程仓库的网络与凭据（首次初始化子模块时使用）
-- MySQL 8（默认 `127.0.0.1:8806`；06 闸门在专用 schema `ai_chat_gate` 上执行，不新建/删除容器，也不改 `green-note` 业务库）
-- Flyway 凭据：`FLYWAY_DB_PASSWORD`；未设置时若 8806 由本机 Docker 容器发布，闸门会从容器环境读取 root 密码；CI 用 secret 注入
-- Docker CLI（可访问 8806 容器，用于结构断言与凭据发现；或提供本机 `mysql` 客户端）
+- MySQL 8（默认 `127.0.0.1:8806`）的既有实例，两个库各归其主：`wanderchain` 供后端启动与 `02-test`（认证两表），`ai_chat_gate` 供 `06-schema-check` 做建表断言（AI 会话四表）；闸门不新建/删除容器，也不碰 `green-note` 业务库
+- Redis 7（默认 `127.0.0.1:6606`，db 3）的既有实例：`09-redis-check` 验证可达、凭据正确、db 可选；后端运行期用它存图形码、注册码、登录失败计数与发码配额
+- Docker CLI（可访问 8806 / 6606 容器，用于凭据发现与 `docker exec` 断言；或提供本机 `mysql` / `redis-cli` 客户端）
 
 npm registry 提示：如默认源访问慢，可切换镜像（本机验证可用：`https://mirrors.tencent.com/npm/`），
 但团队若自建私有源，以私有源为准，`package-lock.json` 会钉住版本不受源切换影响。
 
-06 闸门默认复用本机 8806 的 MySQL 8；若数据库在别处或密码未注入，先设置 `FLYWAY_DB_HOST` / `FLYWAY_DB_PORT` / `FLYWAY_DB_USER` / `FLYWAY_DB_PASSWORD`。
-`01/02/04` 不依赖数据库。当前既有实例为 MySQL 8.3；Flyway 11.7.2 会提示其已测试上限为 8.1，但迁移与结构断言已实际通过。
+凭据按「谁读它」分三组，未设置时闸门会按表里的兜底顺序自己找：
+
+| 使用者 | 变量（括号内为默认值） | 未设置时的兜底 |
+|---|---|---|
+| `06-schema-check` | `SCHEMA_DB_HOST`（`127.0.0.1`）/ `SCHEMA_DB_PORT`（`8806`）/ `SCHEMA_DB_USER`（`root`）/ `SCHEMA_DB_NAME`（`ai_chat_gate`）/ `SCHEMA_DB_PASSWORD` | 从发布 8806 的容器读 `MYSQL_ROOT_PASSWORD`；读不到即失败 |
+| `09-redis-check` | `SCHEMA_REDIS_HOST`（`127.0.0.1`）/ `SCHEMA_REDIS_PORT`（`6606`）/ `SCHEMA_REDIS_DB`（`3`）/ `SCHEMA_REDIS_PASSWORD` | 从 6606 容器启动命令的 `--requirepass` 解析 |
+| 后端启动与 `02-test` | `WANDERCHAIN_DB_USER`（`root`）/ `WANDERCHAIN_DB_PASSWORD` / `WANDERCHAIN_REDIS_PASSWORD` / `WANDERCHAIN_JWT_SECRET` | 两个密码从容器发现（Redis 空密码是合法部署），JWT 用测试专用默认值 |
+
+`SCHEMA_DB_NAME` 只影响 `ai_chat_gate`（可换成 `ai_chat_gate_<suffix>` 做并行验证），`wanderchain` 是写死的。
+
+`01` / `04` 不依赖数据库与缓存；`02` / `06` / `09` 与后端启动都依赖上表实例，连不上即非 0 退出。预检：
+
+```powershell
+Test-NetConnection 127.0.0.1 -Port 8806   # 或 docker ps --filter publish=8806
+Test-NetConnection 127.0.0.1 -Port 6606   # 或 docker ps --filter publish=6606
+```
 
 ## 设计取舍
 
 - **前后端用 submodule 而非普通目录**：两个应用要独立提交、独立发布；工作区用 gitlink 锁版本，克隆可复现。代价是新克隆必须先初始化子模块，所以 00 闸门先于编译执行。
 - **工作区身份与应用身份分离**：工作区改名只改两份文档，不进入子模块；应用身份改名在各自仓库内完成。
-- **运行期不接数据库/缓存**：Harness 的 06 复用 8806 的既有 MySQL 8，在专用 schema `ai_chat_gate` 上验证迁移；不新建容器，业务库 `green-note` 不受影响。代价是 `run-all` 依赖该实例与凭据，`01/02/04` 仍可独立运行。
-- **业务极简**：Todo 只是用来承载护栏的载体，不需要它复杂。
+- **运行期依赖两个既有实例**：后端启动与 `02-test` 直连 `127.0.0.1:8806` 的 `wanderchain` 库与 `127.0.0.1:6606` 的 Redis（db 3），没有 H2 或嵌入式 Redis 兜底——生成列语义、唯一索引行为、Redis 原子脚本正是断言对象，替身测不出真实行为。代价是 `run-all` 依赖这两个实例与凭据。
+- **业务收窄**：业务只保留 wanderchain 的账户认证子系统（注册、登录、登出、找回密码），用来承载护栏而不是撑功能广度——功能广度不是这个仓库的目标。
 - **红线四条**：`TODO` 占位、`System.out`、`@Disabled`，以及前端跳过写法（`it.skip` 等）。由真实事故驱动增补，不预先设想。
