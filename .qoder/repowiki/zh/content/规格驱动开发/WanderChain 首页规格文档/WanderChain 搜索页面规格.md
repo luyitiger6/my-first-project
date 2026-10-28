@@ -9,14 +9,17 @@
 - [page.test.tsx（搜索结果页测试）](file://frontend/app/search/page.test.tsx)
 - [query.ts（检索纯函数）](file://frontend/lib/search/query.ts)
 - [query.test.ts（检索纯函数测试）](file://frontend/lib/search/query.test.ts)
+- [homepage-anchors.spec.ts（首页锚点E2E测试）](file://docs/e2e/homepage-anchors.spec.ts)
+- [helpers.ts（E2E辅助函数）](file://docs/e2e/support/helpers.ts)
+- [search-page.spec.ts（搜索页面E2E测试）](file://docs/e2e/search-page.spec.ts)
 </cite>
 
 ## 更新摘要
 **变更内容**   
-- 更新了 GROUP_META 配置部分，说明英文常量的标准化处理
-- 强化了分组标题和回链文本的英文一致性要求
-- 补充了关于消除中英文标签歧义的说明
-- 更新了相关章节以反映标准化的实现方式
+- 新增了锚点落地稳定性要求，目标区块需落在吸顶头部下沿附近（偏差小于视口高度的10%）
+- 强化了分组回链的锚点定位验收标准
+- 补充了首页锚点落位稳定性的E2E测试规范
+- 更新了相关章节以反映锚点定位的实现机制
 
 ## 目录
 1. [引言](#引言)
@@ -40,6 +43,7 @@
 - 搜索现在同时匹配标题、摘要、作者和名称字段的中英文版本
 - 显示层更新为展示英文字段值，并提供本地化的空态消息
 - **GROUP_META 配置已标准化**：所有分组标题和回链文本统一使用英文常量，消除了中文分类名称与英文显示标签之间的歧义
+- **锚点落地稳定性增强**：从搜索页点击回链跳转到首页后，目标区块必须准确定位在吸顶头部下沿附近（偏差小于视口高度的10%）
 
 ## 项目结构定位
 搜索相关代码集中在前端 Next.js App Router 下：
@@ -51,6 +55,8 @@
 - 检索测试：`frontend/lib/search/query.test.ts`
 - 规格契约：`docs/specs/wanderchain/search-page.md`
 - OpenSpec 生产规格：`openspec/specs/wanderchain-search/spec.md`
+- E2E测试：`docs/e2e/search-page.spec.ts`、`docs/e2e/homepage-anchors.spec.ts`
+- E2E辅助函数：`docs/e2e/support/helpers.ts`
 
 ```mermaid
 graph TB
@@ -61,6 +67,8 @@ F["frontend/app/search/page.test.tsx<br/>页面测试"] --> C
 G["frontend/lib/search/query.test.ts<br/>检索测试"] --> D
 B --> C
 A --> C
+H["docs/e2e/search-page.spec.ts<br/>搜索页面E2E测试"] --> C
+I["docs/e2e/homepage-anchors.spec.ts<br/>首页锚点E2E测试"] --> J["docs/e2e/support/helpers.ts<br/>E2E辅助函数"]
 ```
 
 **图表来源**
@@ -68,9 +76,12 @@ A --> C
 - [spec.md:1-122](file://openspec/specs/wanderchain-search/spec.md#L1-L122)
 - [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
 - [search.module.css:1-127](file://frontend/app/search/search.module.css#L1-L127)
-- [page.test.tsx:1-131](file://frontend/app/search/page.test.tsx#L1-L131)
+- [page.test.tsx:1-142](file://frontend/app/search/page.test.tsx#L1-L142)
 - [query.ts:1-170](file://frontend/lib/search/query.ts#L1-L170)
 - [query.test.ts:1-145](file://frontend/lib/search/query.test.ts#L1-L145)
+- [search-page.spec.ts:1-236](file://docs/e2e/search-page.spec.ts#L1-L236)
+- [homepage-anchors.spec.ts:1-48](file://docs/e2e/homepage-anchors.spec.ts#L1-L48)
+- [helpers.ts:38-71](file://docs/e2e/support/helpers.ts#L38-L71)
 
 **章节来源**
 - [search-page.md:1-10](file://docs/specs/wanderchain/search-page.md#L1-L10)
@@ -84,13 +95,17 @@ A --> C
 | 页面样式 | `frontend/app/search/search.module.css` | 定义容器、分组卡片、组头、条目、回链与 720px 断点 |
 | 页面测试 | `frontend/app/search/page.test.tsx` | 验证引导态、空态、分组顺序、锚点链接、唯一 h1、零 fetch |
 | 检索测试 | `frontend/lib/search/query.test.ts` | 验证截断内容可见、草稿不可见、城市中文名匹配、slug 不匹配、分组顺序与总数一致 |
+| E2E测试 | `docs/e2e/search-page.spec.ts` | 验证完整用户流程，包括锚点落地稳定性 |
+| E2E辅助函数 | `docs/e2e/support/helpers.ts` | 提供锚点定位验证、视口检测等通用工具 |
 
 **章节来源**
 - [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
 - [query.ts:1-170](file://frontend/lib/search/query.ts#L1-L170)
 - [search.module.css:1-127](file://frontend/app/search/search.module.css#L1-L127)
-- [page.test.tsx:1-131](file://frontend/app/search/page.test.tsx#L1-L131)
+- [page.test.tsx:1-142](file://frontend/app/search/page.test.tsx#L1-L142)
 - [query.test.ts:1-145](file://frontend/lib/search/query.test.ts#L1-L145)
+- [search-page.spec.ts:1-236](file://docs/e2e/search-page.spec.ts#L1-L236)
+- [helpers.ts:1-337](file://docs/e2e/support/helpers.ts#L1-L337)
 
 ## 架构总览
 搜索页面采用服务端渲染的 React Server Component，打开页面时不发起任何网络请求；查询参数由 Next.js 传入，页面先归一化出单值 `q`，再交给纯函数 `searchContent` 计算结果，最后根据 `query` 与 `total` 推导三态。
@@ -109,12 +124,14 @@ Query->>Query : "过滤发布态<br/>匹配标题/作者/名称/城市中英文"
 Query-->>Page : "SearchOutcome{query,total,groups}"
 Page->>Page : "根据 query 与 total 推导三态"
 Page-->>Browser : "服务端渲染结果 HTML"
+Note over Browser : 点击分组回链 → 跳转到首页对应锚点<br/>目标区块需准确定位在吸顶头部下沿附近
 ```
 
 **图表来源**
 - [page.tsx:20-35](file://frontend/app/search/page.tsx#L20-L35)
 - [page.tsx:32-104](file://frontend/app/search/page.tsx#L32-L104)
 - [query.ts:118-169](file://frontend/lib/search/query.ts#L118-L169)
+- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
 
 **章节来源**
 - [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
@@ -148,6 +165,8 @@ HasTotal --> |是| Groups["渲染分组列表"]
 Guide --> Render["输出 SiteHeader + main + SiteFooter"]
 Empty --> Render
 Groups --> Render
+Render --> AnchorLinks["生成分组回链<br/>href=/#editor-picks/#hot-posts/#hot-attractions"]
+AnchorLinks --> End(["完成"])
 ```
 
 **图表来源**
@@ -277,6 +296,39 @@ Compact --> HeadColumn["组头改为上下两行"]
 **章节来源**
 - [search.module.css:1-127](file://frontend/app/search/search.module.css#L1-L127)
 
+### 锚点落地稳定性机制
+**新增** 搜索页面的分组回链需要确保跳转到首页后，目标区块能够准确定位在吸顶头部下沿附近。这一机制通过以下组件协作实现：
+
+#### 锚点定位验证
+E2E测试使用 `expectAnchorLanded` 函数验证锚点定位准确性：
+
+- 计算目标区块顶部与吸顶头部下沿的距离
+- 将该距离按视口高度归一化为百分比
+- 要求偏差小于 10% 视口高度
+- 对于文档末尾的区块，允许停在滚动最大值处
+
+#### 实现原理
+```mermaid
+flowchart TD
+ClickLink["用户点击分组回链"] --> Navigate["导航到首页带锚点URL"]
+Navigate --> FindSection["查找目标区块"]
+FindSection --> CalculateOffset["计算区块顶部与头部下沿偏移"]
+CalculateOffset --> Normalize["按视口高度归一化"]
+Normalize --> CheckThreshold{"偏移 < 10% 视口高？"}
+CheckThreshold --> |是| Success["锚点定位成功"]
+CheckThreshold --> |否| AtEnd{"是否在文档末尾？"}
+AtEnd --> |是| Success
+AtEnd --> |否| Fail["锚点定位失败"]
+```
+
+**图表来源**
+- [helpers.ts:42-71](file://docs/e2e/support/helpers.ts#L42-L71)
+- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
+
+**章节来源**
+- [helpers.ts:38-71](file://docs/e2e/support/helpers.ts#L38-L71)
+- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
+
 ### 测试覆盖要点
 页面测试与检索测试共同保障搜索行为：
 
@@ -301,11 +353,12 @@ Compact --> HeadColumn["组头改为上下两行"]
   - 命中条数与总数一致，每组带回首页锚点。
   - 输出文案全为英文。
 
-**更新** 测试用例现已涵盖双语匹配场景，确保中英文查询都能正确工作，并验证了分组标题和回链文本的英文一致性。
+**更新** 测试用例现已涵盖双语匹配场景，确保中英文查询都能正确工作，并验证了分组标题和回链文本的英文一致性。E2E测试还验证了锚点落地稳定性，确保从搜索页跳转后目标区块能准确定位。
 
 **章节来源**
-- [page.test.tsx:38-130](file://frontend/app/search/page.test.tsx#L38-L130)
+- [page.test.tsx:38-141](file://frontend/app/search/page.test.tsx#L38-L141)
 - [query.test.ts:24-144](file://frontend/lib/search/query.test.ts#L24-L144)
+- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
 
 ## 依赖关系分析
 搜索页面与检索纯函数之间存在清晰单向依赖：页面负责 UI 与参数处理，检索纯函数负责数据过滤与分组构造。页面不直接读取首页仓储，以避免首页条数上限影响搜索结果。
@@ -319,6 +372,8 @@ Query --> Format["@/lib/home/format.ts"]
 Page --> Styles["frontend/app/search/search.module.css"]
 PageTest["frontend/app/search/page.test.tsx"] --> Page
 QueryTest["frontend/lib/search/query.test.ts"] --> Query
+E2ETest["docs/e2e/search-page.spec.ts"] --> Page
+Helpers["docs/e2e/support/helpers.ts"] --> E2ETest
 ```
 
 **图表来源**
@@ -326,6 +381,8 @@ QueryTest["frontend/lib/search/query.test.ts"] --> Query
 - [query.ts:1-4](file://frontend/lib/search/query.ts#L1-L4)
 - [page.test.tsx:1-6](file://frontend/app/search/page.test.tsx#L1-L6)
 - [query.test.ts:1-3](file://frontend/lib/search/query.test.ts#L1-L3)
+- [search-page.spec.ts:1-8](file://docs/e2e/search-page.spec.ts#L1-L8)
+- [helpers.ts:1-10](file://docs/e2e/support/helpers.ts#L1-L10)
 
 **章节来源**
 - [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
@@ -339,13 +396,14 @@ QueryTest["frontend/lib/search/query.test.ts"] --> Query
 - 结果条目为纯文本卡片，不加载图片，减少不必要的资源请求。
 - **双语匹配优化**：虽然支持中英文查询，但显示层统一使用英文字段值，确保界面语言一致性。
 - **常量优化**：分组标题和回链文本使用预定义的英文常量，避免了运行时字符串拼接的性能开销。
+- **锚点定位优化**：通过标准化的锚点ID和E2E测试确保跳转体验的一致性。
 
 这些特性使搜索页在无客户端脚本环境下仍可正常展示结果，同时保证首屏可访问性与稳定性。
 
 **章节来源**
 - [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
 - [query.ts:6-9](file://frontend/lib/search/query.ts#L6-L9)
-- [page.test.tsx:113-123](file://frontend/app/search/page.test.tsx#L113-L123)
+- [page.test.tsx:124-134](file://frontend/app/search/page.test.tsx#L124-L134)
 
 ## 验收清单与断点规范
 搜索页面的人读契约明确列出了结构与交互验收项，部分工程与无障碍项仍待完善：
@@ -363,6 +421,7 @@ QueryTest["frontend/lib/search/query.test.ts"] --> Query
   - **英文显示**：结果标题、城市标与元信息均为英文。
   - **分组标题标准化**：所有分组标题使用预定义的英文常量，确保界面一致性。
   - **回链文本标准化**：所有回链文案使用预定义的英文常量，避免歧义。
+  - **锚点落地稳定性**：从搜索页点击回链后，目标区块准确定位在吸顶头部下沿附近（偏差 < 10% 视口高）。
 - 待完善项：
   - 键盘 Tab 顺序与焦点环。
   - 首页区块确实存在对应 `id`。
@@ -374,12 +433,13 @@ QueryTest["frontend/lib/search/query.test.ts"] --> Query
 
 断点规范以 `frontend/app/search/search.module.css` 为准，当前实现包含 720px 断点，闸门脚本会校验规格文档与 CSS 断点的一致性。
 
-**更新** 验收清单现已包含双语查询、英文显示以及分组标题和回链文本标准化的验证项。
+**更新** 验收清单现已包含双语查询、英文显示、分组标题和回链文本标准化，以及锚点落地稳定性的验证项。
 
 **章节来源**
 - [search-page.md:156-193](file://docs/specs/wanderchain/search-page.md#L156-L193)
 - [search-page.md:211-221](file://docs/specs/wanderchain/search-page.md#L211-L221)
 - [search.module.css:117-126](file://frontend/app/search/search.module.css#L117-L126)
+- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
 
 ## 故障排查指南
 | 现象 | 可能原因 | 排查建议 |
@@ -396,17 +456,20 @@ QueryTest["frontend/lib/search/query.test.ts"] --> Query
 | **结果显示中文** | 显示层使用了错误的字段 | 确认 `toEditorHit`、`toPostHit`、`toAttractionHit` 使用英文字段 |
 | **分组标题不一致** | 修改了 GROUP_META 配置 | 检查所有分组标题是否使用预定义的英文常量 |
 | **回链文案异常** | 回链文本未使用标准常量 | 确认所有回链文案来自 GROUP_META 中的预定义字符串 |
+| **锚点定位不准确** | 首页区块ID缺失或吸顶头部样式异常 | 检查首页区块的 `id` 属性和 `header` 元素的定位样式 |
+| **E2E测试锚点失败** | 目标区块不在视口内或偏移过大 | 使用 `expectAnchorLanded` 函数验证，确保偏移 < 10% 视口高 |
 
-**更新** 故障排查指南新增了双语查询相关的常见问题和解决方案，以及分组标题和回链文本标准化的相关问题。
+**更新** 故障排查指南新增了双语查询相关的常见问题和解决方案，以及分组标题和回链文本标准化的相关问题，还包括锚点定位相关的故障排查。
 
 **章节来源**
 - [query.ts:118-169](file://frontend/lib/search/query.ts#L118-L169)
 - [query.test.ts:24-144](file://frontend/lib/search/query.test.ts#L24-L144)
 - [search.module.css:117-126](file://frontend/app/search/search.module.css#L117-L126)
+- [helpers.ts:42-71](file://docs/e2e/support/helpers.ts#L42-L71)
 
 ## 结论
 WanderChain 搜索页面以清晰的模块边界、稳定的数据契约与服务端渲染策略，实现了从首页搜索框到全站内容的直达检索。它不依赖客户端状态与网络请求，通过纯函数完成全量过滤与分组，确保被首页上限截断的内容重新可达，同时在无关键词与零命中场景提供明确的引导与空态。
 
-**更新** 随着双语匹配逻辑的引入和 GROUP_META 配置的标准化，搜索引擎现在能够同时处理中文和英文查询，匹配标题、摘要、作者和名称字段的中英文版本。所有分组标题和回链文本都使用统一的英文常量，消除了中文分类名称与英文显示标签之间的歧义，确保界面语言的一致性和可维护性。
+**更新** 随着双语匹配逻辑的引入、GROUP_META 配置的标准化以及锚点落地稳定性机制的增强，搜索引擎现在能够同时处理中文和英文查询，匹配标题、摘要、作者和名称字段的中英文版本。所有分组标题和回链文本都使用统一的英文常量，消除了中文分类名称与英文显示标签之间的歧义，确保界面语言的一致性和可维护性。更重要的是，从搜索页跳转到首页后，目标区块能够准确定位在吸顶头部下沿附近（偏差小于视口高度的10%），提供了稳定可靠的导航体验。
 
 随着主规格已从开发时的 delta 迁移至生产就绪规格 `openspec/specs/wanderchain-search/spec.md`，该功能现已具备完整的生产环境支持。后续改进应优先补齐无障碍交互、极端窄屏体验与构建闸门验收，使规格文档与实际实现保持一致。

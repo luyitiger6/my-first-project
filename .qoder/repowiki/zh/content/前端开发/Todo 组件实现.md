@@ -1,16 +1,21 @@
-# Todo 组件实现
+# Wanderchain 认证组件实现
 
 <cite>
 **本文引用的文件**   
-- [frontend/components/TodoApp.tsx](file://frontend/components/TodoApp.tsx)
-- [frontend/components/TodoApp.test.tsx](file://frontend/components/TodoApp.test.tsx)
-- [frontend/lib/api.ts](file://frontend/lib/api.ts)
-- [frontend/app/api/[...path]/route.ts](file://frontend/app/api/[...path]/route.ts)
-- [backend/src/main/java/com/luyi/myfirst/domain/Todo.java](file://backend/src/main/java/com/luyi/myfirst/domain/Todo.java)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java)
-- [backend/src/main/java/com/luyi/myfirst/web/TodoController.java](file://backend/src/main/java/com/luyi/myfirst/web/TodoController.java)
-- [backend/src/test/java/com/luyi/myfirst/domain/TodoServiceTest.java](file://backend/src/test/java/com/luyi/myfirst/domain/TodoServiceTest.java)
+- [frontend/components/auth/auth-form.tsx](file://frontend/components/auth/auth-form.tsx)
+- [frontend/components/auth/account-menu.tsx](file://frontend/components/auth/account-menu.tsx)
+- [frontend/components/auth/auth-provider.tsx](file://frontend/components/auth/auth-provider.tsx)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java)
+- [backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java)
+- [openspec/changes/archive/2026-10-27-remove-todo-demo/proposal.md](file://openspec/changes/archive/2026-10-27-remove-todo-demo/proposal.md)
 </cite>
+
+## 更新摘要
+**变更内容**   
+- 移除了所有 Todo 相关组件、服务和测试的引用
+- 将焦点转向当前的 wanderchain 认证功能
+- 更新了架构图和依赖关系以反映实际的认证流程
+- 替换了示例代码和 API 契约说明
 
 ## 目录
 1. [简介](#简介)
@@ -25,373 +30,291 @@
 10. [附录](#附录)
 
 ## 简介
-本文件面向前端 TodoApp 组件，系统性说明其状态管理、用户交互逻辑、数据绑定机制与错误处理策略，并覆盖后端接口契约、代理层转发、领域模型与服务实现。文档同时给出可复用性设计、扩展点、使用示例、样式定制方法、性能优化技巧以及测试策略与用例说明，帮助读者从“怎么用”到“怎么改”全面掌握该功能模块。
+本文档面向 Wanderchain 应用的认证系统，系统性说明用户登录、注册、会话管理等核心功能的实现。认证系统采用前后端分离架构，前端使用 React + Next.js，后端使用 Spring Boot，通过 RESTful API 进行通信。文档涵盖组件状态管理、用户交互逻辑、数据绑定机制与错误处理策略，帮助开发者全面理解并扩展该认证功能模块。
 
 ## 项目结构
-TodoApp 位于 Next.js 前端应用，通过统一的 API 路由代理访问 Spring Boot 后端。整体链路为：浏览器 → Next.js 页面/组件 → lib/api.ts → Next.js API 路由 → Spring Boot Controller → TodoService → Todo 记录。
+Wanderchain 认证系统位于 Next.js 前端应用，通过统一的 API 路由代理访问 Spring Boot 后端。整体链路为：浏览器 → Next.js 页面/组件 → lib/auth → Next.js API 路由 → Spring Boot Controller → Service → 数据库。
 
 ```mermaid
 graph TB
-Browser["浏览器"] --> NextUI["Next.js 前端<br/>TodoApp 组件"]
-NextUI --> ApiLib["lib/api.ts<br/>HTTP 封装"]
-ApiLib --> NextRoute["Next.js API 路由<br/>/api/[...path]"]
+Browser["浏览器"] --> NextUI["Next.js 前端<br/>认证组件"]
+NextUI --> AuthLib["lib/auth<br/>认证封装"]
+AuthLib --> NextRoute["Next.js API 路由<br/>/api/[...path]"]
 NextRoute --> Backend["Spring Boot 后端"]
-Backend --> Controller["TodoController"]
-Controller --> Service["TodoService"]
-Service --> Model["Todo 记录"]
+Backend --> Controller["LoginController/RegisterController"]
+Controller --> Service["LoginService/RegisterService"]
+Service --> DB["数据库"]
 ```
 
 **图表来源**
-- [frontend/components/TodoApp.tsx:1-109](file://frontend/components/TodoApp.tsx#L1-L109)
-- [frontend/lib/api.ts:1-36](file://frontend/lib/api.ts#L1-L36)
-- [frontend/app/api/[...path]/route.ts:1-77](file://frontend/app/api/[...path]/route.ts#L1-L77)
-- [backend/src/main/java/com/luyi/myfirst/web/TodoController.java:1-45](file://backend/src/main/java/com/luyi/myfirst/web/TodoController.java#L1-L45)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java:1-44](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java#L1-L44)
-- [backend/src/main/java/com/luyi/myfirst/domain/Todo.java:1-13](file://backend/src/main/java/com/luyi/myfirst/domain/Todo.java#L1-L13)
-
-**章节来源**
-- [frontend/components/TodoApp.tsx:1-109](file://frontend/components/TodoApp.tsx#L1-L109)
-- [frontend/lib/api.ts:1-36](file://frontend/lib/api.ts#L1-L36)
-- [frontend/app/api/[...path]/route.ts:1-77](file://frontend/app/api/[...path]/route.ts#L1-L77)
-- [backend/src/main/java/com/luyi/myfirst/web/TodoController.java:1-45](file://backend/src/main/java/com/luyi/myfirst/web/TodoController.java#L1-L45)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java:1-44](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java#L1-L44)
-- [backend/src/main/java/com/luyi/myfirst/domain/Todo.java:1-13](file://backend/src/main/java/com/luyi/myfirst/domain/Todo.java#L1-L13)
+- [frontend/components/auth/auth-form.tsx:1-139](file://frontend/components/auth/auth-form.tsx#L1-L139)
+- [frontend/components/auth/auth-provider.tsx:1-77](file://frontend/components/auth/auth-provider.tsx#L1-L77)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java:1-48](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L1-L48)
+- [backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java:1-26](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java#L1-L26)
 
 ## 核心组件
-TodoApp 是一个客户端 React 组件，负责：
-- 维护待办列表、新增输入框、加载与错误状态
-- 在挂载时拉取待办列表
-- 提交表单创建新待办
-- 点击完成按钮切换待办完成状态
-- 渲染空态、加载中、错误提示与已完成标记
+Wanderchain 认证系统包含三个核心组件：
 
-关键状态字段：
-- todos：待办事项数组
-- newTitle：新增输入框的值
-- loading：是否正在请求
-- error：错误信息文本
+### AuthForm 组件
+负责用户登录和注册的表单处理，支持两种模式：
+- 登录模式：邮箱和密码输入
+- 注册模式：用户名、邮箱、密码和确认密码输入
+
+关键功能：
+- 表单验证（密码匹配检查）
+- 异步提交处理
+- 错误状态管理
+- 加载状态控制
+
+### AccountMenu 组件
+显示用户账户菜单，根据认证状态动态渲染：
+- 未认证：显示登录/注册链接
+- 已认证：显示用户名、角色和登出按钮
+- 加载中：显示占位符
+
+### AuthProvider 组件
+提供全局认证上下文，管理用户会话状态：
+- 用户状态管理（loading/guest/user）
+- 登录、注册、登出操作
+- 本地会话存储
 
 **章节来源**
-- [frontend/components/TodoApp.tsx:6-10](file://frontend/components/TodoApp.tsx#L6-L10)
-- [frontend/components/TodoApp.tsx:16-30](file://frontend/components/TodoApp.tsx#L16-L30)
-- [frontend/components/TodoApp.tsx:32-56](file://frontend/components/TodoApp.tsx#L32-L56)
-- [frontend/components/TodoApp.tsx:58-106](file://frontend/components/TodoApp.tsx#L58-L106)
+- [frontend/components/auth/auth-form.tsx:9-139](file://frontend/components/auth/auth-form.tsx#L9-L139)
+- [frontend/components/auth/account-menu.tsx:7-32](file://frontend/components/auth/account-menu.tsx#L7-L32)
+- [frontend/components/auth/auth-provider.tsx:21-77](file://frontend/components/auth/auth-provider.tsx#L21-L77)
 
 ## 架构总览
-前端采用“组件 + API 封装 + 路由代理”的分层方式；后端采用“控制器 + 服务 + 领域对象”的清晰分层。
+前端采用"组件 + Context Provider"的分层方式；后端采用"控制器 + 服务"的清晰分层。
 
 ```mermaid
 sequenceDiagram
 participant U as "用户"
-participant C as "TodoApp 组件"
-participant A as "lib/api.ts"
-participant R as "Next.js API 路由"
-participant S as "TodoController"
-participant D as "TodoService"
-participant M as "Todo 记录"
-U->>C : 打开页面
-C->>A : getTodos()
-A->>R : GET /api/todos
-R->>S : GET /api/todos
-S->>D : list()
-D-->>S : List<Todo>
-S-->>R : JSON 列表
-R-->>A : JSON 列表
-A-->>C : 返回待办列表
-C->>C : setTodos(...)
-U->>C : 提交表单
-C->>A : createTodo(title)
-A->>R : POST /api/todos
-R->>S : POST /api/todos
-S->>D : create(title)
-D-->>S : Todo
-S-->>R : JSON 待办
-R-->>A : JSON 待办
-A-->>C : 返回已创建的待办
-C->>C : setTodos(prev => [...prev, created])
-U->>C : 点击完成
-C->>A : completeTodo(id)
-A->>R : POST /api/todos/{id}/complete
-R->>S : POST /api/todos/{id}/complete
-S->>D : complete(id)
-D-->>S : Todo(已完成的)
-S-->>R : JSON 待办
-R-->>A : JSON 待办
-A-->>C : 返回更新后的待办
-C->>C : setTodos(prev => map by id)
+participant F as "AuthForm 组件"
+participant P as "AuthProvider"
+participant A as "认证API"
+participant C as "LoginController"
+participant S as "LoginService"
+U->>F : 填写登录表单
+F->>P : login(email, password)
+P->>A : POST /api/auth/login
+A->>C : 转发请求
+C->>S : login(email, password, now)
+S-->>C : LoginResult
+C-->>A : Set-Cookie + Response
+A-->>P : 设置会话
+P->>P : setUser(user), setStatus('user')
+P-->>F : 触发重新渲染
+F->>F : router.replace('/')
 ```
 
 **图表来源**
-- [frontend/components/TodoApp.tsx:16-56](file://frontend/components/TodoApp.tsx#L16-L56)
-- [frontend/lib/api.ts:21-35](file://frontend/lib/api.ts#L21-L35)
-- [frontend/app/api/[...path]/route.ts:10-53](file://frontend/app/api/[...path]/route.ts#L10-L53)
-- [backend/src/main/java/com/luyi/myfirst/web/TodoController.java:26-40](file://backend/src/main/java/com/luyi/myfirst/web/TodoController.java#L26-L40)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java:20-42](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java#L20-L42)
+- [frontend/components/auth/auth-form.tsx:25-46](file://frontend/components/auth/auth-form.tsx#L25-L46)
+- [frontend/components/auth/auth-provider.tsx:52-56](file://frontend/components/auth/auth-provider.tsx#L52-L56)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java:37-46](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L37-L46)
+- [backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java:14-25](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java#L14-L25)
 
 ## 详细组件分析
 
-### 组件 Props 与类型定义
-当前 TodoApp 未暴露外部 Props，所有状态由组件内部维护。若需复用或嵌入其他页面，建议将以下能力抽象为 Props：
-- initialTodos：初始待办列表（用于 SSR 或缓存注入）
-- onCreated：创建成功回调
-- onCompleted：完成状态变更回调
-- onError：统一错误回调
-- renderEmpty：自定义空态渲染
-- renderItem：自定义单项渲染
+### AuthForm 组件详解
+AuthForm 是一个受控表单组件，支持登录和注册两种模式。
 
-类型方面，Todo 类型由 lib/api.ts 导出，包含 id、title、done 三个字段。
-
-**章节来源**
-- [frontend/lib/api.ts:5-9](file://frontend/lib/api.ts#L5-L9)
-- [frontend/components/TodoApp.tsx:6-10](file://frontend/components/TodoApp.tsx#L6-L10)
-
-### 状态管理与数据流
-- 初始化：useEffect 在挂载后调用 refresh，刷新列表
-- 新增：表单提交触发 addTodo，校验标题非空后调用 createTodo，成功后追加到列表并清空输入
-- 完成：finishTodo 调用 completeTodo，成功后按 id 替换对应项
-- 错误：showError 统一捕获异常并设置 error 状态
-- 加载：loading 控制“加载中”提示与列表渲染时机
-
-```mermaid
-flowchart TD
-Start(["组件挂载"]) --> Refresh["refresh()<br/>getTodos()"]
-Refresh --> SetList["setTodos(列表)"]
-UserInput["用户输入标题并提交"] --> Add["addTodo()<br/>createTodo(title)"]
-Add --> Append["setTodos(prev => [...prev, created])"]
-ClickComplete["点击完成按钮"] --> Finish["finishTodo(id)<br/>completeTodo(id)"]
-Finish --> Update["setTodos(prev => map by id)"]
-Error["任何异步失败"] --> ShowErr["showError(e, fallback)"]
-ShowErr --> RenderAlert["渲染错误提示"]
+#### Props 接口定义
+```typescript
+interface Props {
+  mode: 'login' | 'register'
+}
 ```
 
-**图表来源**
-- [frontend/components/TodoApp.tsx:16-56](file://frontend/components/TodoApp.tsx#L16-L56)
-- [frontend/components/TodoApp.tsx:28-30](file://frontend/components/TodoApp.tsx#L28-L30)
+#### 状态管理
+- email：用户邮箱地址
+- password：用户密码
+- name：用户名（仅注册模式）
+- confirm：确认密码（仅注册模式）
+- error：错误信息
+- pending：提交中状态
+
+#### 用户交互逻辑
+- 表单提交：阻止默认行为，执行验证后调用认证方法
+- 密码验证：注册模式下检查密码与确认密码是否匹配
+- 路由跳转：认证成功后跳转到首页
+- 错误处理：捕获异常并显示友好错误消息
 
 **章节来源**
-- [frontend/components/TodoApp.tsx:16-56](file://frontend/components/TodoApp.tsx#L16-L56)
-- [frontend/components/TodoApp.tsx:58-106](file://frontend/components/TodoApp.tsx#L58-L106)
+- [frontend/components/auth/auth-form.tsx:9-46](file://frontend/components/auth/auth-form.tsx#L9-L46)
+- [frontend/components/auth/auth-form.tsx:48-139](file://frontend/components/auth/auth-form.tsx#L48-L139)
 
-### 用户交互与事件处理
-- 表单提交：阻止默认行为，去除空白后发起创建请求
-- 输入框：受控组件，value 绑定 newTitle，onChange 更新状态
-- 完成按钮：根据 todo.done 显示“已完成”标签或“完成”按钮
-- 无障碍：输入框提供 aria-label，错误区域使用 role="alert"
+### AccountMenu 组件详解
+AccountMenu 根据认证状态动态渲染不同的 UI。
 
-**章节来源**
-- [frontend/components/TodoApp.tsx:32-46](file://frontend/components/TodoApp.tsx#L32-L46)
-- [frontend/components/TodoApp.tsx:62-71](file://frontend/components/TodoApp.tsx#L62-L71)
-- [frontend/components/TodoApp.tsx:73-78](file://frontend/components/TodoApp.tsx#L73-L78)
-- [frontend/components/TodoApp.tsx:80-101](file://frontend/components/TodoApp.tsx#L80-L101)
+#### 状态渲染逻辑
+- 加载中：显示占位符元素
+- 未认证：显示登录/注册链接
+- 已认证：显示用户信息和登出按钮
+- 管理员：额外显示编辑者角色标识
 
-### 数据绑定机制
-- 受控输入：newTitle 作为 value，onChange 同步更新
-- 列表渲染：todos.map 生成 li，key 使用 todo.id
-- 条件渲染：todo.done 决定展示“已完成”标签或“完成”按钮
-- 空态与提示：loading、error、todos.length 控制不同 UI 分支
+#### 无障碍支持
+- 使用 aria-hidden 属性隐藏占位符
+- 语义化的 HTML 结构
 
 **章节来源**
-- [frontend/components/TodoApp.tsx:62-71](file://frontend/components/TodoApp.tsx#L62-L71)
-- [frontend/components/TodoApp.tsx:80-106](file://frontend/components/TodoApp.tsx#L80-L106)
+- [frontend/components/auth/account-menu.tsx:7-32](file://frontend/components/auth/account-menu.tsx#L7-L32)
 
-### 错误边界与健壮性
-- 组件内错误处理：try/catch 包裹所有异步操作，统一 setError
-- 网络层错误：lib/api.ts 对非 ok 响应抛出错误
-- 代理层兜底：Next.js API 路由在后端不可达时返回 502 错误体
-- 用户可见反馈：role="alert" 的错误提示与“加载中”提示
+### AuthProvider 组件详解
+AuthProvider 是整个认证系统的核心，提供全局状态管理。
 
-注意：当前组件未使用 React Error Boundary，如需更严格的崩溃隔离，可在外层包裹 ErrorBoundary 组件。
+#### 上下文接口
+```typescript
+export interface AuthContextValue {
+  status: AuthStatus
+  user: AuthUser | null
+  login: (email: string, password: string) => Promise<void>
+  register: (input: RegisterInput) => Promise<void>
+  logout: () => void
+}
+```
 
-**章节来源**
-- [frontend/components/TodoApp.tsx:12-14](file://frontend/components/TodoApp.tsx#L12-L14)
-- [frontend/components/TodoApp.tsx:16-26](file://frontend/components/TodoApp.tsx#L16-L26)
-- [frontend/components/TodoApp.tsx:32-56](file://frontend/components/TodoApp.tsx#L32-L56)
-- [frontend/lib/api.ts:13-19](file://frontend/lib/api.ts#L13-L19)
-- [frontend/app/api/[...path]/route.ts:30-41](file://frontend/app/api/[...path]/route.ts#L30-L41)
+#### 会话管理
+- 初始会话读取：从本地存储恢复用户会话
+- 状态同步：在用户登录后更新全局状态
+- 会话持久化：使用 localStorage 存储认证信息
 
-### 可复用性与扩展点
-- 无 Props 耦合：组件自包含，适合直接嵌入任意页面
-- 可扩展点：
-  - 增加删除、编辑、批量操作等动作
-  - 接入持久化缓存（如 localStorage）以改善首屏体验
-  - 支持过滤与排序（未完成/全部/已完成）
-  - 支持分页或虚拟滚动（待办数量较大时）
-- 建议抽取子组件：
-  - TodoForm：新增表单
-  - TodoList：列表容器
-  - TodoItem：单项渲染（含完成按钮与状态标签）
+#### 性能优化
+- 使用 useCallback 包装回调函数避免不必要的重渲染
+- 使用 useMemo 缓存上下文值对象
+- 条件渲染减少不必要的 DOM 操作
 
 **章节来源**
-- [frontend/components/TodoApp.tsx:58-106](file://frontend/components/TodoApp.tsx#L58-L106)
+- [frontend/components/auth/auth-provider.tsx:21-77](file://frontend/components/auth/auth-provider.tsx#L21-L77)
 
-### 使用示例
-- 基础用法：在页面中直接导入并渲染 TodoApp
-- 结合布局：放入 app/page.tsx 或 layout.tsx 的子树中
-- 样式定制：通过 className 与全局 CSS 调整外观（例如 .todo-app、.todo-list、.done、.complete 等）
+### 后端认证服务
+后端提供完整的认证 API 接口。
 
-**章节来源**
-- [frontend/components/TodoApp.tsx:58-106](file://frontend/components/TodoApp.tsx#L58-L106)
+#### LoginController
+RESTful 控制器，处理登录请求：
+- POST /api/auth/login：用户登录
+- 设置认证 Cookie
+- 返回用户基本信息
 
-### 样式定制方法
-- 容器类名：todo-app
-- 表单类名：todo-form
-- 列表类名：todo-list
-- 完成项类名：done
-- 完成按钮类名：complete
-- 错误提示类名：error
-- 提示类名：hint
-
-可根据业务主题替换这些类名的样式规则。
+#### LoginService
+业务逻辑层，定义认证接口：
+- 凭证验证优先于状态检查
+- 统一异常处理
+- 令牌签发和管理
 
 **章节来源**
-- [frontend/components/TodoApp.tsx:58-106](file://frontend/components/TodoApp.tsx#L58-L106)
-
-### 性能优化技巧
-- 避免不必要的重渲染：保持 state 最小化，必要时拆分子组件并使用 React.memo
-- 列表 key 稳定：使用唯一且稳定的 id 作为 key
-- 减少重复请求：在组件卸载或路由切换时可取消请求（AbortController）
-- 后端分页：当待办数量增长时，后端应提供分页接口，前端按需加载
-- 代理层缓存：对只读列表查询可启用适当缓存策略（谨慎使用）
-
-[本节为通用指导，不直接分析具体文件]
+- [backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java:1-48](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L1-L48)
+- [backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java:1-26](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java#L1-L26)
 
 ## 依赖关系分析
 
 ```mermaid
 graph LR
-TodoApp["TodoApp.tsx"] --> Api["lib/api.ts"]
-Api --> Route["app/api/[...path]/route.ts"]
-Route --> Controller["web/TodoController.java"]
-Controller --> Service["domain/TodoService.java"]
-Service --> Model["domain/Todo.java"]
+AuthForm["auth-form.tsx"] --> AuthProvider["auth-provider.tsx"]
+AccountMenu["account-menu.tsx"] --> AuthProvider["auth-provider.tsx"]
+AuthProvider --> MockAuth["@/lib/auth/mock-auth"]
+MockAuth --> API["Next.js API 路由"]
+API --> LoginController["LoginController.java"]
+LoginController --> LoginService["LoginService.java"]
 ```
 
 **图表来源**
-- [frontend/components/TodoApp.tsx:1-109](file://frontend/components/TodoApp.tsx#L1-L109)
-- [frontend/lib/api.ts:1-36](file://frontend/lib/api.ts#L1-L36)
-- [frontend/app/api/[...path]/route.ts:1-77](file://frontend/app/api/[...path]/route.ts#L1-L77)
-- [backend/src/main/java/com/luyi/myfirst/web/TodoController.java:1-45](file://backend/src/main/java/com/luyi/myfirst/web/TodoController.java#L1-L45)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java:1-44](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java#L1-L44)
-- [backend/src/main/java/com/luyi/myfirst/domain/Todo.java:1-13](file://backend/src/main/java/com/luyi/myfirst/domain/Todo.java#L1-L13)
+- [frontend/components/auth/auth-form.tsx:6-16](file://frontend/components/auth/auth-form.tsx#L6-L16)
+- [frontend/components/auth/account-menu.tsx:4-8](file://frontend/components/auth/account-menu.tsx#L4-L8)
+- [frontend/components/auth/auth-provider.tsx:12-19](file://frontend/components/auth/auth-provider.tsx#L12-L19)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java:3-6](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L3-L6)
 
 **章节来源**
-- [frontend/components/TodoApp.tsx:1-109](file://frontend/components/TodoApp.tsx#L1-L109)
-- [frontend/lib/api.ts:1-36](file://frontend/lib/api.ts#L1-L36)
-- [frontend/app/api/[...path]/route.ts:1-77](file://frontend/app/api/[...path]/route.ts#L1-L77)
-- [backend/src/main/java/com/luyi/myfirst/web/TodoController.java:1-45](file://backend/src/main/java/com/luyi/myfirst/web/TodoController.java#L1-L45)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java:1-44](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java#L1-L44)
-- [backend/src/main/java/com/luyi/myfirst/domain/Todo.java:1-13](file://backend/src/main/java/com/luyi/myfirst/domain/Todo.java#L1-L13)
+- [frontend/components/auth/auth-form.tsx:1-139](file://frontend/components/auth/auth-form.tsx#L1-L139)
+- [frontend/components/auth/account-menu.tsx:1-32](file://frontend/components/auth/account-menu.tsx#L1-L32)
+- [frontend/components/auth/auth-provider.tsx:1-77](file://frontend/components/auth/auth-provider.tsx#L1-L77)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java:1-48](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L1-L48)
+- [backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java:1-26](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java#L1-L26)
 
 ## 性能考虑
-- 前端渲染：列表渲染基于数组映射，key 使用 id，避免重复计算
-- 状态更新：使用函数式 setState 保证基于最新状态的增量更新
-- 网络请求：每次操作后仅更新必要状态，避免全量刷新
-- 后端存储：内存 Map 保证插入顺序，list 返回副本避免外部修改
-- 代理转发：Next.js 路由禁用缓存并透传内容类型，确保一致性
-
-**章节来源**
-- [frontend/components/TodoApp.tsx:40-52](file://frontend/components/TodoApp.tsx#L40-L52)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java:17-42](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java#L17-L42)
-- [frontend/app/api/[...path]/route.ts:30-52](file://frontend/app/api/[...path]/route.ts#L30-L52)
+- 组件优化：使用 React.memo 包裹纯展示组件
+- 状态管理：最小化状态更新范围，避免不必要的重渲染
+- 网络请求：合理使用缓存策略，减少重复请求
+- 会话管理：本地存储优化，避免频繁读写
+- 后端优化：数据库查询优化，连接池配置
 
 ## 故障排查指南
-- 列表为空：检查后端是否启动、环境变量 BACKEND_URL 是否正确、代理路由是否可达
-- 新增失败：确认标题非空，后端 CreateTodoRequest.title 校验是否通过
-- 完成失败：确认 id 存在，后端 complete 方法是否抛出“not found”
-- 网络错误：查看 lib/api.ts 抛出的 HTTP 状态码，定位后端或代理层问题
-- 代理不可达：Next.js 路由会返回 502，检查后端服务是否运行
-
-**章节来源**
-- [frontend/lib/api.ts:13-19](file://frontend/lib/api.ts#L13-L19)
-- [frontend/app/api/[...path]/route.ts:30-41](file://frontend/app/api/[...path]/route.ts#L30-L41)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java:20-37](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java#L20-L37)
+- 登录失败：检查邮箱格式、密码正确性、网络连接
+- 注册失败：确认用户名唯一性、密码强度要求
+- 会话丢失：检查本地存储权限、Cookie 设置
+- 权限问题：验证用户角色、访问控制配置
+- 网络错误：查看 API 响应状态码、错误消息
 
 ## 结论
-TodoApp 组件以简洁的状态管理和清晰的交互流程实现了待办的创建、显示与完成状态切换。配合 lib/api.ts 与 Next.js 代理路由，形成前后端解耦的完整链路。后端通过 TodoController 与 TodoService 提供稳定的 REST 接口，领域模型 Todo 保证不可变性与线程安全。整体代码结构清晰、易于扩展与维护，适合作为多端复用的基础能力。
-
-[本节为总结性内容，不直接分析具体文件]
+Wanderchain 认证系统通过清晰的组件分层和前后端分离架构，提供了安全可靠的用户认证功能。AuthForm、AccountMenu 和 AuthProvider 三个核心组件协同工作，实现了完整的用户认证流程。后端 LoginController 和 LoginService 提供了稳定的 API 接口，确保认证过程的安全性和一致性。整个系统设计简洁、易于维护和扩展。
 
 ## 附录
 
 ### API 契约与后端模型
 
-#### 接口定义（前端）
-- 获取待办列表：GET /api/todos
-- 创建待办：POST /api/todos，请求体 { title }
-- 完成待办：POST /api/todos/{id}/complete
+#### 认证接口定义
+- 用户登录：POST /api/auth/login
+- 用户注册：POST /api/auth/register  
+- 会话验证：GET /api/auth/session
+- 用户登出：POST /api/auth/logout
 
-#### 领域模型（后端）
-- Todo：record(id, title, done)，提供 complete() 方法生成已完成的新实例
-- TodoService：内存存储，提供 create、complete、list
-- TodoController：REST 控制器，映射上述接口
+#### 领域模型
+- LoginRequest：登录请求体（email, password）
+- LoginResponse：登录响应体（publicId, email, displayName, expiresAt）
+- AuthUser：认证用户信息（name, role）
+- RegisterInput：注册输入（email, password, name）
 
 ```mermaid
 classDiagram
-class Todo {
-+long id
-+String title
-+boolean done
-+complete() Todo
+class LoginController {
++login(request, response) ResponseEntity~LoginResponse~
 }
-class TodoService {
-+create(title) Todo
-+complete(id) Todo
-+list() Todo[]
+class LoginService {
++login(email, rawPassword, now) LoginResult
 }
-class TodoController {
-+list() Todo[]
-+create(request) Todo
-+complete(id) Todo
+class LoginRequest {
++String email
++String password
 }
-TodoController --> TodoService : "调用"
-TodoService --> Todo : "创建/更新"
+class LoginResponse {
++String publicId
++String email
++String displayName
++Instant expiresAt
+}
+LoginController --> LoginService : "调用"
+LoginController --> LoginRequest : "接收"
+LoginController --> LoginResponse : "返回"
 ```
 
 **图表来源**
-- [backend/src/main/java/com/luyi/myfirst/domain/Todo.java:1-13](file://backend/src/main/java/com/luyi/myfirst/domain/Todo.java#L1-L13)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java:1-44](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java#L1-L44)
-- [backend/src/main/java/com/luyi/myfirst/web/TodoController.java:1-45](file://backend/src/main/java/com/luyi/myfirst/web/TodoController.java#L1-L45)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java:25-46](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L25-L46)
+- [backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java:14-25](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java#L14-L25)
 
 **章节来源**
-- [frontend/lib/api.ts:5-35](file://frontend/lib/api.ts#L5-L35)
-- [backend/src/main/java/com/luyi/myfirst/domain/Todo.java:1-13](file://backend/src/main/java/com/luyi/myfirst/domain/Todo.java#L1-L13)
-- [backend/src/main/java/com/luyi/myfirst/domain/TodoService.java:1-44](file://backend/src/main/java/com/luyi/myfirst/domain/TodoService.java#L1-L44)
-- [backend/src/main/java/com/luyi/myfirst/web/TodoController.java:1-45](file://backend/src/main/java/com/luyi/myfirst/web/TodoController.java#L1-L45)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java:1-48](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L1-L48)
+- [backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java:1-26](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java#L1-L26)
 
 ### 单元测试说明与测试策略
 
 #### 前端测试（Vitest + Testing Library）
-- 模拟 API：mock getTodos、createTodo、completeTodo
+- 模拟认证上下文：mock useAuth hook
 - 场景覆盖：
-  - 挂载后渲染后端返回的待办列表
-  - 提交表单调用创建接口并把新待办加入列表
-  - 点击完成按钮调用完成接口并更新该条状态
-  - 请求失败时展示错误且保留已加载的列表
-
-```mermaid
-flowchart TD
-Setup["beforeEach 清理 mock"] --> Test1["挂载后渲染列表"]
-Setup --> Test2["提交表单创建待办"]
-Setup --> Test3["点击完成更新状态"]
-Setup --> Test4["请求失败展示错误"]
-Test1 --> Verify1["断言列表项与已完成标记"]
-Test2 --> Verify2["断言 createTodo 被调用与列表更新"]
-Test3 --> Verify3["断言 completeTodo 被调用与状态变化"]
-Test4 --> Verify4["断言 alert 内容与原列表保留"]
-```
-
-**图表来源**
-- [frontend/components/TodoApp.test.tsx:1-81](file://frontend/components/TodoApp.test.tsx#L1-L81)
-
-**章节来源**
-- [frontend/components/TodoApp.test.tsx:1-81](file://frontend/components/TodoApp.test.tsx#L1-L81)
+  - 登录表单提交成功
+  - 注册表单验证失败
+  - 账户菜单状态切换
+  - 错误处理和用户反馈
 
 #### 后端测试（JUnit + AssertJ）
-- 验证创建：标题去空格、初始未完成、id 为正数
-- 拒绝空标题：抛出非法参数异常
-- 完成状态翻转：完成后 done 为 true，id 不变，列表长度不变
-- 未知 id 报错：抛出非法参数异常
-- 列表顺序：按创建顺序返回
+- 验证登录流程：凭证验证、状态检查、令牌签发
+- 拒绝无效请求：参数校验、异常处理
+- 会话管理：Cookie 设置、过期时间验证
+- 并发安全：多线程环境下的会话一致性
+
+### 历史变更记录
+Todo 模块已于 2026-10-27 完全移除，原因包括：
+- Todo 是脚手架演示模块，已完成其使命
+- 认证模块上线后，Todo 成为维护负担
+- 简化项目结构，聚焦核心功能
 
 **章节来源**
-- [backend/src/test/java/com/luyi/myfirst/domain/TodoServiceTest.java:1-64](file://backend/src/test/java/com/luyi/myfirst/domain/TodoServiceTest.java#L1-L64)
+- [openspec/changes/archive/2026-10-27-remove-todo-demo/proposal.md:1-42](file://openspec/changes/archive/2026-10-27-remove-todo-demo/proposal.md#L1-L42)
