@@ -1,189 +1,198 @@
-﻿<#
-    闸门 10-contract-check：前后端认证契约的字段名双向比对
-
-    曾经的真实故障：后端 record 的组件名是 publicId / displayName / status，
-    前端自己造了一套 id / name / role。两侧编译都过、测试都绿，页面拿到的却是
-    undefined——因为字段名漂移不在任何一侧的类型系统视野里。人肉对照不可靠，
-    所以让闸门来盯：字段名的真相在后端 record，前端契约必须逐字镜像。
-
-    校验方式：
-      1. 解析后端 web/auth/dto/*.java 与 common/web/ErrorResponse.java 的 record 组件名
-         （record 声明可能跨多行，用 (?s) 跨行匹配；组件名 = 每个参数段的最后一个标识符）
-      2. 解析 frontend/lib/contracts/auth.ts 的 interface 字段名
-      3. 两侧的接口名集合必须相等，共有接口的字段名集合必须相等
-      4. 所有字段名必须匹配 ^[a-z][A-Za-z0-9]*$（前后端一律 camelCase）
-      5. 后端 dto 目录内出现 @JsonProperty 即失败：靠注解改名会让契约与源码脱钩
-      6. 解析结果为空即失败：正则失配不能表现为「两边都空所以相等」的假绿
-
-    通过则 exit 0，不通过则 exit 1，不做任何交互式提问（AGENTS.md §8 约定）。
-#>
+﻿# 闸门 10：前后端契约一致性（字段名 + 类型，双向静态比对；扫描范围可配置）
+# 纯文本静态解析，不需要数据库、Redis 或服务启动。
+# - 后端：record 组件的「名字 + 类型」；前端：interface 字段的「名字 + 类型」与同文件 type 别名。
+# - 双向比字段名；共有字段按 Java↔TS 映射表归一后比类型；映射表外或归一失败一律 fail-closed。
+# 约定：通过 exit 0，不通过 exit 1；无交互。
 $ErrorActionPreference = 'Stop'
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
-$projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-Set-Location $projectRoot
-
-$backendDtoDir = 'backend/src/main/java/com/luyi/myfirst/web/auth/dto'
-# ErrorResponse 不在 dto 目录，但它是前端要解析的错误体，同样属于契约面。
-$backendExtraFiles = @('backend/src/main/java/com/luyi/myfirst/common/web/ErrorResponse.java')
-$frontendContract = 'frontend/lib/contracts/auth.ts'
-
-$camelCasePattern = '^[a-z][A-Za-z0-9]*$'
-# 令牌只经 Set-Cookie 传递，响应体里出现这些字段名就是违约（wanderchain-auth spec 的硬约束）。
-$forbiddenFields = @('token', 'accessToken', 'refreshToken', 'sessionId')
-
-$problems = New-Object System.Collections.ArrayList
-
-function Add-Problem {
-    param([string]$Message)
-    [void]$problems.Add($Message)
+function Resolve-RepoPath([string]$rel) {
+    return Join-Path $root ($rel -replace '/', '\')
 }
 
-function Get-BackendShapes {
-    param([string[]]$Files)
+# ===== 受管契约清单（追加新模块只需在此加一对，比对逻辑对每个 pair 独立执行）=====
+$contractPairs = @(
+    @{
+        Name            = 'auth'
+        BackendDirs     = @('backend/src/main/java/com/luyi/myfirst/web/auth/dto')
+        BackendFiles    = @('backend/src/main/java/com/luyi/myfirst/common/web/ErrorResponse.java')
+        Frontend        = 'frontend/lib/contracts/auth.ts'
+        ForbiddenFields = @('token', 'accessToken', 'refreshToken', 'sessionId')
+    }
+)
 
-    $shapes = @{}
-    foreach ($file in $Files) {
-        if (-not (Test-Path -LiteralPath $file)) {
-            Add-Problem "$file 不存在"
-            continue
+# ===== Java → TS 映射表（表外类型 fail-closed）=====
+function Map-JavaToTs([string]$t) {
+    $t = $t.Trim()
+    if ($t -match '^(String|CharSequence|UUID)$') { return 'string' }
+    if ($t -match '^(Instant|OffsetDateTime|ZonedDateTime|LocalDate|LocalDateTime|LocalTime)$') { return 'string' }
+    if ($t -match '^(int|Integer|long|Long|short|Short|double|Double|float|Float|BigDecimal|BigInteger)$') { return 'number' }
+    if ($t -match '^(boolean|Boolean)$') { return 'boolean' }
+    if ($t -match '^(?:List|Set|Collection)<(.+)>$') {
+        $inner = Map-JavaToTs $matches[1]
+        if ($inner) { return "Array<$inner>" } else { return $null }
+    }
+    if ($t -match '^(.+)\[\]$') {
+        $inner = Map-JavaToTs $matches[1]
+        if ($inner) { return "Array<$inner>" } else { return $null }
+    }
+    return $null   # 映射表外：嵌套自定义类型、Map、通配泛型等 → fail-closed
+}
+
+# ===== 前端 TS 类型归一化（$aliases 为同文件 type 别名表）=====
+function Normalize-Ts([string]$t, [hashtable]$aliases, [int]$depth = 0) {
+    if ($depth -gt 8) { return $null }
+    $t = $t.Trim()
+    $t = [regex]::Replace($t, '\s*\|\s*null\b', '').Trim()
+    if ($t -eq '') { return $null }
+    if ($t -match '^Array<(.+)>$') {
+        $inner = Normalize-Ts $matches[1] $aliases ($depth + 1)
+        if ($inner) { return "Array<$inner>" } else { return $null }
+    }
+    if ($t -match '^(.+)\[\]$') {
+        $inner = Normalize-Ts $matches[1] $aliases ($depth + 1)
+        if ($inner) { return "Array<$inner>" } else { return $null }
+    }
+    if ($t -match '\|') {
+        $norm = @()
+        foreach ($p in ($t -split '\|')) {
+            $n = Normalize-Ts $p $aliases ($depth + 1)
+            if (-not $n) { return $null }
+            $norm += $n
         }
-
-        $text = Get-Content -LiteralPath $file -Raw -Encoding UTF8
-
-        if ($text -cmatch '@JsonProperty') {
-            Add-Problem "$file 出现 @JsonProperty：字段名必须在 record 组件名上就对齐，靠注解改名会让前端契约与后端源码脱钩"
-        }
-
-        $recordPattern = '(?s)public\s+record\s+(?<name>\w+)\s*\((?<params>.*?)\)\s*(?:implements[^{]*)?\{'
-        foreach ($match in [regex]::Matches($text, $recordPattern)) {
-            $name = $match.Groups['name'].Value
-            $params = $match.Groups['params'].Value
-
-            # 先摘掉注解，再按逗号切分；每段的最后一个标识符就是组件名（前面是类型）。
-            $stripped = [regex]::Replace($params, '@\w+(\([^)]*\))?', ' ')
-            $components = @()
-            foreach ($segment in ($stripped -split ',')) {
-                $tokens = [regex]::Matches($segment, '\w+')
-                if ($tokens.Count -gt 0) {
-                    $components += $tokens[$tokens.Count - 1].Value
-                }
-            }
-
-            if ($shapes.ContainsKey($name)) {
-                Add-Problem "后端出现同名 record：$name"
-            }
-            $shapes[$name] = $components
-        }
+        $uniq = @($norm | Select-Object -Unique)
+        if ($uniq.Count -eq 1) { return $uniq[0] } else { return $null }
     }
-    return $shapes
+    if ($t -match "^'.*'$" -or $t -match '^".*"$') { return 'string' }
+    if ($t -match '^(string|number|boolean)$') { return $t }
+    if ($aliases.ContainsKey($t)) { return Normalize-Ts $aliases[$t] $aliases ($depth + 1) }
+    return $null   # 未知标识符 → fail-closed
 }
 
-function Get-FrontendShapes {
-    param([string]$File)
+$failures = @()
+$pairSummaries = @()
 
-    $shapes = @{}
-    if (-not (Test-Path -LiteralPath $File)) {
-        Add-Problem "$File 不存在"
-        return $shapes
-    }
-
-    $text = Get-Content -LiteralPath $File -Raw -Encoding UTF8
-    foreach ($match in [regex]::Matches($text, '(?s)export\s+interface\s+(?<name>\w+)\s*\{(?<body>.*?)\}')) {
-        $name = $match.Groups['name'].Value
-        $body = $match.Groups['body'].Value
-
-        # 契约文件的 interface 允许写成单行，所以分隔符同时认分号与换行。
-        $fields = @()
-        foreach ($segment in ($body -split '[;\r\n]')) {
-            $fieldMatch = [regex]::Match($segment, '^\s*(?<field>\w+)\??\s*:')
-            if ($fieldMatch.Success) {
-                $fields += $fieldMatch.Groups['field'].Value
-            }
-        }
-
-        if ($shapes.ContainsKey($name)) {
-            Add-Problem "前端契约出现同名 interface：$name"
-        }
-        $shapes[$name] = $fields
-    }
-    return $shapes
-}
-
-$backendFiles = @()
-if (Test-Path -LiteralPath $backendDtoDir) {
-    $backendFiles += @(Get-ChildItem -LiteralPath $backendDtoDir -Filter '*.java' -File |
-        ForEach-Object { $_.FullName.Substring($projectRoot.Length + 1).Replace('\', '/') })
-}
-else {
-    Add-Problem "$backendDtoDir 不存在"
-}
-$backendFiles += $backendExtraFiles
-
-$backendShapes = Get-BackendShapes -Files $backendFiles
-$frontendShapes = Get-FrontendShapes -File $frontendContract
-
-# 防伪：解析出空集合说明正则整体失配，此时「两侧相等」毫无意义。
-if ($backendShapes.Count -eq 0) {
-    Add-Problem '后端没有解析出任何 record：闸门自身的解析规则已经失配，不是契约真的为空'
-}
-if ($frontendShapes.Count -eq 0) {
-    Add-Problem "前端契约没有解析出任何 interface：$frontendContract 是否还导出 interface"
-}
-
-$backendNames = @($backendShapes.Keys | Sort-Object)
-$frontendNames = @($frontendShapes.Keys | Sort-Object)
-
-foreach ($name in $backendNames) {
-    if (-not $frontendShapes.ContainsKey($name)) {
-        Add-Problem "后端 record $name 在前端契约里没有对应 interface"
-    }
-}
-foreach ($name in $frontendNames) {
-    if (-not $backendShapes.ContainsKey($name)) {
-        Add-Problem "前端契约的 interface $name 在后端找不到同名 record：契约不得凭空造形状"
-    }
-}
-
-$fieldCount = 0
-foreach ($name in $backendNames) {
-    if (-not $frontendShapes.ContainsKey($name)) { continue }
-
-    $backendFields = @($backendShapes[$name])
-    $frontendFields = @($frontendShapes[$name])
-    if ($backendFields.Count -eq 0) {
-        Add-Problem "$name 的组件名解析为空：record 声明格式可能已经超出闸门的解析规则"
-        continue
-    }
-
-    foreach ($field in ($backendFields + $frontendFields)) {
-        if ($field -notmatch $camelCasePattern) {
-            Add-Problem "$name 的字段 $field 不是 camelCase（前后端一律小写开头、不带下划线）"
-        }
-        if ($forbiddenFields -ccontains $field) {
-            Add-Problem "$name 含字段 $field：令牌只经 Set-Cookie 传递，响应体不得出现令牌字段"
-        }
-    }
-
-    $missingInFrontend = @($backendFields | Where-Object { $frontendFields -cnotcontains $_ } | Sort-Object -Unique)
-    $extraInFrontend = @($frontendFields | Where-Object { $backendFields -cnotcontains $_ } | Sort-Object -Unique)
-
-    if ($missingInFrontend.Count -gt 0) {
-        Add-Problem "$name 后端有而前端契约没有的字段：$($missingInFrontend -join ', ')"
-    }
-    if ($extraInFrontend.Count -gt 0) {
-        Add-Problem "$name 前端契约有而后端没有的字段：$($extraInFrontend -join ', ')（新增字段先改后端 DTO）"
-    }
-
-    $fieldCount += $backendFields.Count
-}
-
-if ($problems.Count -gt 0) {
-    Write-Host '10-contract-check FAILED: 前后端认证契约字段名不一致' -ForegroundColor Red
-    foreach ($problem in $problems) {
-        Write-Host "  $problem" -ForegroundColor Red
-    }
+if ($contractPairs.Count -eq 0) {
+    Write-Host '契约闸门(10) 失败：受管契约清单为空，没有任何受管对象（防伪）。'
     exit 1
 }
 
-Write-Host ('10-contract-check PASSED: {0} 个接口、{1} 个字段名两侧逐字一致' -f $backendNames.Count, $fieldCount) -ForegroundColor Green
+foreach ($pair in $contractPairs) {
+    $pairName = $pair.Name
+
+    # ---- 收集后端 record 字段（名字 → Java 类型）----
+    $backendTypes = [ordered]@{}
+    $backendRecordCount = 0
+    $backendFilesList = @()
+    foreach ($d in $pair.BackendDirs) {
+        $p = Resolve-RepoPath $d
+        if (Test-Path $p) { $backendFilesList += @(Get-ChildItem $p -Filter *.java -File) }
+    }
+    foreach ($bf in $pair.BackendFiles) {
+        $p = Resolve-RepoPath $bf
+        if (Test-Path $p) { $backendFilesList += @(Get-Item $p) }
+    }
+    foreach ($f in $backendFilesList) {
+        $text = Get-Content $f.FullName -Raw
+        $text = [regex]::Replace($text, '(?s)/\*.*?\*/', ' ')
+        $text = [regex]::Replace($text, '(?m)//.*$', ' ')
+        foreach ($m in [regex]::Matches($text, '(?s)\brecord\s+(\w+)\s*\((.*?)\)\s*(?:implements[^{]*)?\{')) {
+            $backendRecordCount++
+            $paramsText = [regex]::Replace($m.Groups[2].Value, '@\w+(\([^)]*\))?', ' ')
+            foreach ($pp in ($paramsText -split ',')) {
+                $pp = $pp.Trim()
+                if ($pp -match '^(?<type>.+?)\s+(?<name>\w+)$') {
+                    $backendTypes[$matches['name']] = $matches['type'].Trim()
+                }
+            }
+        }
+    }
+
+    # ---- 后端出现 @JsonProperty 判红 ----
+    foreach ($f in $backendFilesList) {
+        if ((Get-Content $f.FullName -Raw) -match '@JsonProperty') {
+            $failures += "[$pairName] 后端 $($f.Name) 出现 @JsonProperty（字段映射必须与 Java 组件名一致）"
+        }
+    }
+
+    # ---- 后端字段名 camelCase 判红 ----
+    foreach ($name in $backendTypes.Keys) {
+        if ($name -cnotmatch '^[a-z][A-Za-z0-9]*$') {
+            $failures += "[$pairName] 后端字段 $name 不是 camelCase"
+        }
+    }
+
+    # ---- 收集前端 interface 字段（名字 → TS 类型）与 type 别名 ----
+    $fePath = Resolve-RepoPath $pair.Frontend
+    if (-not (Test-Path $fePath)) {
+        $failures += "[$pairName] 前端契约文件缺失：$fePath"
+        continue
+    }
+    $feText = Get-Content $fePath -Raw
+    $feAliases = @{}
+    foreach ($m in [regex]::Matches($feText, '(?m)^\s*(?:export\s+)?type\s+(\w+)\s*=\s*(.+?)\s*;?\s*$')) {
+        $feAliases[$m.Groups[1].Value] = $m.Groups[2].Value.Trim()
+    }
+    $frontendTypes = [ordered]@{}
+    $frontendInterfaceCount = 0
+    foreach ($blk in [regex]::Matches($feText, '(?s)interface\s+(\w+)\s*\{(.*?)\n\}')) {
+        $frontendInterfaceCount++
+        foreach ($line in ($blk.Groups[2].Value -split "`n")) {
+            if ($line -match '^\s*(\w+)\s*\??\s*:\s*([^;]+)') {
+                $frontendTypes[$matches[1]] = $matches[2].Trim()
+            }
+        }
+    }
+
+    # ---- 防伪：任一侧解析出空集合即判红 ----
+    if ($backendTypes.Count -eq 0) { $failures += "[$pairName] 后端未解析出任何 record 字段（解析规则失效）" }
+    if ($frontendTypes.Count -eq 0) { $failures += "[$pairName] 前端未解析出任何 interface 字段（解析规则失效）" }
+
+    # ---- 令牌字段禁现 ----
+    foreach ($forbidden in $pair.ForbiddenFields) {
+        if ($backendTypes.Contains($forbidden)) { $failures += "[$pairName] 后端字段 $forbidden 命中令牌字段禁现红线" }
+        if ($frontendTypes.Contains($forbidden)) { $failures += "[$pairName] 前端字段 $forbidden 命中令牌字段禁现红线" }
+    }
+
+    # ---- 字段名双向比对 ----
+    foreach ($name in $backendTypes.Keys) {
+        if (-not $frontendTypes.Contains($name)) { $failures += "[$pairName] 后端有、前端缺：$name" }
+    }
+    foreach ($name in $frontendTypes.Keys) {
+        if (-not $backendTypes.Contains($name)) { $failures += "[$pairName] 前端有、后端缺：$name" }
+    }
+
+    # ---- 字段类型比对（共有字段，经映射/归一后）----
+    $typeChecked = 0
+    foreach ($name in $backendTypes.Keys) {
+        if (-not $frontendTypes.Contains($name)) { continue }
+        $javaType = $backendTypes[$name]
+        $tsType = $frontendTypes[$name]
+        $mapped = Map-JavaToTs $javaType
+        if (-not $mapped) {
+            $failures += "[$pairName] 字段 $name：后端类型 $javaType 不在 Java↔TS 映射表内（fail-closed）"
+            continue
+        }
+        $normalized = Normalize-Ts $tsType $feAliases 0
+        if (-not $normalized) {
+            $failures += "[$pairName] 字段 $name：前端类型 $tsType 无法归一化（fail-closed）"
+            continue
+        }
+        $typeChecked++
+        if ($mapped -ne $normalized) {
+            $failures += "[$pairName] 字段 $name 类型不一致：后端 $javaType→$mapped，前端 $tsType→$normalized"
+        }
+    }
+
+    $pairSummaries += "[$pairName] 后端 record $backendRecordCount 个 / 前端 interface $frontendInterfaceCount 个；两侧字段名各 $($backendTypes.Count) 个，类型比对 $typeChecked 个共有字段全部一致（含 @JsonProperty/camelCase/令牌禁现检查）"
+}
+
+if ($failures.Count -gt 0) {
+    Write-Host '契约闸门(10) 失败：'
+    foreach ($x in ($failures | Select-Object -Unique)) { Write-Host "  - $x" }
+    exit 1
+}
+
+Write-Host "契约闸门(10) 通过：受管 $($contractPairs.Count) 组契约，字段名 + 类型双向一致。"
+foreach ($s in $pairSummaries) { Write-Host "  $s" }
 exit 0

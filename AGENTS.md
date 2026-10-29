@@ -110,7 +110,7 @@ ai-workspace/
 │   │   └── site/               页头、页脚与占位页
 │   ├── lib/
 │   │   ├── home/               类型契约、城市白名单、Mock 数据与仓储
-│   │   ├── contracts/          后端 DTO 的镜像契约（字段名唯一真源，10 号闸门双向比对）
+│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对）
 │   │   └── auth/               认证 HTTP 客户端与错误归一化
 │   ├── vitest.config.ts        测试配置（vitest + jsdom）
 │   └── vitest.setup.ts         jest-dom 断言扩展
@@ -132,7 +132,7 @@ ai-workspace/
 │       ├── 07-doc-consistency.ps1 文档闸门清单与技术栈描述是否跟得上仓库现状
 │       ├── 08-spec-doc-breakpoints.ps1 单元文档声明的断点与实际 CSS 媒体查询一致
 │       ├── 09-redis-check.ps1    缓存闸门：6606 既有 Redis 可达、凭据正确、db 3 可选中
-│       └── 10-contract-check.ps1 契约闸门：后端 record 组件名与前端契约字段名双向比对
+│       └── 10-contract-check.ps1 契约闸门：后端 record 与前端契约的「字段名 + 类型」双向比对，扫描范围可配置
 ├── scaffold/                  【工作区改名】
 │   └── rename.mjs              分发后第一步执行：替换工作区展示名与 slug
 ├── .agents/skills/            【行为层】自研技能编写真源（source of truth），同目录也存放 openspec init 生成的 openspec-* 技能
@@ -164,7 +164,7 @@ ai-workspace/
 | 只查建表 | `powershell -File harness\checks\06-schema-check.ps1`（默认连 `127.0.0.1:8806` 的 `ai_chat_gate` 与 `wanderchain`） |
 | 只查文档断点 | `powershell -File harness\checks\08-spec-doc-breakpoints.ps1` |
 | 只查缓存 | `powershell -File harness\checks\09-redis-check.ps1`（默认连 `127.0.0.1:6606` 的 db 3） |
-| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 `web/auth/dto` + `ErrorResponse` 对比 `frontend/lib/contracts/auth.ts`） |
+| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 `web/auth/dto` + `ErrorResponse` 对比 `frontend/lib/contracts/auth.ts` 的字段名与类型；受管清单见脚本顶部 `$contractPairs`） |
 | 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
 | 预检 Redis | `Test-NetConnection 127.0.0.1 -Port 6606`（或 `docker ps --filter publish=6606`） |
 | 建表闸门凭据 | 设置 `SCHEMA_DB_PASSWORD`；未设置时若 8806 由 Docker 容器发布，闸门会从容器环境读取 root 密码 |
@@ -198,7 +198,7 @@ ai-workspace/
 - 运行期**依赖** `127.0.0.1:8806` 的 `wanderchain` 库与 `127.0.0.1:6606` 的 Redis（db 3）：两者不可达时启动即失败，不存在内存兜底。`mvn test` 直连真实实例而非 H2 / 嵌入式 Redis——生成列与唯一索引的语义本身就是断言对象，替身测不出真实行为。`06-schema-check` 复用同一 MySQL 实例，但只操作 `ai_chat_gate` 与 `wanderchain` 两个专用 schema；不新建/删除容器，不触碰 `green-note` 业务库。
 - 建表由受版本控制的 DDL 脚本承担（`backend/src/main/resources/schema.sql` 与 `db/ai-chat/schema.sql`），应用启动时幂等执行，`ddl-auto=none`。本项目不做迁移：库里没有需要保住的数据，改结构直接 drop 重建，因此不引入迁移框架，也没有 `flyway_schema_history` 这类迁移账本。
 - 静态红线目前四条：Java 的 TODO 占位、`System.out`、`@Disabled`，以及前端的 TODO 占位与跳过写法；由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
-- `10-contract-check` 只覆盖**认证契约面**（后端 `web/auth/dto/*.java`、`common/web/ErrorResponse.java` 与前端 `lib/contracts/auth.ts`）；首页内容区块的本地 Mock 契约不在它的视野里。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状时直接失败，不拿「两边都空」当相等。
+- `10-contract-check` 只覆盖**认证契约面**（后端 `web/auth/dto/*.java`、`common/web/ErrorResponse.java` 与前端 `lib/contracts/auth.ts`），受管范围由脚本顶部的 `$contractPairs` 清单配置、追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。
 - `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。
 - 子模块初始化需要访问两个远程仓库（网络与凭据）。00 闸门本身不联网、不自动初始化：未就绪时以退出码 1 失败并打印 `git submodule update --init --recursive`，这是护栏行为而非环境故障。
 - 应用身份（Java 包名、Maven artifactId、前端包名）的改名职责在 `backend` / `frontend` 各自仓库内；工作区改名只改 `AGENTS.md` 与 `README.md`，不改 `.gitmodules`，也不改写子模块 URL。

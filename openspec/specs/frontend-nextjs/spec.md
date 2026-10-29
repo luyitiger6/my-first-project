@@ -24,6 +24,8 @@
 
 浏览器对 `/api/*` 的请求 SHALL 由前端服务接收并转发至运行期配置的后端地址（默认 `http://localhost:8989`），开发与生产使用同一实现；代理 MUST 透传请求方法、请求体、状态码与响应体，且 MUST NOT 缓存上游响应。后端 MUST NOT 依赖开放跨域来源支撑前端调用。
 
+代理 MUST 额外按白名单转发 `Cookie`、`Origin`、`Referer` 三个请求头：后端只从 cookie 读取令牌、并对写请求做来源校验，缺任一头都会让认证链路在端到端上静默失效。白名单之外的请求头 MUST NOT 转发，`Host` MUST NOT 转发。上游响应的 `Set-Cookie` MUST 逐条回传（多条 MUST NOT 合并为一条），`Retry-After` 与 `Content-Type` 维持既有透传行为。
+
 #### Scenario: 同源转发
 
 - **WHEN** 浏览器请求 `/api/todos`
@@ -48,6 +50,21 @@
 
 - **WHEN** 后端连接失败
 - **THEN** 代理返回 502 状态码，界面展示错误信息
+
+#### Scenario: 认证请求头按白名单转发
+
+- **WHEN** 浏览器带着 `Cookie`、`Origin`、`Referer` 经代理发起写请求
+- **THEN** 这三个头原样出现在转发给后端的请求上，后端据此完成令牌读取与来源校验
+
+#### Scenario: 白名单外的请求头不转发
+
+- **WHEN** 浏览器请求携带 `Host` 或其它白名单外的头
+- **THEN** 转发给后端的请求不含这些头，后端看到的 `Host` 由转发目标决定而非前端主机名
+
+#### Scenario: 上游 Set-Cookie 逐条回传
+
+- **WHEN** 后端在一个响应里下发多条 `Set-Cookie`
+- **THEN** 浏览器收到同样数量的 `Set-Cookie` 条目，每条属性完整，未被逗号合并成一条
 
 ### Requirement: 前端测试链可执行
 
@@ -100,3 +117,12 @@ Harness 静态红线 SHALL 覆盖前端 TypeScript 源码，拦截占位标记�
 
 - **WHEN** 静态红线扫描前端源码
 - **THEN** 仅应用前端适用的红线规则，Java 专属规则不作用于前端文件
+
+### Requirement: 认证契约面作为 contract-consistency 的首个受管对象
+
+前端 MUST 在唯一一处（`lib/contracts/auth.ts`）声明认证接口的字段契约；该文件与后端认证出站 DTO（`web/auth/dto/*.java`、`common/web/ErrorResponse.java`）构成 `contract-consistency` 能力所定义契约闸门的首个受管配对。字段名与类型双向一致、camelCase 强制、fail-closed 与受管清单可配置等规则均由 `contract-consistency` 规格描述，本能力 MUST NOT 另行重复定义；新增受管模块的方式以 `contract-consistency` 为准。
+
+#### Scenario: 认证契约纳入统一契约闸门
+
+- **WHEN** 运行 `contract-consistency` 定义的契约闸门
+- **THEN** 前端认证契约文件与后端认证 DTO 作为一对受管对象参与字段名与类型双向比对，其判定规则以 `contract-consistency` 规格为准
