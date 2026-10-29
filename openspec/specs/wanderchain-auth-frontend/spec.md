@@ -7,7 +7,7 @@ TBD - created by archiving change add-wanderchain-auth-frontend. Update Purpose 
 
 ### Requirement: 会话状态只来自服务端
 
-前端 MUST 通过 `GET /api/auth/me` 判定当前是否已登录，MUST NOT 在浏览器可读存储（`localStorage`、`sessionStorage`、非 HttpOnly cookie）中保存令牌或用户信息。首次挂载时状态为加载中，接口返回 `200` 时进入已登录态，返回 `401` 时进入访客态；网络失败 MUST 归为访客态且 MUST NOT 让页面白屏。登出 MUST 调用后端登出端点，由后端清除 cookie，前端随后回到访客态。
+前端 MUST 通过 `GET /api/auth/me` 判定当前是否已登录，MUST NOT 在浏览器可读存储（`localStorage`、`sessionStorage`、非 HttpOnly cookie）中保存令牌或用户信息。首次挂载时状态为加载中，接口返回 `200` 时进入已登录态，返回 `401` 时进入访客态；网络失败 MUST 归为访客态且 MUST NOT 让页面白屏。登出 MUST 调用后端登出端点，由后端清除 cookie，前端随后回到访客态。登出请求本身失败（网络错误或非 2xx）时，前端 MUST 仍然回到访客态，且 MUST NOT 让该失败以未处理的 promise rejection 形式外泄。
 
 #### Scenario: 已登录用户刷新页面仍是登录态
 
@@ -34,38 +34,14 @@ TBD - created by archiving change add-wanderchain-auth-frontend. Update Purpose 
 - **WHEN** 完成注册或登录后检查浏览器可读存储
 - **THEN** 其中不存在令牌、密码或用户资料，认证凭据只存在于 HttpOnly cookie
 
-### Requirement: 注册走两步验证码链路
+#### Scenario: 登出请求失败仍回到访客态
 
-注册界面 MUST 分两步：先提交图形验证码答案换发邮箱注册码，再提交邮箱注册码完成注册。两步 MUST 各自对应一次后端请求，请求体字段名 MUST 取自前端契约。密码长度提示 MUST 与后端约束一致（8 到 72 字节），MUST NOT 沿用更宽松的旧提示。注册成功后 MUST 处于已登录态并离开注册页。
-
-#### Scenario: 第一步换发邮箱注册码
-
-- **WHEN** 用户填写邮箱与图形码答案并请求注册码
-- **THEN** 前端向注册码端点发一次请求，成功后界面进入等待邮箱码的第二步
-
-#### Scenario: 图形码错误时不发第二步
-
-- **WHEN** 图形码答案错误，后端返回 `400` 与 `CAPTCHA_INVALID`
-- **THEN** 界面展示对应提示并刷新图形码，不进入第二步，也不提交注册请求
-
-#### Scenario: 重发受冷却限制
-
-- **WHEN** 后端因冷却返回 `429`
-- **THEN** 界面展示需等待的秒数，该秒数取自响应的 `Retry-After`，前端不再重复发请求
-
-#### Scenario: 第二步完成注册并自动登录
-
-- **WHEN** 用户提交邮箱注册码且后端返回 `200`
-- **THEN** 前端进入已登录态并跳离注册页，浏览器已收到认证 cookie
-
-#### Scenario: 密码提示与后端约束一致
-
-- **WHEN** 用户查看注册表单的密码提示
-- **THEN** 提示的下限是 8 个字符而不是 6 个
+- **WHEN** 已登录用户点击登出，而后端登出端点返回 5xx 或请求因网络错误失败
+- **THEN** 顶栏仍然回到登录入口，且该失败不产生未处理的 promise rejection
 
 ### Requirement: 登录按错误码分流
 
-登录界面 MUST 依据后端返回的错误码而不是状态码决定行为与文案。收到 `CAPTCHA_INVALID` 时 MUST 取一张图形码并允许带码重试；收到 `RATE_LIMITED` 时 MUST 展示来自 `Retry-After` 的等待时间；两个 `403`（`EMAIL_UNVERIFIED` 与 `CROSS_SITE_REJECTED`）MUST 展示不同文案。界面 MUST NOT 在登录前主动请求图形码。
+登录界面 MUST 依据后端返回的错误码而不是状态码决定行为与文案。收到 `CAPTCHA_INVALID` 时 MUST 取一张图形码并允许带码重试；收到 `RATE_LIMITED` 时 MUST 展示来自 `Retry-After` 的等待时间；两个 `403`（`EMAIL_UNVERIFIED` 与 `CROSS_SITE_REJECTED`）MUST 展示不同文案。界面 MUST NOT 在登录前主动请求图形码。换发新图形码 MUST 只发生在后端明确以图形码为由拒绝时；其它失败 MUST 保留已取到的图形码与用户已输入的答案。换码动作自身失败时，界面 MUST 继续展示原始失败原因，并 MUST 另行提示「图形码刷新失败，请手动刷新」；两条信息 MUST 同时可见且 MUST NOT 互相覆盖。
 
 #### Scenario: 凭证正确直接登录
 
@@ -92,6 +68,16 @@ TBD - created by archiving change add-wanderchain-auth-frontend. Update Purpose 
 - **WHEN** 后端返回 `401`
 - **THEN** 界面只展示统一的凭证错误提示，不区分「邮箱未注册」与「密码错误」
 
+#### Scenario: 非图形码原因的失败不换码
+
+- **WHEN** 界面已经展示图形码，用户登录时遇到网络错误或 `429`，后端并未以 `CAPTCHA_INVALID` 拒绝
+- **THEN** 界面保留原来那张图形码与用户已输入的答案，用户可直接重试
+
+#### Scenario: 换码失败不覆盖原始失败原因
+
+- **WHEN** 登录因 `CAPTCHA_INVALID` 失败后，换发新图形码的请求自身也失败
+- **THEN** 界面同时展示登录失败的原因与「图形码刷新失败，请手动刷新」的提示，两条信息都不被对方覆盖
+
 ### Requirement: 界面不展示后端不存在的字段
 
 前端界面 MUST 只展示后端契约中存在的字段。后端没有角色模型，界面 MUST NOT 展示角色徽章或以角色为条件的分支；用户名称 MUST 取自 `displayName`。
@@ -105,3 +91,42 @@ TBD - created by archiving change add-wanderchain-auth-frontend. Update Purpose 
 
 - **WHEN** 任意用户查看顶栏
 - **THEN** 界面不出现 `Editor` 之类基于角色的徽章，源码中也不存在角色字段的读取
+
+### Requirement: 注册按两步验证码链路并遵守字节口径
+
+注册界面 MUST 分两步：先提交图形验证码答案换发邮箱注册码，再提交邮箱注册码完成注册。两步 MUST 各自对应一次后端请求，请求体字段名 MUST 取自前端契约。密码长度约束为 8 到 72 字节，界面提示 MUST 以字节为单位表述并 MUST 附一条按汉字估算的换算示例，MUST NOT 把字节数说成字符数。注册第一步失败时，只有后端明确以图形码为由拒绝才 MUST 换发新码，其它失败 MUST 保留当前图形码与已输入的答案。换码动作自身失败时，界面 MUST 继续展示注册失败的原因，并 MUST 另行提示「图形码刷新失败，请手动刷新」；两条信息 MUST 同时可见且 MUST NOT 互相覆盖。注册成功后 MUST 处于已登录态并离开注册页。
+
+#### Scenario: 第一步换发邮箱注册码
+
+- **WHEN** 用户填写邮箱与图形码答案并请求注册码
+- **THEN** 前端向注册码端点发一次请求，成功后界面进入等待邮箱码的第二步
+
+#### Scenario: 图形码错误时不发第二步
+
+- **WHEN** 图形码答案错误，后端返回 `400` 与 `CAPTCHA_INVALID`
+- **THEN** 界面展示对应提示并刷新图形码，不进入第二步，也不提交注册请求
+
+#### Scenario: 重发受冷却限制
+
+- **WHEN** 后端因冷却返回 `429`
+- **THEN** 界面展示需等待的秒数，该秒数取自响应的 `Retry-After`，前端不再重复发请求
+
+#### Scenario: 第二步完成注册并自动登录
+
+- **WHEN** 用户提交邮箱注册码且后端返回 `200`
+- **THEN** 前端进入已登录态并跳离注册页，浏览器已收到认证 cookie
+
+#### Scenario: 密码提示按字节表述
+
+- **WHEN** 用户查看注册表单的密码提示
+- **THEN** 提示给出下限 8 与上限 72，计量单位是字节，并附一条按汉字估算的换算示例，不出现把字节数说成字符数的说法
+
+#### Scenario: 非图形码原因的失败不换码
+
+- **WHEN** 用户提交注册第一步，后端返回 `429` 或请求因网络错误失败，均未以 `CAPTCHA_INVALID` 拒绝
+- **THEN** 界面保留原来那张图形码与用户已输入的答案，等待时间提示取自 `Retry-After`
+
+#### Scenario: 换码失败不覆盖原始失败原因
+
+- **WHEN** 注册第一步因 `CAPTCHA_INVALID` 失败后，换发新图形码的请求自身也失败
+- **THEN** 界面同时展示注册失败的原因与「图形码刷新失败，请手动刷新」的提示，两条信息都不被对方覆盖

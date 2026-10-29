@@ -114,6 +114,12 @@ ai-workspace/
 │   │   └── auth/               认证 HTTP 客户端与错误归一化
 │   ├── vitest.config.ts        测试配置（vitest + jsdom）
 │   └── vitest.setup.ts         jest-dom 断言扩展
+├── docs/                      人与 agent 共读的说明文档
+│   ├── conventions/            开发约定唯一入口（`README.md` 索引 + 三份约定正文）
+│   ├── specs/wanderchain/      首页与搜索页的单元文档（断点由 08 号闸门比对实现）
+│   ├── e2e/                    Playwright 端到端用例与报告（工作区根运行）
+│   ├── db-design-spec.md       数据库设计规范（命名、主键、公共字段）
+│   └── spec-coverage-audit.md  spec 覆盖审计
 ├── openspec/                  【工件层】
 │   ├── config.yaml              OpenSpec 配置（schema: spec-driven）
 │   ├── specs/                   当前真相：已归档能力的需求描述
@@ -132,7 +138,8 @@ ai-workspace/
 │       ├── 07-doc-consistency.ps1 文档闸门清单与技术栈描述是否跟得上仓库现状
 │       ├── 08-spec-doc-breakpoints.ps1 单元文档声明的断点与实际 CSS 媒体查询一致
 │       ├── 09-redis-check.ps1    缓存闸门：6606 既有 Redis 可达、凭据正确、db 3 可选中
-│       └── 10-contract-check.ps1 契约闸门：后端 record 与前端契约的「字段名 + 类型」双向比对，扫描范围可配置
+│       ├── 10-contract-check.ps1 契约闸门：后端 record 与前端契约的「字段名 + 类型」双向比对，扫描范围可配置
+│       └── 11-conventions-check.ps1 约定闸门：约定文档自洽性 + 后端分层依赖方向单向
 ├── scaffold/                  【工作区改名】
 │   └── rename.mjs              分发后第一步执行：替换工作区展示名与 slug
 ├── .agents/skills/            【行为层】自研技能编写真源（source of truth），同目录也存放 openspec init 生成的 openspec-* 技能
@@ -143,7 +150,7 @@ ai-workspace/
                                  修订顺序固定为「先改 .agents/skills/ 真源 → 再同步三处副本」，禁止直接改副本。
 ```
 
-<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-schema-check 07-doc-consistency 08-spec-doc-breakpoints 09-redis-check 10-contract-check -->
+<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-schema-check 07-doc-consistency 08-spec-doc-breakpoints 09-redis-check 10-contract-check 11-conventions-check -->
 
 上面这行标记是**闸门清单的机器可读副本**：新增或删除闸门时同步更新，`07-doc-consistency.ps1` 会把它与 `harness/checks/*.ps1` 的实际文件比对，不一致直接退出码 1。
 
@@ -165,6 +172,8 @@ ai-workspace/
 | 只查文档断点 | `powershell -File harness\checks\08-spec-doc-breakpoints.ps1` |
 | 只查缓存 | `powershell -File harness\checks\09-redis-check.ps1`（默认连 `127.0.0.1:6606` 的 db 3） |
 | 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 `web/auth/dto` + `ErrorResponse` 对比 `frontend/lib/contracts/auth.ts` 的字段名与类型；受管清单见脚本顶部 `$contractPairs`） |
+| 只查约定 | `powershell -File harness\checks\11-conventions-check.ps1`（约定文档四个固定小节与真源路径、依赖描述与两侧清单一致、后端分层依赖方向） |
+| 写新模块前 | 读 `docs/conventions/README.md`——约定入口与索引，后端/前端/样式三份正文从这里进入 |
 | 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
 | 预检 Redis | `Test-NetConnection 127.0.0.1 -Port 6606`（或 `docker ps --filter publish=6606`） |
 | 建表闸门凭据 | 设置 `SCHEMA_DB_PASSWORD`；未设置时若 8806 由 Docker 容器发布，闸门会从容器环境读取 root 密码 |
