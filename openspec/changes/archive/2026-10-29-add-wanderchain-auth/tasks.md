@@ -80,5 +80,5 @@
 
 ## Workflow follow-up
 
-- 归档前处理 `openspec/specs/database-baseline/spec.md` 中与本变更方向相反的要求，避免主 spec 与实现互相矛盾。
-- 依赖用户确认后，再运行 `/opsx:archive` 完成归档。
+- 归档前处理 `openspec/specs/database-baseline/spec.md` 中与本变更方向相反的要求——**已解决**：由 tasks 1.8 的 delta 承接（REMOVED「后端运行期不依赖数据库」+ ADDED「后端运行期依赖数据库与缓存」，连带 Flyway→schema.sql 的建表闸门反转），并已同步 proposal 的「Modified Capabilities」与 Impact 冲突项；`openspec validate --strict` 通过，归档同步后主 spec 与实现一致。
+- 依赖用户确认后，再运行 `/opsx:archive` 完成归档——**用户已于 2026-10-29 确认**（归档、提交、并解决方向相反的要求）。

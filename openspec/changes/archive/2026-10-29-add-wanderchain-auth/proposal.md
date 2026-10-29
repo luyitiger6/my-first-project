@@ -32,12 +32,12 @@ wanderchain 目前只有前端自包含的 Mock 认证：账号存在浏览器 l
 
 ### Modified Capabilities
 
-<!-- 本变更不修改任何既有能力的 REQUIREMENTS。 -->
+- `database-baseline`: 反转其中与本变更方向相反的「后端运行期不依赖数据库」——认证需要账户/会话/吊销记录持久化到 MySQL、验证码与限流计数存放于 Redis。delta（tasks 1.8）REMOVED 该 Requirement 并 ADDED 反向的「后端运行期依赖数据库与缓存」（`01-compile` 与 `02-test` 从此要求 MySQL 与 Redis 可达）；连带把「数据库结构由版本化迁移管理」改为「由受版本控制的 DDL 脚本定义」、「Flyway 闸门纳入 Harness」改为「建表闸门纳入 Harness」（放弃 Flyway，改用 `schema.sql` 启动幂等建表），并 MODIFIED「AI 会话核心表基线」的措辞（由「迁移建立」改为「DDL 脚本建立」）。落地见 tasks 1.6 / 1.8 / 1.9。
 
 ## Impact
 
 - **代码**：`backend/` 新增认证领域、Web 接入层与持久化层；`frontend/` 的 Mock 认证接入真实接口属后续独立变更。
 - **依赖与运行环境**：后端从「无外部中间件」转为「依赖数据库 + 其他中间件」，`mvn test` 与本地启动的前置条件随之改变；Harness 中关于后端运行期边界的既有断言需要重新对齐。
 - **API**：新增 `/api/auth/**` 一组端点，经前端同源代理 `/api/[...path]` 原样透传状态码，因此 `403`、`429` 会被浏览器侧直接看到。
-- **既有规格冲突（本次不处理）**：`openspec/specs/database-baseline/spec.md` 中「后端运行期不依赖数据库」的 Requirement 与本变更方向相反。按本次决定，该能力不纳入本变更的 delta，归档前需单独修订，否则主 spec 会与实现互相矛盾。
+- **既有规格冲突（已在本变更内解决）**：`openspec/specs/database-baseline/spec.md` 中「后端运行期不依赖数据库」的 Requirement 与本变更方向相反。初版 proposal 曾计划「不纳入本变更 delta、归档前单独修订」，实施阶段（tasks 1.6 / 1.8 / 1.9）改为直接由本变更的 `specs/database-baseline/spec.md` delta 承接：REMOVED 该 Requirement + ADDED 反向的「后端运行期依赖数据库与缓存」，并把 Flyway 闸门反转为建表闸门。`openspec validate --strict` 通过；归档同步后主 spec 与实现一致，不再互相矛盾。
 - **非目标**：第三方登录、多因素认证、角色与权限模型、前端真实认证接入。
