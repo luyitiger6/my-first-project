@@ -1,10 +1,10 @@
-# 06-schema-check.ps1
+﻿# 06-schema-check.ps1
 #
-# 建表闸门：复用 127.0.0.1:8806 上的既有 MySQL 8 实例，验证两个独立 schema 的建表脚本。
-#   ai_chat_gate —— AI 会话四表（backend/src/main/resources/db/ai-chat/schema.sql）
-#   wanderchain  —— 认证两表（backend/src/main/resources/schema.sql）
-# 这道闸门守的从来不是某个迁移工具，而是「表真的建对了」：表名、索引名、约束名、生成列、审计列、重复执行无副作用。
-# 不创建/删除容器，不修改 green-note 业务库；通过 exit 0，失败 exit 1，无交互提问。
+# 寤鸿〃闂搁棬锛氬鐢?127.0.0.1:8806 涓婄殑鏃㈡湁 MySQL 8 瀹炰緥锛岄獙璇佷袱涓嫭绔?schema 鐨勫缓琛ㄨ剼鏈€?
+#   ai_chat_gate 鈥斺€?AI 浼氳瘽鍥涜〃锛坆ackend/src/main/resources/db/ai-chat/schema.sql锛?
+#   wanderchain  鈥斺€?璁よ瘉涓よ〃锛坆ackend/src/main/resources/schema.sql锛?
+# 杩欓亾闂搁棬瀹堢殑浠庢潵涓嶆槸鏌愪釜杩佺Щ宸ュ叿锛岃€屾槸銆岃〃鐪熺殑寤哄浜嗐€嶏細琛ㄥ悕銆佺储寮曞悕銆佺害鏉熷悕銆佺敓鎴愬垪銆佸璁″垪銆侀噸澶嶆墽琛屾棤鍓綔鐢ㄣ€?
+# 涓嶅垱寤?鍒犻櫎瀹瑰櫒锛屼笉淇敼 green-note 涓氬姟搴擄紱閫氳繃 exit 0锛屽け璐?exit 1锛屾棤浜や簰鎻愰棶銆?
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -47,11 +47,19 @@ $expectations[$aiChatDb] = @{
 }
 $expectations[$authDb] = @{
   Script      = 'backend/src/main/resources/schema.sql'
-  Tables      = @('accounts', 'auth_sessions')
-  Indexes     = @('uk_accounts_public_id', 'uk_accounts_active_email', 'uk_auth_sessions_jti', 'idx_auth_sessions_account', 'idx_auth_sessions_expires')
-  Constraints = @('ck_accounts_status', 'ck_accounts_token_version', 'ck_accounts_version', 'fk_auth_sessions_account', 'ck_auth_sessions_expires')
+  Tables      = @('accounts', 'auth_sessions', 'posts')
+  Indexes     = @(
+    'uk_accounts_public_id', 'uk_accounts_active_email',
+    'uk_auth_sessions_jti', 'idx_auth_sessions_account', 'idx_auth_sessions_expires',
+    'uk_posts_public_id', 'idx_posts_feed', 'idx_posts_author'
+  )
+  Constraints = @(
+    'ck_accounts_status', 'ck_accounts_token_version', 'ck_accounts_version',
+    'fk_auth_sessions_account', 'ck_auth_sessions_expires',
+    'fk_posts_author', 'ck_posts_status', 'ck_posts_version'
+  )
   Generated   = @('active_email')
-  CreatedAt   = @('accounts')
+  CreatedAt   = @('accounts', 'posts')
 }
 $databases = @($aiChatDb, $authDb)
 
@@ -59,7 +67,7 @@ if ($aiChatDb -notmatch '^ai_chat_gate(_[a-z0-9]+)?$') {
   Fail "SCHEMA_DB_NAME must be ai_chat_gate or ai_chat_gate_<suffix>; got '$aiChatDb'"
 }
 
-# 1. TCP 可达性检查：只检查既有实例，不启动任何容器。
+# 1. TCP 鍙揪鎬ф鏌ワ細鍙鏌ユ棦鏈夊疄渚嬶紝涓嶅惎鍔ㄤ换浣曞鍣ㄣ€?
 try {
   $tcp = New-Object System.Net.Sockets.TcpClient
   $async = $tcp.BeginConnect($dbHost, $dbPort, $null, $null)
@@ -73,7 +81,7 @@ try {
   Fail "MySQL is not reachable at ${dbHost}:${dbPort}: $($_.Exception.Message)"
 }
 
-# 2. 通过发布端口找到既有容器：用于 docker exec 断言，以及本机开发时发现 root 密码。
+# 2. 閫氳繃鍙戝竷绔彛鎵惧埌鏃㈡湁瀹瑰櫒锛氱敤浜?docker exec 鏂█锛屼互鍙婃湰鏈哄紑鍙戞椂鍙戠幇 root 瀵嗙爜銆?
 $container = $null
 if (Get-Command docker -ErrorAction SilentlyContinue) {
   $container = (docker ps --filter "publish=$dbPort" --format "{{.Names}}" 2>$null | Select-Object -First 1)
@@ -138,13 +146,13 @@ function Invoke-SqlFile {
 
   $fullPath = Join-Path $projectRoot $Path
   if (-not (Test-Path -LiteralPath $fullPath)) { Fail "schema script not found: $Path" }
-  # 整个脚本作为单个参数传给 mysql：不经过 PowerShell 管道，避免 Windows 下的编码转换。
+  # 鏁翠釜鑴氭湰浣滀负鍗曚釜鍙傛暟浼犵粰 mysql锛氫笉缁忚繃 PowerShell 绠￠亾锛岄伩鍏?Windows 涓嬬殑缂栫爜杞崲銆?
   $sql = Get-Content -Raw -Encoding UTF8 -LiteralPath $fullPath
   if (-not $sql) { Fail "schema script is empty: $Path" }
   Invoke-Sql -Sql $sql -Database $Database | Out-Null
 }
 
-# 3. 确认是 MySQL 8，并记录业务库表集合；结束后必须保持不变。
+# 3. 纭鏄?MySQL 8锛屽苟璁板綍涓氬姟搴撹〃闆嗗悎锛涚粨鏉熷悗蹇呴』淇濇寔涓嶅彉銆?
 $version = @(Invoke-Sql 'SELECT VERSION();')[0]
 if (-not $version -or -not $version.StartsWith('8.')) {
   Fail "MySQL 8 required; got '$version'"
@@ -152,18 +160,18 @@ if (-not $version -or -not $version.StartsWith('8.')) {
 
 $businessBefore = (@(Invoke-Sql "SELECT table_name FROM information_schema.tables WHERE table_schema='$businessSchema' ORDER BY table_name;") -join ',')
 
-# 4. 只重建两个专用 schema，绝不触碰业务库。
+# 4. 鍙噸寤轰袱涓笓鐢?schema锛岀粷涓嶈Е纰颁笟鍔″簱銆?
 foreach ($db in $databases) {
   $quotedDb = '`' + $db + '`'
   Invoke-Sql "DROP DATABASE IF EXISTS $quotedDb; CREATE DATABASE $quotedDb CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;" | Out-Null
 }
 
-# 5. 执行建表脚本。
+# 5. 鎵ц寤鸿〃鑴氭湰銆?
 foreach ($db in $databases) {
   Invoke-SqlFile -Path $expectations[$db].Script -Database $db
 }
 
-# 6. 结构断言：表、索引、约束、生成列、审计时间列。
+# 6. 缁撴瀯鏂█锛氳〃銆佺储寮曘€佺害鏉熴€佺敓鎴愬垪銆佸璁℃椂闂村垪銆?
 foreach ($db in $databases) {
   $spec = $expectations[$db]
 
@@ -193,7 +201,7 @@ foreach ($db in $databases) {
   }
 }
 
-# 7. 幂等：脚本再跑一遍，不得报错，也不得重建任何表（create_time 是重建的硬证据）。
+# 7. 骞傜瓑锛氳剼鏈啀璺戜竴閬嶏紝涓嶅緱鎶ラ敊锛屼篃涓嶅緱閲嶅缓浠讳綍琛紙create_time 鏄噸寤虹殑纭瘉鎹級銆?
 function Get-TableFingerprint([string]$Database) {
   return (@(Invoke-Sql "SELECT CONCAT(table_name, ':', DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s')) FROM information_schema.tables WHERE table_schema='$Database' ORDER BY table_name;") -join '|')
 }
@@ -201,7 +209,7 @@ function Get-TableFingerprint([string]$Database) {
 $fingerprintBefore = @{}
 foreach ($db in $databases) { $fingerprintBefore[$db] = Get-TableFingerprint $db }
 
-# 表重建会把 create_time 刷新到当前秒；隔一秒再跑，才能把「没重建」和「同一秒内重建」区分开。
+# 琛ㄩ噸寤轰細鎶?create_time 鍒锋柊鍒板綋鍓嶇锛涢殧涓€绉掑啀璺戯紝鎵嶈兘鎶娿€屾病閲嶅缓銆嶅拰銆屽悓涓€绉掑唴閲嶅缓銆嶅尯鍒嗗紑銆?
 Start-Sleep -Seconds 2
 
 foreach ($db in $databases) {
@@ -215,7 +223,7 @@ foreach ($db in $databases) {
   }
 }
 
-# 8. 业务库与容器均未被改动。
+# 8. 涓氬姟搴撲笌瀹瑰櫒鍧囨湭琚敼鍔ㄣ€?
 $businessAfter = (@(Invoke-Sql "SELECT table_name FROM information_schema.tables WHERE table_schema='$businessSchema' ORDER BY table_name;") -join ',')
 if ($businessAfter -ne $businessBefore) {
   Fail "business schema '$businessSchema' changed during the gate"
@@ -224,3 +232,5 @@ if ($businessAfter -ne $businessBefore) {
 $summary = ($databases | ForEach-Object { $expectations[$_].Tables.Count.ToString() + ' tables in ' + $_ }) -join ', '
 Write-Host "06-schema-check PASSED: $summary on ${dbHost}:${dbPort}; tables, indexes, constraints, generated columns verified; idempotent" -ForegroundColor Green
 exit 0
+
+

@@ -23,45 +23,58 @@ $contractPairs = @(
         BackendFiles    = @('backend/src/main/java/com/luyi/myfirst/common/web/ErrorResponse.java')
         Frontend        = 'frontend/lib/contracts/auth.ts'
         ForbiddenFields = @('token', 'accessToken', 'refreshToken', 'sessionId')
+    },
+    @{
+        Name            = 'posts'
+        BackendDirs     = @('backend/src/main/java/com/luyi/myfirst/web/post/dto')
+        BackendFiles    = @()
+        Frontend        = 'frontend/lib/contracts/posts.ts'
+        ForbiddenFields = @()
     }
 )
 
 # ===== Java → TS 映射表（表外类型 fail-closed）=====
-function Map-JavaToTs([string]$t) {
+function Map-JavaToTs([string]$t, [string[]]$knownRecords = @()) {
     $t = $t.Trim()
     if ($t -match '^(String|CharSequence|UUID)$') { return 'string' }
     if ($t -match '^(Instant|OffsetDateTime|ZonedDateTime|LocalDate|LocalDateTime|LocalTime)$') { return 'string' }
     if ($t -match '^(int|Integer|long|Long|short|Short|double|Double|float|Float|BigDecimal|BigInteger)$') { return 'number' }
     if ($t -match '^(boolean|Boolean)$') { return 'boolean' }
+    if ($t -in $knownRecords) { return $t }
     if ($t -match '^(?:List|Set|Collection)<(.+)>$') {
-        $inner = Map-JavaToTs $matches[1]
+        $inner = $matches[1].Trim()
+        if ($inner -in $knownRecords) { return "Array<$inner>" }
+        $inner = Map-JavaToTs $inner $knownRecords
         if ($inner) { return "Array<$inner>" } else { return $null }
     }
     if ($t -match '^(.+)\[\]$') {
-        $inner = Map-JavaToTs $matches[1]
+        $inner = $matches[1].Trim()
+        if ($inner -in $knownRecords) { return "Array<$inner>" }
+        $inner = Map-JavaToTs $inner $knownRecords
         if ($inner) { return "Array<$inner>" } else { return $null }
     }
     return $null   # 映射表外：嵌套自定义类型、Map、通配泛型等 → fail-closed
 }
 
 # ===== 前端 TS 类型归一化（$aliases 为同文件 type 别名表）=====
-function Normalize-Ts([string]$t, [hashtable]$aliases, [int]$depth = 0) {
+function Normalize-Ts([string]$t, [hashtable]$aliases, [int]$depth = 0, [string[]]$knownInterfaces = @()) {
     if ($depth -gt 8) { return $null }
     $t = $t.Trim()
     $t = [regex]::Replace($t, '\s*\|\s*null\b', '').Trim()
     if ($t -eq '') { return $null }
+    if ($t -in $knownInterfaces) { return $t }
     if ($t -match '^Array<(.+)>$') {
-        $inner = Normalize-Ts $matches[1] $aliases ($depth + 1)
+        $inner = Normalize-Ts $matches[1] $aliases ($depth + 1) $knownInterfaces
         if ($inner) { return "Array<$inner>" } else { return $null }
     }
     if ($t -match '^(.+)\[\]$') {
-        $inner = Normalize-Ts $matches[1] $aliases ($depth + 1)
+        $inner = Normalize-Ts $matches[1] $aliases ($depth + 1) $knownInterfaces
         if ($inner) { return "Array<$inner>" } else { return $null }
     }
     if ($t -match '\|') {
         $norm = @()
         foreach ($p in ($t -split '\|')) {
-            $n = Normalize-Ts $p $aliases ($depth + 1)
+            $n = Normalize-Ts $p $aliases ($depth + 1) $knownInterfaces
             if (-not $n) { return $null }
             $norm += $n
         }
@@ -70,7 +83,7 @@ function Normalize-Ts([string]$t, [hashtable]$aliases, [int]$depth = 0) {
     }
     if ($t -match "^'.*'$" -or $t -match '^".*"$') { return 'string' }
     if ($t -match '^(string|number|boolean)$') { return $t }
-    if ($aliases.ContainsKey($t)) { return Normalize-Ts $aliases[$t] $aliases ($depth + 1) }
+    if ($aliases.ContainsKey($t)) { return Normalize-Ts $aliases[$t] $aliases ($depth + 1) $knownInterfaces }
     return $null   # 未知标识符 → fail-closed
 }
 
@@ -215,12 +228,14 @@ foreach ($pair in $contractPairs) {
             if (-not $frontendTypes.Contains($name)) { continue }
             $javaType = $backendTypes[$name]
             $tsType = $frontendTypes[$name]
-            $mapped = Map-JavaToTs $javaType
+            $knownRecords = @($backendInterfaces.Keys)
+            $knownInterfaces = @($frontendInterfaces.Keys)
+            $mapped = Map-JavaToTs $javaType $knownRecords
             if (-not $mapped) {
                 $failures += "[$pairName] 字段 $interfaceName.$name：后端类型 $javaType 不在 Java↔TS 映射表内（fail-closed）"
                 continue
             }
-            $normalized = Normalize-Ts $tsType $feAliases 0
+            $normalized = Normalize-Ts $tsType $feAliases 0 $knownInterfaces
             if (-not $normalized) {
                 $failures += "[$pairName] 字段 $interfaceName.$name：前端类型 $tsType 无法归一化（fail-closed）"
                 continue

@@ -81,18 +81,22 @@ ai-workspace/
 │   └── src/
 │       ├── main/java/com/luyi/myfirst/
 │       │   ├── Application.java
-│       │   ├── common/enums/        账户状态枚举（三态 + 允许迁移表）
-│       │   ├── common/exception/    错误码基类、认证错误枚举与业务异常
-│       │   ├── common/id/           ULID 生成（账户与会话主键）
+│       │   ├── common/enums/        账户与帖子状态枚举
+│       │   ├── common/exception/    错误码基类、认证/帖子错误枚举与业务异常
+│       │   ├── common/id/           ULID 生成（账户、会话、帖子主键）
+│       │   ├── common/persistence/  业务实体公共八列基类（MappedSuperclass）
 │       │   ├── common/security/     口令哈希抽象与 BCrypt 实现、强度规则
-│       │   ├── common/web/          统一错误体与全局异常处理
+│       │   ├── common/web/          统一错误体、全局异常处理、响应基类型
 │       │   ├── config/              wanderchain.auth 配置绑定、MVC 拦截器装配
 │       │   ├── dao/auth/            entity / repository / converter（账户与会话持久化）
+│       │   ├── dao/post/            entity / repository / converter（帖子持久化）
 │       │   ├── service/auth/        接口，impl/ 实现，model/ 载体，support/ 支撑件
-│       │   └── web/auth/            REST 控制器，dto/ 请求响应体，interceptor/ 认证拦截与来源校验
+│       │   ├── service/post/        帖子接口、impl/ 实现、model/ 视图、support/ 校验与游标
+│       │   ├── web/auth/            REST 控制器，dto/ 请求响应体，interceptor/ 认证拦截与来源校验
+│       │   └── web/post/            帖子 REST 控制器与 dto
 │       ├── main/resources/
 │       │   ├── application.yml      数据源、Redis、wanderchain.auth 配置
-│       │   ├── schema.sql           wanderchain 库建表（accounts / auth_sessions）
+│       │   ├── schema.sql           wanderchain 库建表（accounts / auth_sessions / posts）
 │       │   └── db/ai-chat/schema.sql  ai_chat_gate 库建表（AI 会话四表）
 │       └── test/java/com/luyi/myfirst/  按被测类所在包放置的单元测试 + 容器装配契约测试
 ├── frontend/ [submodule]      独立仓库：Next.js 16 App Router + React 19 + TypeScript（npm 项目根）
@@ -110,7 +114,7 @@ ai-workspace/
 │   │   └── site/               页头、页脚与占位页
 │   ├── lib/
 │   │   ├── home/               类型契约、城市白名单、Mock 数据与仓储
-│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对）
+│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对；当前覆盖 auth / posts）
 │   │   └── auth/               认证 HTTP 客户端与错误归一化
 │   ├── vitest.config.ts        测试配置（vitest + jsdom）
 │   └── vitest.setup.ts         jest-dom 断言扩展
@@ -171,7 +175,7 @@ ai-workspace/
 | 只查建表 | `powershell -File harness\checks\06-schema-check.ps1`（默认连 `127.0.0.1:8806` 的 `ai_chat_gate` 与 `wanderchain`） |
 | 只查文档断点 | `powershell -File harness\checks\08-spec-doc-breakpoints.ps1` |
 | 只查缓存 | `powershell -File harness\checks\09-redis-check.ps1`（默认连 `127.0.0.1:6606` 的 db 3） |
-| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 `web/auth/dto` + `ErrorResponse` 对比 `frontend/lib/contracts/auth.ts` 的字段名与类型；受管清单见脚本顶部 `$contractPairs`） |
+| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 的字段名与类型双向比对；当前受管 auth / posts，清单见脚本顶部 `$contractPairs`） |
 | 只查约定 | `powershell -File harness\checks\11-conventions-check.ps1`（约定文档四个固定小节与真源路径、依赖描述与两侧清单一致、后端分层依赖方向） |
 | 写新模块前 | 读 `docs/conventions/README.md`——约定入口与索引，后端/前端/样式三份正文从这里进入 |
 | 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
@@ -180,6 +184,7 @@ ai-workspace/
 | 缓存闸门凭据 | 设置 `SCHEMA_REDIS_PASSWORD`；未设置时若 6606 由 Docker 容器发布，闸门会从容器启动命令里读取 `--requirepass` |
 | 工作区改名 | `node scaffold/rename.mjs --name <新 slug> --display "<新展示名>"`（只改 AGENTS.md / README.md，改名后跑一键验收） |
 | 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（监听 `http://localhost:8989`；需先设置 DB / Redis / JWT 环境变量） |
+| 帖子接口 | `GET /api/posts?limit=&cursor=` / `GET /api/posts/{publicId}` 公开；`POST` / `PUT` / `DELETE /api/posts/{publicId}` 需登录 |
 | 前端开发 | `cd frontend; npm run dev`（访问 `http://localhost:3000`，`/api` 由 Route Handler 代理到 8989） |
 | 前端构建 | `cd frontend; npm run build`（产物含 `.next/standalone`） |
 | 前端测试 | `cd frontend; npm run test` |
@@ -211,3 +216,8 @@ ai-workspace/
 - `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。
 - 子模块初始化需要访问两个远程仓库（网络与凭据）。00 闸门本身不联网、不自动初始化：未就绪时以退出码 1 失败并打印 `git submodule update --init --recursive`，这是护栏行为而非环境故障。
 - 应用身份（Java 包名、Maven artifactId、前端包名）的改名职责在 `backend` / `frontend` 各自仓库内；工作区改名只改 `AGENTS.md` 与 `README.md`，不改 `.gitmodules`，也不改写子模块 URL。
+
+## 10. 工程约定
+
+1. **优先使用成熟第三方包，不重复造轮子**。JSON 处理、集合工具、缓存客户端、消息队列、对象存储、搜索引擎等通用能力，优先引入经过社区验证的库（如 Hutool、Jackson、RabbitMQ / RocketMQ 客户端、MinIO、Elasticsearch 等），而不是在 `common` 或业务包里重写已有实现。新增 change 必须在设计 / 任务里显式说明依赖的第三方包及其用途，并由 `01-compile` / `04-frontend` 验证依赖可用。
+2. **单元测试聚焦 service 接口与 controller 返回结果**。三层（dao / service / web）写完后，只需为 **service 层对外接口** 和 **controller 层端点** 编写集成 / 契约测试，验证正常与主要异常路径的返回结果即可；枚举类、纯数据 DTO、简单夹具等无需单独单测。禁止为了「凑覆盖率」给无行为单元写测试。
