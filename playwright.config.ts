@@ -45,7 +45,8 @@ export default defineConfig({
         command: `npm run dev -- --port ${PORT}`,
         cwd: path.join(__dirname, 'frontend'),
         url: BASE_URL,
-        // next dev 不能换成 next start：Mock 认证在 production 下会主动拒绝注册与登录。
+        // 用 next dev 而不是 next start：E2E 不在 harness 的十一道闸门内，dev 配上 reuseExistingServer
+        // 能直接复用已经跑着的开发服务，省掉每轮一次生产构建；构建能不能过由 04-frontend 闸门负责。
         reuseExistingServer: true,
         timeout: 240_000,
         stdout: 'pipe',

@@ -58,13 +58,20 @@ test.describe('U4 · AI 助手入口 · 桌面端', () => {
   })
 
   test('S2 · And 打开面板不发起业务 API 请求', async ({ page }) => {
-    // S2 补充：面板为纯前端占位，打开过程不得调用任何业务接口
+    // S2 补充：面板为纯前端占位，打开与关闭过程不得调用任何业务接口
+    // spec 的 Scenario 限定的是「打开并关闭面板期间」：根布局挂载时的会话探测（GET /api/auth/me）
+    // 发生在打开面板之前，不属于面板行为。先等探测落地（加载占位消失）再开始记录，
+    // 否则会把全局会话探测算到 AI 面板头上。
+    await expect(page.getByTestId('account-loading')).toHaveCount(0)
+
     const requests = recordDataRequests(page)
     await openFromFloating(page)
     await expect(page.getByText('This is a front-end placeholder. It sends no requests.')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
 
     const apiCalls = requests.filter((url) => /\/api\//.test(url))
-    expect(apiCalls, '打开 AI 面板不应发起业务 API 请求').toEqual([])
+    expect(apiCalls, '打开与关闭 AI 面板不应发起业务 API 请求').toEqual([])
   })
 
   test('S3 · 顶栏按钮打开同一个面板，不产生第二份实例', async ({ page }) => {

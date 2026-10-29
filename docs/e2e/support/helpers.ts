@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, type Locator, type Page, type Route } from '@playwright/test'
 
 /**
  * 项目标准视口：桌面取 1440×900（与既有手测截图一致），
@@ -154,74 +154,6 @@ export async function observedText(page: Page): Promise<string[]> {
   })
 }
 
-export interface MockUser {
-  id: string
-  email: string
-  name: string
-  role: 'user' | 'admin'
-}
-
-export interface MockAccount {
-  user: MockUser
-  password: string
-}
-
-/** 与 lib/auth/mock-auth.ts 的 SEED_ACCOUNTS 保持一致。 */
-export const ADMIN_ACCOUNT: MockAccount = {
-  user: { id: 'u-admin', email: 'admin@wanderchain.dev', name: 'Editor Lan', role: 'admin' },
-  password: 'admin123',
-}
-
-export const TRAVELER_ACCOUNT: MockAccount = {
-  user: {
-    id: 'u-traveler',
-    email: 'traveler@wanderchain.dev',
-    name: 'Traveler Zhou',
-    role: 'user',
-  },
-  password: 'traveler123',
-}
-
-export const SESSION_KEY = 'wanderchain.session'
-export const ACCOUNTS_KEY = 'wanderchain.accounts'
-export const SESSION_TTL_MS = 8 * 60 * 60 * 1000
-
-/**
- * 在文档脚本执行前写入会话，等价于「这个浏览器上次已经登录过」。
- * 用 addInitScript 而不是登录表单，是为了让刷新/新标签页仍保持登录态。
- */
-export async function seedSession(
-  page: Page,
-  user: MockUser = ADMIN_ACCOUNT.user,
-  ttlMs = SESSION_TTL_MS,
-): Promise<void> {
-  const session = {
-    // 与 createToken 同形：三段式、签名不参与校验。
-    token: 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzZWVkIn0.mock-signature',
-    user,
-    expiresAt: Date.now() + ttlMs,
-  }
-
-  await page.addInitScript(
-    ({ key, value }) => {
-      try {
-        window.localStorage.setItem(key, value)
-      } catch {
-        // about:blank 等不透明来源没有 localStorage；导航到目标源后脚本会再次执行。
-      }
-    },
-    { key: SESSION_KEY, value: JSON.stringify(session) },
-  )
-}
-
-export async function loginViaForm(page: Page, account: MockAccount = ADMIN_ACCOUNT): Promise<void> {
-  await gotoPath(page, '/login')
-  await page.getByLabel('Email', { exact: true }).fill(account.user.email)
-  await page.getByLabel('Password', { exact: true }).fill(account.password)
-  await page.getByRole('button', { name: 'Log in', exact: true }).click()
-  await page.waitForURL((url) => url.pathname === '/')
-}
-
 /** 只记录 XHR / fetch：HMR websocket 与静态资源不属于业务请求。 */
 export function recordDataRequests(page: Page): string[] {
   const urls: string[] = []
@@ -232,50 +164,6 @@ export function recordDataRequests(page: Page): string[] {
     }
   })
   return urls
-}
-
-export async function readStoredSession(page: Page): Promise<unknown> {
-  return page.evaluate((key) => {
-    const raw = window.localStorage.getItem(key)
-    return raw === null ? null : (JSON.parse(raw) as unknown)
-  }, SESSION_KEY)
-}
-
-export interface StoredAccountInput {
-  id?: string
-  email: string
-  password: string
-  name: string
-  role?: 'user' | 'admin'
-}
-
-/** 预置「本机已注册过的账号」，用于验证退出后账号表不受影响。 */
-export async function seedAccounts(page: Page, accounts: StoredAccountInput[]): Promise<void> {
-  const normalized = accounts.map((account, index) => ({
-    id: account.id ?? `u-seed-${index}`,
-    email: account.email,
-    name: account.name,
-    role: account.role ?? 'user',
-    password: account.password,
-  }))
-
-  await page.addInitScript(
-    ({ key, value }) => {
-      try {
-        window.localStorage.setItem(key, value)
-      } catch {
-        // 同 seedSession：不透明来源跳过。
-      }
-    },
-    { key: ACCOUNTS_KEY, value: JSON.stringify(normalized) },
-  )
-}
-
-export async function readStoredAccounts(page: Page): Promise<StoredAccountInput[]> {
-  return page.evaluate((key) => {
-    const raw = window.localStorage.getItem(key)
-    return raw === null ? [] : (JSON.parse(raw) as StoredAccountInput[])
-  }, ACCOUNTS_KEY)
 }
 
 /** 观察提交中的瞬态：按钮文案 Working… 与 disabled 可能只渲染一两帧。 */
@@ -333,4 +221,108 @@ export async function observedSubmitPending(
     scope.__e2ePending = undefined
     return { sawWorking: handle.sawWorking, sawDisabled: handle.sawDisabled }
   })
+}
+
+/** ------------------------------------------------------------------ *
+ * 认证端点的桩与请求录制
+ * ------------------------------------------------------------------ */
+
+export interface AuthStubResponse {
+  status?: number
+  body?: unknown
+  headers?: Record<string, string>
+}
+
+/** 键是端点路径（如 `/api/auth/login`），值可以随调用次数变化。 */
+export type AuthStubMap = Record<string, AuthStubResponse | (() => AuthStubResponse)>
+
+export interface RecordedAuthRequest {
+  path: string
+  method: string
+  body: unknown
+}
+
+/**
+ * 把 `/api/auth/*` 全部桩掉。
+ *
+ * E2E 断言的是前端对外的契约——请求打到哪个端点、请求体字段名逐字是什么、
+ * 收到某个错误码后界面怎么走；后端自身的行为由 backend 的单元测试与容器装配测试负责。
+ * 桩掉之后这条链路不依赖 MySQL / Redis / 后端进程，也不会踩到「登录失败次数」的共享限流桶
+ * （本地所有请求同属一个未知来源，失败 20 次就锁 10 分钟，跑几轮 E2E 就会把开发机锁住）。
+ */
+export async function stubAuthApi(page: Page, stubs: AuthStubMap): Promise<void> {
+  await page.route('**/api/auth/**', async (route: Route) => {
+    const pathname = new URL(route.request().url()).pathname
+    const stub = stubs[pathname]
+    if (!stub) {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'UNAUTHENTICATED', message: `no stub for ${pathname}` }),
+      })
+      return
+    }
+
+    const resolved = typeof stub === 'function' ? stub() : stub
+    const status = resolved.status ?? 200
+    await route.fulfill({
+      status,
+      contentType: 'application/json',
+      headers: resolved.headers,
+      // 204 不允许带响应体，否则浏览器会直接判为协议错误。
+      body: status === 204 ? '' : JSON.stringify(resolved.body ?? {}),
+    })
+  })
+}
+
+/** 录制真正发到 `/api/auth/*` 的请求，用于断言端点顺序与请求体字段名。 */
+export function recordAuthRequests(page: Page): RecordedAuthRequest[] {
+  const recorded: RecordedAuthRequest[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (!url.pathname.startsWith('/api/auth/')) {
+      return
+    }
+    let body: unknown = null
+    const raw = request.postData()
+    if (raw) {
+      try {
+        body = JSON.parse(raw) as unknown
+      } catch {
+        body = raw
+      }
+    }
+    recorded.push({ path: url.pathname, method: request.method(), body })
+  })
+  return recorded
+}
+
+/** 已登录账户的 `/me` 响应体，字段与 `lib/contracts/auth.ts` 的 MeResponse 一致。 */
+export const ME_BODY = {
+  publicId: '01JACCOUNT0000000000000',
+  email: 'editor@wanderchain.dev',
+  displayName: 'Editor Lan',
+  status: 'active',
+  createdAt: '2026-10-29T03:00:00Z',
+}
+
+/** 未认证的 `/me` 响应，与后端拦截器写出的错误体同形。 */
+export const UNAUTHENTICATED_BODY = { code: 'UNAUTHENTICATED', message: '未认证' }
+
+/** 图形码响应体：图片是 data URI，桩里不必真的是有效 PNG。 */
+export const CAPTCHA_BODY = {
+  captchaId: '01JCAPTCHA000000000000',
+  image: 'data:image/png;base64,iVBORw0KGgo=',
+}
+
+/** 浏览器可读存储里必须一片空白：认证信息只存在于 HttpOnly cookie。 */
+export async function expectNoBrowserReadableAuthState(page: Page): Promise<void> {
+  const sizes = await page.evaluate(() => ({
+    local: window.localStorage.length,
+    session: window.sessionStorage.length,
+    cookie: document.cookie,
+  }))
+  expect(sizes.local, 'localStorage 不应留下任何认证信息').toBe(0)
+  expect(sizes.session, 'sessionStorage 不应留下任何认证信息').toBe(0)
+  expect(sizes.cookie, '令牌 cookie 必须是 HttpOnly，脚本读不到').toBe('')
 }

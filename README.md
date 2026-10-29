@@ -77,11 +77,11 @@ propose（定规格）→ 人工审阅 → apply（实施）→ harness（验收
 openspec/    规格与变更（proposal / specs / design / tasks / archive）
 harness/     闸门链（按文件名顺序执行，遇错即停）：00-submodule-check → 01-compile → 02-test
              → 03-static-guard → 04-frontend → 05-scaffold-check → 06-schema-check
-             → 07-doc-consistency → 08-spec-doc-breakpoints → 09-redis-check
+             → 07-doc-consistency → 08-spec-doc-breakpoints → 09-redis-check → 10-contract-check
 scaffold/    工作区身份改名脚本（分发出去后第一步执行）
 .agents/     两个技能：systematic-debugging、verification-before-completion
 backend/     [submodule] 独立仓库：Spring Boot 后端（wanderchain 账户认证，Maven 项目根）
-frontend/    [submodule] 独立仓库：Next.js 16 前端（wanderchain 首页 + 同源 API 代理，npm 项目根）
+frontend/    [submodule] 独立仓库：Next.js 16 前端（wanderchain 首页 + 认证接入 + 同源 API 代理，npm 项目根）
 .gitmodules  两个子模块的 URL（使用者可替换，工作区改名不触碰）
 AGENTS.md    AI 的入口契约，先读这个
 ```
@@ -110,7 +110,7 @@ npm registry 提示：如默认源访问慢，可切换镜像（本机验证可�
 
 `SCHEMA_DB_NAME` 只影响 `ai_chat_gate`（可换成 `ai_chat_gate_<suffix>` 做并行验证），`wanderchain` 是写死的。
 
-`01` / `04` 不依赖数据库与缓存；`02` / `06` / `09` 与后端启动都依赖上表实例，连不上即非 0 退出。预检：
+`01` / `04` / `10` 不依赖数据库与缓存（`10` 只做文本解析）；`02` / `06` / `09` 与后端启动都依赖上表实例，连不上即非 0 退出。预检：
 
 ```powershell
 Test-NetConnection 127.0.0.1 -Port 8806   # 或 docker ps --filter publish=8806
@@ -124,3 +124,4 @@ Test-NetConnection 127.0.0.1 -Port 6606   # 或 docker ps --filter publish=6606
 - **运行期依赖两个既有实例**：后端启动与 `02-test` 直连 `127.0.0.1:8806` 的 `wanderchain` 库与 `127.0.0.1:6606` 的 Redis（db 3），没有 H2 或嵌入式 Redis 兜底——生成列语义、唯一索引行为、Redis 原子脚本正是断言对象，替身测不出真实行为。代价是 `run-all` 依赖这两个实例与凭据。
 - **业务收窄**：业务只保留 wanderchain 的账户认证子系统（注册、登录、登出、找回密码），用来承载护栏而不是撑功能广度——功能广度不是这个仓库的目标。
 - **红线四条**：`TODO` 占位、`System.out`、`@Disabled`，以及前端跳过写法（`it.skip` 等）。由真实事故驱动增补，不预先设想。
+- **字段名一致性交给闸门而不是人**：`10-contract-check` 解析后端 record 组件名与前端契约文件的 interface 字段名做双向比对。选文本解析而不是代码生成：生成器会把「两侧一致」变成「两侧同源」，一旦生成物被手改就无人发现；比对则保留两侧各自的写法自由，只钉住字段名。代价是它只认 record 与 interface 两种形状。
