@@ -27,7 +27,8 @@ $pairs = @(
     @{ Doc = 'docs/specs/wanderchain/homepage-u6-editor-picks.md';     Css = 'frontend/components/home/editor-picks.module.css' },
     @{ Doc = 'docs/specs/wanderchain/homepage-u7-hot-posts.md';        Css = 'frontend/components/home/hot-posts.module.css' },
     @{ Doc = 'docs/specs/wanderchain/homepage-u8-hot-attractions.md';  Css = 'frontend/components/home/hot-attractions.module.css' },
-    @{ Doc = 'docs/specs/wanderchain/search-page.md';                  Css = 'frontend/app/search/search.module.css' }
+    @{ Doc = 'docs/specs/wanderchain/search-page.md';                  Css = 'frontend/app/search/search.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/post-feed.md';                    Css = 'frontend/components/posts/post-list.module.css' }
 )
 
 $problems = New-Object System.Collections.ArrayList
