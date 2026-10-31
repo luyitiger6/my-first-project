@@ -3,7 +3,7 @@
 | 项 | 值 |
 |---|---|
 | 单元编号 | U1 |
-| 归属能力 | `wanderchain-homepage` |
+| 归属能力 | `wanderchain-homepage` / `wanderchain-auth-frontend` |
 | 对应主 spec | `### Requirement: 认证前端接入` — [spec.md](../../../openspec/specs/wanderchain-homepage/spec.md) |
 | 后端契约真源 | [openspec/specs/wanderchain-auth/spec.md](../../../openspec/specs/wanderchain-auth/spec.md) |
 | 规格层级 | 人读契约（`docs/specs/`，草稿层）。行为真相以主 spec 为准 |
@@ -28,6 +28,7 @@
 | 7 | 顶栏账户区：加载占位 / 登录入口 / 显示名 + 退出 | `AccountMenu` |
 | 8 | 两个路由页 `/login`、`/register` | `app/login/page.tsx`、`app/register/page.tsx` |
 | 9 | 同源代理转发认证所需的请求头与 `Set-Cookie` | `app/api/[...path]/route.ts` |
+| 10 | 安全详情 next、登录注册互转及认证写后只读会话重试 | `lib/auth/return-to.ts`、`AuthForm` |
 
 ### 1.2 不包含
 
@@ -38,7 +39,7 @@
 | 第三方登录（微信 / GitHub / OAuth） | 未立项 |
 | 邮箱验证邮件的实际投递 | 后端；前端只消费 `EMAIL_UNVERIFIED` 错误码 |
 | 权限校验与路由守卫 | 未立项：后端无角色模型，前端不得凭空造 |
-| 收藏 / 发帖等依赖登录的业务能力 | 未立项 |
+| 收藏 / 评论 / 投票与详情业务 UI | 帖子互动能力；本单元只提供认证及安全回跳，不自动重放写入 |
 | AI 助手面板 | U4 |
 
 ### 1.3 数据来源
@@ -60,8 +61,9 @@
 
 ## 2. 核心场景
 
-Scenario 编号与 `docs/e2e/homepage-u1-auth.spec.ts` 的 A1–A18 一一对应；单元层证据在
-`lib/auth/auth-api.test.ts`、`lib/contracts/auth.test.ts`、`components/auth/*.test.tsx`。
+Scenario 编号与 `docs/e2e/homepage-u1-auth.spec.ts` 的 A1–A23 对应（A21 为八种恶意目标的参数化用例）；单元层证据在
+`lib/auth/auth-api.test.ts`、`lib/auth/return-to.test.ts`、`lib/contracts/auth.test.ts`、`components/auth/*.test.tsx`。
+新增回跳行为对应在飞 CHANGE `add-wanderchain-post-interactions-frontend` 的认证 delta；归档前不视为已同步主 spec。
 
 ### 2.1 会话状态
 
@@ -123,7 +125,7 @@ Scenario 编号与 `docs/e2e/homepage-u1-auth.spec.ts` 的 A1–A18 一一对应
 
 **A11 · 密码提示**
 - When 渲染登录页
-- Then 密码框 `placeholder` 为 `At least 8 characters (up to 72)`（取自契约常量，不是硬编码）
+- Then 密码框 `placeholder` 为 `8-72 bytes (about 3-24 Chinese characters)`（取自契约常量，不是硬编码；字节口径 + 汉字换算示例，见 `openspec/specs/wanderchain-auth-frontend`）
 - And 页面上不存在任何演示账号提示
 
 ### 2.3 注册 `/register`
@@ -158,7 +160,7 @@ Scenario 编号与 `docs/e2e/homepage-u1-auth.spec.ts` 的 A1–A18 一一对应
 
 **A17 · 密码界限与后端一致**
 - When 渲染注册页
-- Then 密码框 `placeholder` 为 `At least 8 characters (up to 72)`，下限来自后端 `PasswordRules`
+- Then 密码框 `placeholder` 为 `8-72 bytes (about 3-24 Chinese characters)`，下限 8 字节 / 上限 72 字节来自后端 `PasswordRules`
 
 ### 2.4 退出登录
 
@@ -167,6 +169,29 @@ Scenario 编号与 `docs/e2e/homepage-u1-auth.spec.ts` 的 A1–A18 一一对应
 - Then 调用 `POST /api/auth/logout`，随后顶栏回到 `Log in / Sign up`
 - And 显示名消失，可读存储仍为空白
 - And 即使登出请求失败，界面也回到访客态（`finally` 中复位，不留下「已登录但令牌已失效」的假象）
+
+### 2.5 详情安全回跳与会话确认
+
+**A19 · 登录返回详情**
+- When next 为规范 `/posts/<26 位大写有效 ULID>`，登录写入成功且 `/me` 确认账户
+- Then replace 原详情，不携带身份或未提交输入，不发评论、投票、收藏写请求
+
+**A20 · 注册互转保留详情**
+- When 带合法 next 从登录切到注册、再切回登录，或完成两步注册
+- Then 两个互转链接保留相同目标，注册成功后以 `/me` 确认结果返回详情；默认无 next 仍由 A6/A13 验证回首页
+
+**A21 · 拒绝未知目标**
+- When next 为外链、协议相对、反斜杠、重复编码、非法标识、其它路径、额外查询或片段
+- Then 不保留到互转链接，认证成功仅回 `/`，不执行参数内容
+- And URLSearchParams 已解码一次的值不再二次解码；路径内百分号、额外段、非法 ULID 等细分边界由 return-to.test.ts 覆盖
+
+**A22 / A23 · 登录 / 注册写成功但会话未确认**
+- When 写接口成功，随后 `/me` 401、5xx 或网络失败
+- Then Provider 返回 null 且全局为 guest，表单仍留在当前路由，提示 `Authentication succeeded, but your session could not be confirmed. Retry session check.`
+- And `Retry session check` 只发 GET /me；重复未确认仍停留，确认账户后才导航，不重发登录、注册或邮箱码，不自动重放互动
+- And 同一次写入/会话重试中的连续 submit 被同步锁挡住，按钮展示禁用的 `Working…`
+
+本组浏览器桩只验证认证导航目标与请求，不将目标页面出现 URL 称为详情内容验收；详情读取、本人状态及跨页面互动由帖子用例另验。A22/A23 显式截图附在各自报告中，截图名为 `login-session-unconfirmed.png` / `register-session-unconfirmed.png`。
 
 ---
 
@@ -218,15 +243,15 @@ export type AuthStatus = 'loading' | 'guest' | 'user'
 export interface AuthContextValue {
   status: AuthStatus
   user: MeResponse | null
-  login: (input: LoginRequest) => Promise<void>
-  register: (input: RegisterRequest) => Promise<void>
+  login: (input: LoginRequest) => Promise<MeResponse | null>
+  register: (input: RegisterRequest) => Promise<MeResponse | null>
   logout: () => Promise<void>
-  refresh: () => Promise<void>
+  refresh: () => Promise<MeResponse | null>
 }
 ```
 
 `login` / `register` 成功后内部会再调一次 `refresh()`：界面显示的账户永远来自 `/me`，
-避免「登录响应里的近似值」与「服务端真实状态」出现两套真相。
+避免「登录响应里的近似值」与「服务端真实状态」出现两套真相。返回值是 `/me` 的确认结果，不是写响应；null 只允许表单重试读取，不重新认证写入。refresh 的 loading 态禁止互动写操作，递增请求代次确保旧读取不覆盖新会话或登出状态。
 
 ### 3.3 字段与规则约束
 
@@ -275,7 +300,7 @@ export interface AuthContextValue {
 - [ ] `429` 展示 `Retry-After` 秒数，且不自动重试
 - [ ] 两个 `403` 文案互不相同
 - [ ] 两次密码不一致时不发任何请求
-- [ ] 密码提示为 `At least 8 characters (up to 72)`，取自契约常量
+- [ ] 密码提示为 `8-72 bytes (about 3-24 Chinese characters)`，取自契约常量
 
 ### 4.3 界面与可访问性
 
@@ -284,12 +309,15 @@ export interface AuthContextValue {
 - [ ] 表单错误以 `role="alert"` 呈现，位于 `#main-content` 内
 - [ ] 图形码图片有可读 `alt`，刷新按钮有可见文案
 - [ ] 每个输入框都能被 `getByLabel` 精确命中
-- [ ] 登录页与注册页互有跳转链接
+- [ ] 登录页与注册页互有跳转链接，只传安全允许列表中的 next
+- [ ] 无合法 next 仍回首页；合法详情仅在 /me 确认后回跳
+- [ ] 写成功但会话未确认时只提供读取重试，不重复写入
+- [ ] useSearchParams 所在表单由路由页 Suspense 包裹，fallback 为 role=status
 
 ### 4.4 工程
 
 - [ ] 全仓检索 `mock-auth` 零命中
-- [ ] `lib/auth/auth-api.test.ts` + `components/auth/*.test.tsx` 覆盖 A1–A18 的单元层等价断言
+- [ ] `lib/auth/auth-api.test.ts` + `lib/auth/return-to.test.ts` + `components/auth/*.test.tsx` 覆盖 A1–A23 的单元层等价断言
 - [ ] `docs/e2e/homepage-u1-auth.spec.ts` 用 `page.route` 桩掉 `/api/auth/*`，不依赖 MySQL / Redis
 - [ ] `npx vitest run` 全绿，`npm run build` 退出码 0
 - [ ] `harness/checks/10-contract-check.ps1` 退出码 0
@@ -305,7 +333,8 @@ export interface AuthContextValue {
 - `AuthProvider`、`AuthForm`、`AccountMenu` 均为 **Client Component**，文件首行必须是 `'use client'`
 - 根布局为 Server Component，只负责把 `AuthProvider` 包在 `{children}` 外层
 - 会话探测**只允许**在 `useEffect` 中发生，禁止在渲染期发请求（否则 SSR 与 CSR 首帧不一致）
-- 路由跳转用 `useRouter().replace('/')`，不用 `window.location`
+- 路由跳转用 `useRouter().replace(合法 next ?? '/')`，不用 `window.location`；严格允许列表校验后才使用 next
+- 登录/注册页以 Suspense 包裹消费 useSearchParams 的 AuthForm，fallback 提供英文加载状态；生产 build 验证 prerender 边界
 - 认证状态用 `useState` + `useMemo` 暴露，不引入 `useSyncExternalStore` 或第三方状态库
 - 所有请求带 `credentials: 'same-origin'`：cookie 是令牌的唯一载体，漏掉就等于没登录
 
@@ -349,6 +378,7 @@ export interface AuthContextValue {
 |---|---|
 | 契约真源 | `frontend/lib/contracts/auth.ts` |
 | 认证客户端 | `frontend/lib/auth/auth-api.ts` |
+| 安全回跳 | `frontend/lib/auth/return-to.ts` / `return-to.test.ts` |
 | 上下文 | `frontend/components/auth/auth-provider.tsx` |
 | 表单 | `frontend/components/auth/auth-form.tsx` |
 | 账户区 | `frontend/components/auth/account-menu.tsx` |
@@ -356,15 +386,21 @@ export interface AuthContextValue {
 | 代理 | `frontend/app/api/[...path]/route.ts` |
 | 挂载 | `frontend/app/layout.tsx`（Provider）、`components/site/site-header.tsx`（AccountMenu） |
 | 单元测试 | `lib/contracts/auth.test.ts`、`lib/auth/auth-api.test.ts`、`components/auth/{auth-provider,auth-form,account-menu}.test.tsx` |
-| 端到端 | `docs/e2e/homepage-u1-auth.spec.ts`（A1–A18） |
+| 端到端 | `docs/e2e/homepage-u1-auth.spec.ts`（A1–A23，共 30 用例） |
 | 契约闸门 | `harness/checks/10-contract-check.ps1` |
+
+任务组 3 本轮验证记录（不代称整个 CHANGE 完成）：
+- `npm --prefix D:\my-first-project\frontend run test`：34 个文件、414 项通过，退出码 0；使用规范盘符避免 Windows ESM 模块身份差异，排障及对照记录见 CHANGE design。
+- `npm --prefix d:\my-first-project\frontend run build`：编译、TypeScript、静态页面生成成功，退出码 0。
+- `npm --prefix d:\my-first-project run test:e2e -- docs/e2e/homepage-u1-auth.spec.ts`：30 项通过，退出码 0；报告 `docs/e2e/playwright-report/index.html`，A22/A23 的只读重试截图附在报告中。
+- 未覆盖：详情内容与本人状态、评论/投票/收藏 UI、真实认证联调及本 CHANGE 最终总 Harness。本轮回跳目标详情尚为 404，认证桩只验地址与请求，不代表真实详情可读。
 
 ```powershell
 cd frontend
 npx vitest run lib/contracts lib/auth components/auth
 npm run build
 cd ..
-npx playwright test docs/e2e/homepage-u1-auth.spec.ts
+npm run test:e2e -- docs/e2e/homepage-u1-auth.spec.ts
 powershell -File harness\checks\10-contract-check.ps1
 powershell -File harness\run-all.ps1
 ```

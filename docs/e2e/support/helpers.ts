@@ -22,6 +22,23 @@ export async function gotoPath(page: Page, pathname: string): Promise<void> {
   await page.locator('#main-content').waitFor({ state: 'visible' })
 }
 
+/**
+ * 等待 URL 满足条件。
+ *
+ * 不能用 `page.waitForURL` 的默认 `waitUntil: 'load'`：首屏图片直连外部 CDN，
+ * 弱网或断网时文档停在 `interactive`（`document.readyState` 永远不会变成 `complete`），
+ * 软导航（`router.replace`）明明已经改了 URL，断言仍然要等到 navigationTimeout 才失败。
+ * 这与 {@link gotoPath} 改用 `domcontentloaded` 是同一个原因，这里取更早的 `commit`：
+ * 软导航的 commit 就是 URL 生效的那一刻，之后的定位器自带等待，不必再等资源。
+ */
+export async function waitForUrl(
+  page: Page,
+  predicate: (url: URL) => boolean,
+  options: { timeout?: number } = {},
+): Promise<void> {
+  await page.waitForURL(predicate, { waitUntil: 'commit', timeout: options.timeout })
+}
+
 export function withQuery(pathname: string, params: Record<string, string>): string {
   const search = new URLSearchParams(params).toString()
   return search ? `${pathname}?${search}` : pathname

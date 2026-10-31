@@ -10,6 +10,7 @@ import {
   gotoPath,
   recordAuthRequests,
   stubAuthApi,
+  waitForUrl,
   type RecordedAuthRequest,
 } from './support/helpers'
 
@@ -45,7 +46,7 @@ function sessionProbeAfterLogin(account = ME_BODY) {
 /**
  * 开发模式下 React StrictMode 会双调用挂载 effect，所以「进页面探测一次会话」在 dev server 上
  * 实际发两条 `GET /me`，注册页也会取两张图形码。这是 React 故意用来暴露副作用不幂等的行为，
- * 生产构建下不会发生（`AuthProvider` 的 effect 带 `cancelled` 标志，双调用不会写脏状态）。
+ * 生产构建下不会发生（`AuthProvider` 用递增代次隔离迟到响应，双调用不会写脏状态）。
  *
  * 因此下面的断言钉住的是**计数关系与先后顺序**，而不是绝对序列：
  * 该发的一次不能少（登录成功后必须再探测一次），不该发的一次不能多（第一步失败时 `/register` 必须是 0）。
@@ -136,7 +137,7 @@ test.describe('U1 · 登录页 /login', () => {
     await page.getByLabel('Password', { exact: true }).fill('password1')
     await page.getByRole('button', { name: 'Log in', exact: true }).click()
 
-    await page.waitForURL((url) => url.pathname === '/')
+    await waitForUrl(page, (url) => url.pathname === '/')
     // 顶栏显示的是 /me 的返回值，而不是登录响应里的近似值：会话只有一个真源。
     await expect(header(page).getByText('Editor Lan', { exact: true })).toBeVisible()
     await expect(header(page).getByText('Login Response Name')).toHaveCount(0)
@@ -200,7 +201,7 @@ test.describe('U1 · 登录页 /login', () => {
     await page.getByLabel('Image code').fill('a1b2')
     await page.getByRole('button', { name: 'Log in', exact: true }).click()
 
-    await page.waitForURL((url) => url.pathname === '/')
+    await waitForUrl(page, (url) => url.pathname === '/')
     const loginRequests = requests.filter((request) => request.path === '/api/auth/login')
     expect(loginRequests).toHaveLength(2)
     expect(loginRequests[0].body).toEqual({
@@ -271,9 +272,10 @@ test.describe('U1 · 登录页 /login', () => {
 
     await gotoPath(page, '/login')
 
+    // 规格要求以字节为单位表述并附汉字换算示例，断言的是界面上真实可见的文案。
     await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute(
       'placeholder',
-      'At least 8 characters (up to 72)',
+      '8-72 bytes (about 3-24 Chinese characters)',
     )
     await expect(page.getByText('Demo account: admin@wanderchain.dev / admin123')).toHaveCount(0)
   })
@@ -328,7 +330,7 @@ test.describe('U1 · 注册页 /register', () => {
     await page.getByLabel('Email code').fill('654321')
     await page.getByRole('button', { name: 'Sign up and log in' }).click()
 
-    await page.waitForURL((url) => url.pathname === '/')
+    await waitForUrl(page, (url) => url.pathname === '/')
     await expect(header(page).getByText('New Walker', { exact: true })).toBeVisible()
 
     expect(countPath(requests, '/api/auth/register-code')).toBe(1)
@@ -442,7 +444,7 @@ test.describe('U1 · 注册页 /register', () => {
 
     await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute(
       'placeholder',
-      'At least 8 characters (up to 72)',
+      '8-72 bytes (about 3-24 Chinese characters)',
     )
   })
 })
@@ -469,4 +471,134 @@ test.describe('U1 · 退出登录', () => {
     expect(requests.some((request) => request.path === '/api/auth/logout')).toBe(true)
     await expectNoBrowserReadableAuthState(page)
   })
+})
+
+const RETURN_TARGET = '/posts/01ARZ3NDEKTSV4RRFFQ69G5FAV'
+const authTarget = (mode: 'login' | 'register', next: string) => `/${mode}?${new URLSearchParams({ next })}`
+
+/** 本组只验认证导航与请求；目标详情的内容读取由帖子详情用例承接。 */
+test.describe('U1 · 安全详情回跳与只读会话重试', () => {
+  test('A19 · 登录确认后返回详情，不重放互动', async ({ page }) => {
+    const requests = recordAuthRequests(page)
+    const writes: string[] = []
+    page.on('request', request => {
+      if (new URL(request.url()).pathname.startsWith('/api/posts') && request.method() !== 'GET') writes.push(request.url())
+    })
+    let loggedIn = false
+    await stubAuthApi(page, {
+      '/api/auth/me': () => loggedIn ? { body: ME_BODY } : { status: 401, body: UNAUTHENTICATED_BODY },
+      '/api/auth/login': () => { loggedIn = true; return { body: ME_BODY } },
+    })
+    await gotoPath(page, authTarget('login', RETURN_TARGET))
+    await page.getByLabel('Email', { exact: true }).fill('editor@wanderchain.dev')
+    await page.getByLabel('Password', { exact: true }).fill('password1')
+    await page.getByRole('button', { name: 'Log in', exact: true }).click()
+    await waitForUrl(page, url => url.pathname === RETURN_TARGET)
+    expect(countPath(requests, '/api/auth/login')).toBe(1)
+    expect(firstIndexOf(requests, '/api/auth/login')).toBeLessThan(requests.map(r => r.path).lastIndexOf('/api/auth/me'))
+    expect(writes).toEqual([])
+    await expectNoBrowserReadableAuthState(page)
+  })
+
+  test('A20 · 登录注册双向互转保留 next，注册确认后返回同一详情', async ({ page }) => {
+    const requests = recordAuthRequests(page)
+    let registered = false
+    await stubAuthApi(page, {
+      '/api/auth/me': () => registered ? { body: ME_BODY } : { status: 401, body: UNAUTHENTICATED_BODY },
+      '/api/auth/captcha': { body: CAPTCHA_BODY },
+      '/api/auth/register-code': { status: 202, body: {} },
+      '/api/auth/register': () => { registered = true; return { status: 201, body: REGISTER_RESPONSE } },
+    })
+    await gotoPath(page, authTarget('login', RETURN_TARGET))
+    await expect(page.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', authTarget('register', RETURN_TARGET))
+    await page.getByRole('link', { name: 'Create one' }).click()
+    await waitForUrl(page, url => url.pathname === '/register' && url.searchParams.get('next') === RETURN_TARGET)
+    await expect(page.getByRole('link', { name: 'Log in', exact: true })).toHaveAttribute('href', authTarget('login', RETURN_TARGET))
+    await page.getByRole('link', { name: 'Log in', exact: true }).click()
+    await waitForUrl(page, url => url.pathname === '/login' && url.searchParams.get('next') === RETURN_TARGET)
+    await page.getByRole('link', { name: 'Create one' }).click()
+    await waitForUrl(page, url => url.pathname === '/register')
+    await page.getByLabel('Username', { exact: true }).fill('New Walker')
+    await page.getByLabel('Email', { exact: true }).fill('new.walker@wanderchain.dev')
+    await page.getByLabel('Password', { exact: true }).fill('walker12345')
+    await page.getByLabel('Confirm password', { exact: true }).fill('walker12345')
+    await page.getByLabel('Image code').fill('a1b2')
+    await page.getByRole('button', { name: 'Send email code' }).click()
+    await page.getByLabel('Email code').fill('654321')
+    await page.getByRole('button', { name: 'Sign up and log in' }).click()
+    await waitForUrl(page, url => url.pathname === RETURN_TARGET)
+    expect(countPath(requests, '/api/auth/register-code')).toBe(1)
+    expect(countPath(requests, '/api/auth/register')).toBe(1)
+    expect(countPath(requests, '/api/auth/login')).toBe(0)
+    expect(requests[requests.length - 1].path).toBe('/api/auth/me')
+    await expectNoBrowserReadableAuthState(page)
+  })
+
+  for (const [name, next] of [
+    ['外链', 'https://evil.test'], ['协议相对', '//evil.test'], ['反斜杠', '\\evil.test'],
+    ['重复编码', encodeURIComponent(RETURN_TARGET)], ['非法标识', '/posts/not-an-id'],
+    ['其它路径', '/search'], ['额外查询', RETURN_TARGET + '?vote=up'], ['片段', RETURN_TARGET + '#comments'],
+  ]) {
+    test(`A21 · ${name} 被拒，认证成功沿用首页`, async ({ page }) => {
+      let loggedIn = false
+      await stubAuthApi(page, {
+        '/api/auth/me': () => loggedIn ? { body: ME_BODY } : { status: 401, body: UNAUTHENTICATED_BODY },
+        '/api/auth/login': () => { loggedIn = true; return { body: ME_BODY } },
+      })
+      await gotoPath(page, authTarget('login', next))
+      await expect(page.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/register')
+      await page.getByLabel('Email', { exact: true }).fill('editor@wanderchain.dev')
+      await page.getByLabel('Password', { exact: true }).fill('password1')
+      await page.getByRole('button', { name: 'Log in', exact: true }).click()
+      await waitForUrl(page, url => url.pathname === '/')
+      await expect(header(page).getByText('Editor Lan', { exact: true })).toBeVisible()
+    })
+  }
+
+  for (const mode of ['login', 'register'] as const) {
+    test(`${mode === 'login' ? 'A22' : 'A23'} · ${mode} 写成功但会话未确认，只重试 GET`, async ({ page }, testInfo) => {
+      const requests = recordAuthRequests(page)
+      const interactionWrites: string[] = []
+      page.on('request', request => {
+        if (new URL(request.url()).pathname.startsWith('/api/posts') && request.method() !== 'GET') interactionWrites.push(request.url())
+      })
+      let confirmed = false
+      await stubAuthApi(page, {
+        '/api/auth/me': () => confirmed ? { body: ME_BODY } : { status: 503, body: { code: 'INTERNAL', message: '暂时不可用' } },
+        '/api/auth/login': { body: ME_BODY },
+        '/api/auth/captcha': { body: CAPTCHA_BODY },
+        '/api/auth/register-code': { status: 202, body: {} },
+        '/api/auth/register': { status: 201, body: REGISTER_RESPONSE },
+      })
+      await gotoPath(page, authTarget(mode, RETURN_TARGET))
+      await page.getByLabel('Email', { exact: true }).fill('editor@wanderchain.dev')
+      await page.getByLabel('Password', { exact: true }).fill('password1')
+      if (mode === 'register') {
+        await page.getByLabel('Username', { exact: true }).fill('New Walker')
+        await page.getByLabel('Confirm password', { exact: true }).fill('password1')
+        await page.getByLabel('Image code').fill('a1b2')
+        await page.getByRole('button', { name: 'Send email code' }).click()
+        await page.getByLabel('Email code').fill('654321')
+      }
+      await page.getByRole('button', { name: mode === 'login' ? 'Log in' : 'Sign up and log in', exact: true }).click()
+      await expect(businessAlerts(page)).toContainText('session could not be confirmed')
+      expect(new URL(page.url()).pathname).toBe(`/${mode}`)
+      const writesBeforeRetry = requests.filter(r => r.method !== 'GET').length
+      const meBeforeRetry = countPath(requests, '/api/auth/me')
+      await page.getByRole('button', { name: 'Retry session check' }).click()
+      await expect(businessAlerts(page)).toContainText('session could not be confirmed')
+      expect(countPath(requests, '/api/auth/me')).toBe(meBeforeRetry + 1)
+      expect(requests.filter(r => r.method !== 'GET')).toHaveLength(writesBeforeRetry)
+      const screenshot = testInfo.outputPath(`${mode}-session-unconfirmed.png`)
+      await page.screenshot({ path: screenshot, fullPage: true })
+      await testInfo.attach('会话未确认，只读重试', { path: screenshot, contentType: 'image/png' })
+      confirmed = true
+      await page.getByRole('button', { name: 'Retry session check' }).click()
+      await waitForUrl(page, url => url.pathname === RETURN_TARGET)
+      expect(countPath(requests, `/api/auth/${mode}`)).toBe(1)
+      expect(requests.filter(r => r.method !== 'GET')).toHaveLength(writesBeforeRetry)
+      expect(interactionWrites).toEqual([])
+      await expectNoBrowserReadableAuthState(page)
+    })
+  }
 })
