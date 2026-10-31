@@ -4,6 +4,7 @@ import {
   expectNoHorizontalOverflow,
   gotoHome,
   gridColumnCount,
+  waitForUrl,
 } from './support/helpers'
 
 const SECTION = '#hot-attractions'
@@ -101,7 +102,7 @@ test.describe('U8 · 热门景点区块 · 桌面端', () => {
   test('S8 · 切换城市后重新取数', async ({ page }) => {
     // S8 When city 变化 · Then 区块重新取数并展示新城市景点
     await page.getByRole('button', { name: 'Beijing', exact: true }).click()
-    await page.waitForURL((url) => url.searchParams.get('city') === 'beijing')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'beijing')
 
     const section = page.locator(SECTION)
     await expect(section.locator('ul > li')).toHaveCount(1)
@@ -137,7 +138,7 @@ test.describe('U8 · 热门景点区块 · 桌面端', () => {
     for (const city of ['Beijing', 'Shanghai', 'Chengdu']) {
       await page.getByRole('button', { name: city, exact: true }).click()
     }
-    await page.waitForURL((url) => url.searchParams.get('city') === 'chengdu')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'chengdu')
 
     const section = page.locator(SECTION)
     await expect(section.locator('ul > li h3')).toHaveText(['Kuanzhai Alley'])

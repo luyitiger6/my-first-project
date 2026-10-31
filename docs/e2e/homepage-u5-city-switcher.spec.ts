@@ -5,6 +5,7 @@ import {
   expectNoHorizontalOverflow,
   gotoHome,
   gotoPath,
+  waitForUrl,
 } from './support/helpers'
 
 const SWITCHER = '[data-section="city-switcher"]'
@@ -108,7 +109,7 @@ test.describe('U5 · 城市快速入口 · 桌面端', () => {
     const historyBefore = await page.evaluate(() => window.history.length)
 
     await page.getByRole('button', { name: 'Chengdu', exact: true }).click()
-    await page.waitForURL((url) => url.searchParams.get('city') === 'chengdu')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'chengdu')
 
     const url = new URL(page.url())
     expect(url.pathname).toBe('/')
@@ -120,7 +121,7 @@ test.describe('U5 · 城市快速入口 · 桌面端', () => {
     // S4 When 在 /?city=beijing&utm=x 下点击 Shanghai · Then 跳转 /?city=shanghai&utm=x，utm 未被丢弃
     await gotoPath(page, '/?city=beijing&utm=x')
     await page.getByRole('button', { name: 'Shanghai', exact: true }).click()
-    await page.waitForURL(
+    await waitForUrl(page,
       (url) => url.searchParams.get('city') === 'shanghai' && url.searchParams.get('utm') === 'x',
     )
 
@@ -133,7 +134,7 @@ test.describe('U5 · 城市快速入口 · 桌面端', () => {
     // S5 When 在 /?city=beijing&utm=x 下点击 All cities · Then 跳转 /?utm=x（city 删除，其余保留）
     await gotoPath(page, '/?city=beijing&utm=x')
     await page.getByRole('button', { name: 'All cities', exact: true }).click()
-    await page.waitForURL((url) => !url.searchParams.has('city'))
+    await waitForUrl(page,(url) => !url.searchParams.has('city'))
 
     const url = new URL(page.url())
     expect(url.pathname).toBe('/')
@@ -147,7 +148,7 @@ test.describe('U5 · 城市快速入口 · 桌面端', () => {
     await expect(note).toHaveText(`Now: Hangzhou · ${TAGLINES.hangzhou}`)
 
     await page.getByRole('button', { name: 'Sanya', exact: true }).click()
-    await page.waitForURL((url) => url.searchParams.get('city') === 'sanya')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'sanya')
     await expect(note).toHaveText(`Now: Sanya · ${TAGLINES.sanya}`)
   })
 
@@ -157,8 +158,11 @@ test.describe('U5 · 城市快速入口 · 桌面端', () => {
     const historyBefore = await page.evaluate(() => window.history.length)
 
     // 显式的负向等待窗口：700ms 内不应出现 city 变化，绝非固定 sleep。
-    const navigated = await page
-      .waitForURL((url) => url.searchParams.get('city') !== 'beijing', { timeout: 700 })
+    const navigated = await waitForUrl(
+      page,
+      (url) => url.searchParams.get('city') !== 'beijing',
+      { timeout: 700 },
+    )
       .then(() => true)
       .catch(() => false)
     expect(navigated, '点击当前已选城市不应触发导航').toBe(false)
@@ -167,7 +171,7 @@ test.describe('U5 · 城市快速入口 · 桌面端', () => {
 
     // 断言短路逻辑没有把按钮点坏：换一个城市仍然能跳转。
     await page.getByRole('button', { name: 'Chengdu', exact: true }).click()
-    await page.waitForURL((url) => url.searchParams.get('city') === 'chengdu')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'chengdu')
   })
 
   test('S8 · 非法城市参数回落 All cities，chip 仍全部渲染', async ({ page }) => {
@@ -190,7 +194,7 @@ test.describe('U5 · 城市快速入口 · 桌面端', () => {
   test('S9 · query 为空时点击城市不产生空参数', async ({ page }) => {
     // S9 When query={} 时点击 Beijing · Then 跳转 /?city=beijing，不出现 ?& 或空串
     await page.getByRole('button', { name: 'Beijing', exact: true }).click()
-    await page.waitForURL((url) => url.searchParams.get('city') === 'beijing')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'beijing')
 
     const url = new URL(page.url())
     expect(url.pathname).toBe('/')
@@ -202,7 +206,7 @@ test.describe('U5 · 城市快速入口 · 桌面端', () => {
     // S10 When 传入的 query 本身含 city · Then 以点击的城市覆盖该值，不产生 ?city=x&city=y
     await gotoPath(page, '/?city=beijing&city=shanghai')
     await page.getByRole('button', { name: 'Chengdu', exact: true }).click()
-    await page.waitForURL((url) => url.searchParams.get('city') === 'chengdu')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'chengdu')
 
     const cityValues = await page.evaluate(() =>
       new URL(window.location.href).searchParams.getAll('city'),
@@ -215,7 +219,7 @@ test.describe('U5 · 城市快速入口 · 桌面端', () => {
     for (const city of ['Beijing', 'Shanghai', 'Chengdu']) {
       await page.getByRole('button', { name: city, exact: true }).click()
     }
-    await page.waitForURL((url) => url.searchParams.get('city') === 'chengdu')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'chengdu')
 
     const url = new URL(page.url())
     expect(url.pathname).toBe('/')

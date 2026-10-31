@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: AI 编码工程装配点（根工作区）
+title: AI 编码工程装配根（Git Submodule + OpenSpec + PowerShell Harness）
 scope:
     - README.md
     - AGENTS.md

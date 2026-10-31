@@ -3,6 +3,7 @@ import {
   NARROW_VIEWPORT,
   expectNoHorizontalOverflow,
   gotoHome,
+  waitForUrl,
 } from './support/helpers'
 
 const SECTION = '#hot-posts'
@@ -156,7 +157,7 @@ test.describe('U7 · 热门帖子区块 · 桌面端', () => {
   test('S8 · 切换城市后重新取数，排名从 01 重新开始', async ({ page }) => {
     // S8 When city 变化 · Then 回到 loading 后重新取数，新城市列表排名从 01 起
     await page.getByRole('button', { name: 'Beijing', exact: true }).click()
-    await page.waitForURL((url) => url.searchParams.get('city') === 'beijing')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'beijing')
 
     const section = page.locator(SECTION)
     await expect(section.locator('ol > li')).toHaveCount(1)
@@ -200,7 +201,7 @@ test.describe('U7 · 热门帖子区块 · 桌面端', () => {
     for (const city of ['Beijing', 'Shanghai', 'Chengdu']) {
       await page.getByRole('button', { name: city, exact: true }).click()
     }
-    await page.waitForURL((url) => url.searchParams.get('city') === 'chengdu')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'chengdu')
 
     const section = page.locator(SECTION)
     await expect(section.locator('ol > li h3')).toHaveText([

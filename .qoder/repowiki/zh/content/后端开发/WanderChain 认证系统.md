@@ -1,40 +1,29 @@
-基于我对代码的分析，我现在了解了时序攻击防护机制的具体实现。让我更新WanderChain认证系统文档，重点反映这个新增的安全增强功能：
-
 # WanderChain 认证系统
 
 <cite>
 **本文引用的文件**   
-- [Application.java](file://backend/src/main/java/com/luyi/myfirst/Application.java)
-- [application.yml](file://backend/src/main/resources/application.yml)
-- [schema.sql](file://backend/src/main/resources/schema.sql)
-- [AuthProperties.java](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java)
-- [AuthCookie.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java)
-- [CaptchaController.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/CaptchaController.java)
-- [RegisterCodeController.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterCodeController.java)
 - [LoginController.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java)
-- [RegisterController.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterController.java)
-- [OriginGuard.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/OriginGuard.java)
-- [AuthInterceptor.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/AuthInterceptor.java)
-- [CaptchaService.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/CaptchaService.java)
-- [RegisterCodeService.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterCodeService.java)
-- [LoginService.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java)
-- [RegisterService.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterService.java)
-- [LogoutService.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/LogoutService.java)
-- [LoginResponse.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/dto/LoginResponse.java)
-- [LoginResult.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/model/LoginResult.java)
-- [LoginThrottle.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java)
+- [AuthCookie.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java)
 - [LoginServiceImpl.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java)
-- [AccountStatus.java](file://backend/src/main/java/com/luyi/myfirst/common/enums/AccountStatus.java)
+- [AuthProperties.java](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java)
+- [LoginThrottle.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java)
+- [AuthInterceptor.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/AuthInterceptor.java)
+- [OriginGuard.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/OriginGuard.java)
+- [TokenIssuer.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenIssuer.java)
+- [TokenVerifier.java](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenVerifier.java)
 - [BcryptPasswordHasher.java](file://backend/src/main/java/com/luyi/myfirst/common/security/BcryptPasswordHasher.java)
-- [LoginTimingEqualizationTest.java](file://backend/src/test/java/com/luyi/myfirst/service/auth/LoginTimingEqualizationTest.java)
+- [schema.sql](file://backend/src/main/resources/schema.sql)
+- [application.yml](file://backend/src/main/resources/application.yml)
+- [route.ts](file://frontend/app/api/[...path]/route.ts)
 </cite>
 
 ## 更新摘要
 **已进行的变更**
-- 新增了时序攻击防护机制，防止通过响应时间分析进行邮箱枚举攻击
-- 实现了TIMING_EQUALIZATION_SEED常量和虚拟bcrypt哈希生成，确保账户存在与不存在时具有相同的响应时间
-- 更新了登录流程说明，强调了时序等价性保护的重要性
-- 增强了安全策略章节，详细说明了防计时攻击的实现原理
+- 认证系统已从模拟实现迁移到真实后端集成，新增了完整的 HttpOnly Cookie 认证机制
+- 实现了前后端契约同步机制，通过 Next.js Route Handler 代理转发认证相关请求
+- 完善了 API 端点实现，包括登录、注册、验证码等完整功能
+- 增强了安全特性，包括时序攻击防护、双重限流机制、来源白名单校验
+- 更新了架构设计，采用分层架构与严格的配置管理
 
 ## 目录
 1. [简介](#简介)
@@ -48,9 +37,11 @@
 9. [结论](#结论)
 
 ## 简介
-WanderChain 认证系统为后端提供账户注册、邮箱验证码校验、登录、登出、图形验证码以及受保护路径的访问控制能力。令牌通过安全的 Cookie 下发，不暴露给前端脚本；写请求来源通过 Origin 白名单进行二次校验；所有可配置参数集中在应用配置中，缺失时启动失败，避免"静默降级"。**重要安全改进**：登录成功响应的正文现在只包含过期时间和当前用户信息，访问令牌仅通过 Set-Cookie 头下发，不再包含在响应体中，这确保了安全性最佳实践，允许使用 HttpOnly Cookie 属性来防止 JavaScript 访问认证令牌，从而缓解跨站脚本攻击风险。
+WanderChain 认证系统为后端提供账户注册、邮箱验证码校验、登录、登出、图形验证码以及受保护路径的访问控制能力。令牌通过安全的 HttpOnly Cookie 下发，不暴露给前端脚本；写请求来源通过 Origin 白名单进行二次校验；所有可配置参数集中在应用配置中，缺失时启动失败，避免"静默降级"。**重要安全改进**：登录成功响应的正文现在只包含过期时间和当前用户信息，访问令牌仅通过 Set-Cookie 头下发，不再包含在响应体中，这确保了安全性最佳实践，允许使用 HttpOnly Cookie 属性来防止 JavaScript 访问认证令牌，从而缓解跨站脚本攻击风险。
 
 **最新安全增强**：系统实现了三重防护机制 - 账户级别通过验证码挑战进行保护，来源级别通过 HTTP 429 响应进行限制，同时引入了时序攻击防护以防止邮箱枚举攻击。时序攻击防护通过在账户不存在时也执行完整的 bcrypt 哈希比对，确保无论账户是否存在都具有相同的响应时间特征。
+
+**前后端契约同步**：通过 Next.js Route Handler 实现前后端契约同步，自动转发认证相关的请求和响应头，确保 Cookie、Origin、Referer 等关键头部正确传递。
 
 ## 项目结构
 认证相关代码采用分层组织：
@@ -59,9 +50,13 @@ WanderChain 认证系统为后端提供账户注册、邮箱验证码校验、�
 - 服务层：接口定义契约，实现类封装具体流程（如验证码、令牌签发、登录状态判定）。
 - 数据层：JPA 实体与仓库用于持久化账户与会话。
 - 配置层：集中声明认证链路的所有可调参数。
+- 前端代理层：Next.js Route Handler 负责前后端通信与头部转发。
 
 ```mermaid
 graph TB
+subgraph "前端层"
+NEXT["Next.js Route Handler<br/>route.ts"]
+end
 subgraph "Web 层"
 CAPTCHA["CaptchaController"]
 REG_CODE["RegisterCodeController"]
@@ -79,6 +74,8 @@ LOGIN_SVC["LoginService"]
 REGISTER_SVC["RegisterService"]
 LOGOUT_SVC["LogoutService"]
 THROTTLE["LoginThrottle"]
+TOKEN_ISSUER["TokenIssuer"]
+TOKEN_VERIFIER["TokenVerifier"]
 end
 subgraph "安全与配置"
 COOKIE["AuthCookie"]
@@ -88,11 +85,14 @@ end
 subgraph "数据层"
 DB["MySQL"]
 REDIS["Redis"]
+ACCOUNTS["accounts 表"]
+SESSIONS["auth_sessions 表"]
 end
-CAPTCHA --> CAPTCHA_SVC
-REG_CODE --> REG_CODE_SVC
+NEXT --> LOGIN
 LOGIN --> LOGIN_SVC
-REGISTER --> REGISTER_SVC
+LOGIN_SVC --> THROTTLE
+LOGIN_SVC --> HASH
+LOGIN_SVC --> TOKEN_ISSUER
 ORIGIN --> |先于| AUTH_INT
 AUTH_INT --> |从 Cookie 读取| COOKIE
 CAPTCHA_SVC --> REDIS
@@ -100,62 +100,52 @@ REG_CODE_SVC --> REDIS
 LOGIN_SVC --> DB
 REGISTER_SVC --> DB
 LOGOUT_SVC --> DB
-LOGIN_SVC --> THROTTLE
 THROTTLE --> REDIS
-LOGIN_SVC --> HASH
+TOKEN_ISSUER --> TOKEN_VERIFIER
+TOKEN_VERIFIER --> ACCOUNTS
+TOKEN_VERIFIER --> SESSIONS
 PROPS --> ORIGIN
 PROPS --> COOKIE
 PROPS --> THROTTLE
 ```
 
 **图表来源**
-- [CaptchaController.java:1-32](file://backend/src/main/java/com/luyi/myfirst/web/auth/CaptchaController.java#L1-L32)
-- [RegisterCodeController.java:1-33](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterCodeController.java#L1-L33)
-- [LoginController.java:1-48](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L1-L48)
-- [RegisterController.java:1-49](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterController.java#L1-L49)
-- [OriginGuard.java:1-106](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/OriginGuard.java#L1-L106)
-- [AuthInterceptor.java:1-67](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/AuthInterceptor.java#L1-L67)
-- [AuthCookie.java:1-67](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L1-L67)
-- [AuthProperties.java:1-78](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java#L1-L78)
-- [CaptchaService.java:1-19](file://backend/src/main/java/com/luyi/myfirst/service/auth/CaptchaService.java#L1-L19)
-- [RegisterCodeService.java:1-17](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterCodeService.java#L1-L17)
-- [LoginService.java:1-26](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java#L1-L26)
-- [RegisterService.java:1-19](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterService.java#L1-L19)
-- [LogoutService.java:1-14](file://backend/src/main/java/com/luyi/myfirst/service/auth/LogoutService.java#L1-L14)
-- [LoginThrottle.java:1-99](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L1-L99)
-- [BcryptPasswordHasher.java:1-37](file://backend/src/main/java/com/luyi/myfirst/common/security/BcryptPasswordHasher.java#L1-L37)
-
-**章节来源**
-- [Application.java:1-15](file://backend/src/main/java/com/luyi/myfirst/Application.java#L1-L15)
-- [application.yml:1-70](file://backend/src/main/resources/application.yml#L1-L70)
+- [LoginController.java:31-62](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L31-L62)
+- [AuthCookie.java:19-67](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L19-L67)
+- [LoginServiceImpl.java:42-163](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L42-L163)
+- [AuthProperties.java:32-84](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java#L32-L84)
+- [LoginThrottle.java:20-109](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L20-L109)
+- [AuthInterceptor.java:23-67](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/AuthInterceptor.java#L23-L67)
+- [OriginGuard.java:30-106](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/OriginGuard.java#L30-L106)
+- [TokenIssuer.java:25-58](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenIssuer.java#L25-L58)
+- [TokenVerifier.java:29-73](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenVerifier.java#L29-L73)
+- [BcryptPasswordHasher.java:14-37](file://backend/src/main/java/com/luyi/myfirst/common/security/BcryptPasswordHasher.java#L14-L37)
+- [route.ts:1-103](file://frontend/app/api/[...path]/route.ts#L1-L103)
 
 ## 核心组件
-- 应用入口与配置扫描：Spring Boot 主类启用自动装配与配置属性扫描。
-- 认证配置：集中管理会话有效期、JWT 密钥、Cookie Secure 标志、允许的来源列表、验证码与登录防爆破参数。
-- Cookie 写入点：统一设置 HttpOnly、SameSite=Lax、Path=/、Max-Age 与 Secure，确保令牌不在响应体中出现。
-- 来源守卫：对 POST/PUT/PATCH/DELETE 等写请求校验 Origin，拒绝未登记来源。
-- 认证拦截器：仅从 Cookie 读取令牌，校验失败抛出统一业务异常。
-- 控制器：登录、注册、验证码、注册码换发，均委托服务层处理。
-- 服务接口：定义登录、注册、验证码、注册码、登出的契约，明确错误语义与调用顺序。
-- **新增限流组件**：LoginThrottle 实现双重防护机制，区分账户级别和来源级别的限流策略。
-- **新增时序攻击防护**：LoginServiceImpl 中的 TIMING_EQUALIZATION_SEED 常量确保账户存在与不存在时的响应时间一致性。
+- **应用入口与配置扫描**：Spring Boot 主类启用自动装配与配置属性扫描。
+- **认证配置**：集中管理会话有效期、JWT 密钥、Cookie Secure 标志、允许的来源列表、验证码与登录防爆破参数。
+- **HttpOnly Cookie 写入点**：统一设置 HttpOnly、SameSite=Lax、Path=/、Max-Age 与 Secure，确保令牌不在响应体中出现。
+- **来源守卫**：对 POST/PUT/PATCH/DELETE 等写请求校验 Origin，拒绝未登记来源。
+- **认证拦截器**：仅从 Cookie 读取令牌，校验失败抛出统一业务异常。
+- **控制器**：登录、注册、验证码、注册码换发，均委托服务层处理。
+- **服务接口**：定义登录、注册、验证码、注册码、登出的契约，明确错误语义与调用顺序。
+- **双重限流组件**：LoginThrottle 实现账户级别和来源级别的防护机制。
+- **时序攻击防护**：LoginServiceImpl 中的 TIMING_EQUALIZATION_SEED 常量确保账户存在与不存在时的响应时间一致性。
+- **JWT 令牌管理**：TokenIssuer 负责 JWT 令牌签发，TokenVerifier 负责令牌验证与吊销检查。
+- **前后端契约同步**：Next.js Route Handler 自动转发认证相关请求，确保 Cookie、Origin、Referer 等头部正确传递。
 
 **章节来源**
-- [AuthProperties.java:14-78](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java#L14-L78)
+- [AuthProperties.java:14-84](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java#L14-L84)
 - [AuthCookie.java:9-67](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L9-L67)
 - [OriginGuard.java:17-106](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/OriginGuard.java#L17-L106)
 - [AuthInterceptor.java:14-67](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/AuthInterceptor.java#L14-L67)
-- [LoginController.java:16-48](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L16-L48)
-- [RegisterController.java:16-49](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterController.java#L16-L49)
-- [CaptchaController.java:10-32](file://backend/src/main/java/com/luyi/myfirst/web/auth/CaptchaController.java#L10-L32)
-- [RegisterCodeController.java:11-33](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterCodeController.java#L11-L33)
-- [LoginService.java:7-26](file://backend/src/main/java/com/luyi/myfirst/service/auth/LoginService.java#L7-L26)
-- [RegisterService.java:7-19](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterService.java#L7-L19)
-- [CaptchaService.java:5-19](file://backend/src/main/java/com/luyi/myfirst/service/auth/CaptchaService.java#L5-L19)
-- [RegisterCodeService.java:3-17](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterCodeService.java#L3-L17)
-- [LogoutService.java:5-14](file://backend/src/main/java/com/luyi/myfirst/service/auth/LogoutService.java#L5-L14)
-- [LoginThrottle.java:11-99](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L11-L99)
-- [LoginServiceImpl.java:39-70](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L39-L70)
+- [LoginController.java:16-62](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L16-L62)
+- [LoginThrottle.java:11-109](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L11-L109)
+- [LoginServiceImpl.java:39-163](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L39-L163)
+- [TokenIssuer.java:16-58](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenIssuer.java#L16-L58)
+- [TokenVerifier.java:20-73](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenVerifier.java#L20-L73)
+- [route.ts:1-103](file://frontend/app/api/[...path]/route.ts#L1-L103)
 
 ## 架构总览
 认证系统遵循"先凭证后状态"的契约：登录接口在密码正确后才判断邮箱是否验证；令牌只通过 Set-Cookie 下发；写请求必须通过来源白名单；受保护路径由拦截器解析 Cookie 中的令牌并注入已验证信息。
@@ -168,15 +158,18 @@ PROPS --> THROTTLE
 ```mermaid
 sequenceDiagram
 participant Client as "客户端"
+participant NextProxy as "Next.js 代理<br/>route.ts"
 participant Origin as "来源守卫<br/>OriginGuard"
 participant AuthInt as "认证拦截器<br/>AuthInterceptor"
 participant Throttle as "限流器<br/>LoginThrottle"
 participant Controller as "控制器"
 participant Service as "服务层"
 participant Hasher as "密码哈希器<br/>BcryptPasswordHasher"
+participant TokenMgr as "令牌管理器<br/>TokenIssuer/TokenVerifier"
 participant Cookie as "AuthCookie"
 participant Store as "数据库/缓存"
-Client->>Origin : "POST /api/auth/login"
+Client->>NextProxy : "POST /api/auth/login"
+NextProxy->>Origin : "转发请求并保留头部"
 Origin->>Origin : "校验方法是否为写请求"
 Origin->>Origin : "校验 Origin 是否在白名单"
 Origin-->>Client : "拒绝或放行"
@@ -198,19 +191,25 @@ Service->>Hasher : "执行虚拟密码比对<br/>(TIMING_EQUALIZATION_SEED)"
 end
 Service->>Store : "检查邮箱验证状态"
 Service-->>Controller : "返回登录结果"
+Controller->>TokenMgr : "签发新令牌"
+TokenMgr-->>Controller : "返回 IssuedToken"
 Controller->>Cookie : "write(token)"
-Cookie-->>Client : "Set-Cookie : wc_session=token"
+Cookie-->>NextProxy : "Set-Cookie : wc_session=token"
+NextProxy-->>Client : "透传 Set-Cookie 头"
 Controller-->>Client : "200 + 回显字段不含令牌"
 ```
 
 **图表来源**
 - [OriginGuard.java:51-61](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/OriginGuard.java#L51-L61)
 - [AuthInterceptor.java:43-52](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/AuthInterceptor.java#L43-L52)
-- [LoginController.java:37-46](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L37-L46)
-- [LoginServiceImpl.java:82-130](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L82-L130)
-- [LoginThrottle.java:50-88](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L50-L88)
-- [AuthCookie.java:32-45](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L32-L45)
+- [LoginController.java:45-60](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L45-L60)
+- [LoginServiceImpl.java:82-161](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L82-L161)
+- [LoginThrottle.java:50-98](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L50-L98)
+- [AuthCookie.java:32-65](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L32-L65)
+- [TokenIssuer.java:44-56](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenIssuer.java#L44-L56)
+- [TokenVerifier.java:44-71](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenVerifier.java#L44-L71)
 - [BcryptPasswordHasher.java:21-35](file://backend/src/main/java/com/luyi/myfirst/common/security/BcryptPasswordHasher.java#L21-L35)
+- [route.ts:19-79](file://frontend/app/api/[...path]/route.ts#L19-L79)
 
 ## 详细组件分析
 
@@ -247,14 +246,14 @@ Note1["时序攻击防护：<br/>账户不存在时也执行<br/>完整 bcrypt �
 ```
 
 **图表来源**
-- [LoginController.java:37-46](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L37-L46)
-- [LoginServiceImpl.java:82-130](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L82-L130)
-- [LoginThrottle.java:50-88](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L50-L88)
-- [AuthCookie.java:32-45](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L32-L45)
+- [LoginController.java:45-60](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L45-L60)
+- [LoginServiceImpl.java:82-161](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L82-L161)
+- [LoginThrottle.java:50-98](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L50-L98)
+- [AuthCookie.java:32-65](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L32-L65)
 
 **章节来源**
-- [LoginController.java:16-48](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L16-L48)
-- [LoginServiceImpl.java:23-155](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L23-L155)
+- [LoginController.java:16-62](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L16-L62)
+- [LoginServiceImpl.java:23-163](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L23-L163)
 
 ### 时序攻击防护机制详解
 系统实现了专门的时序攻击防护机制，防止攻击者通过响应时间分析来枚举已注册的邮箱地址：
@@ -268,7 +267,7 @@ Note1["时序攻击防护：<br/>账户不存在时也执行<br/>完整 bcrypt �
 #### 安全防护效果
 - **消除时间信道**：攻击者无法通过响应时间差异判断邮箱是否已注册
 - **保持安全强度**：虚拟哈希使用与真实账户相同的 bcrypt 强度参数
-- **测试验证**：通过 LoginTimingEqualizationTest 确保时序等价性得到保证
+- **测试验证**：通过单元测试确保时序等价性得到保证
 
 ```mermaid
 flowchart TD
@@ -282,14 +281,12 @@ Note1["关键特性：<br/>1. 虚拟哈希在构造期生成<br/>2. 使用相同
 ```
 
 **图表来源**
-- [LoginServiceImpl.java:39-70](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L39-L70)
-- [LoginServiceImpl.java:104-111](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L104-L111)
-- [LoginTimingEqualizationTest.java:99-115](file://backend/src/test/java/com/luyi/myfirst/service/auth/LoginTimingEqualizationTest.java#L99-L115)
+- [LoginServiceImpl.java:45-76](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L45-L76)
+- [LoginServiceImpl.java:112-119](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L112-L119)
 
 **章节来源**
-- [LoginServiceImpl.java:39-70](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L39-L70)
-- [LoginServiceImpl.java:104-111](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L104-L111)
-- [LoginTimingEqualizationTest.java:40-150](file://backend/src/test/java/com/luyi/myfirst/service/auth/LoginTimingEqualizationTest.java#L40-L150)
+- [LoginServiceImpl.java:45-76](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L45-L76)
+- [LoginServiceImpl.java:112-119](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L112-L119)
 
 ### 登录响应格式
 **更新** 登录成功响应现在遵循更安全的设计模式：
@@ -302,27 +299,32 @@ Note1["关键特性：<br/>1. 虚拟哈希在构造期生成<br/>2. 使用相同
 ```mermaid
 sequenceDiagram
 participant Client as "客户端"
+participant NextProxy as "Next.js 代理"
 participant LoginCtrl as "登录控制器"
 participant LoginSvc as "登录服务"
+participant TokenMgr as "令牌管理器"
 participant Cookie as "AuthCookie"
-Client->>LoginCtrl : "POST /api/auth/login"
+Client->>NextProxy : "POST /api/auth/login"
+NextProxy->>LoginCtrl : "转发请求"
 LoginCtrl->>LoginSvc : "login(email, password)"
 LoginSvc-->>LoginCtrl : "返回 LoginResult"
+LoginCtrl->>TokenMgr : "issue(account, issuedAt)"
+TokenMgr-->>LoginCtrl : "返回 IssuedToken"
 LoginCtrl->>Cookie : "write(token)"
-Cookie-->>Client : "Set-Cookie : wc_session=token; HttpOnly; SameSite=Lax"
+Cookie-->>NextProxy : "Set-Cookie : wc_session=token; HttpOnly; SameSite=Lax"
+NextProxy-->>Client : "透传 Set-Cookie 头"
 LoginCtrl-->>Client : "200 OK : {publicId, email, displayName, expiresAt}"
 Note over Client : 响应体中不包含访问令牌
 ```
 
 **图表来源**
-- [LoginController.java:37-46](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L37-L46)
-- [LoginResponse.java:5-12](file://backend/src/main/java/com/luyi/myfirst/web/auth/dto/LoginResponse.java#L5-L12)
-- [LoginResult.java:3-11](file://backend/src/main/java/com/luyi/myfirst/service/auth/model/LoginResult.java#L3-L11)
+- [LoginController.java:45-60](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L45-L60)
+- [AuthCookie.java:32-65](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L32-L65)
+- [TokenIssuer.java:44-56](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenIssuer.java#L44-L56)
+- [route.ts:69-73](file://frontend/app/api/[...path]/route.ts#L69-L73)
 
 **章节来源**
-- [LoginController.java:16-48](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L16-L48)
-- [LoginResponse.java:1-13](file://backend/src/main/java/com/luyi/myfirst/web/auth/dto/LoginResponse.java#L1-L13)
-- [LoginResult.java:1-12](file://backend/src/main/java/com/luyi/myfirst/service/auth/model/LoginResult.java#L1-L12)
+- [LoginController.java:16-62](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L16-L62)
 
 ### 双重限流机制
 系统实现了两种不同级别的防护机制：
@@ -354,69 +356,43 @@ CredentialCheck --> |成功| Success["登录成功<br/>清零账户计数"]
 ```
 
 **图表来源**
-- [LoginThrottle.java:11-99](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L11-L99)
-- [LoginServiceImpl.java:82-130](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L82-L130)
+- [LoginThrottle.java:50-98](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L50-L98)
+- [LoginServiceImpl.java:82-161](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L82-L161)
 
 **章节来源**
-- [LoginThrottle.java:11-99](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L11-L99)
-- [LoginServiceImpl.java:82-130](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L82-L130)
+- [LoginThrottle.java:11-109](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L11-L109)
+- [LoginServiceImpl.java:82-161](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L82-L161)
 
-### 注册流程
-注册端点在验证码通过后创建账户并直接签发令牌，实现首次注册即自动登录。令牌同样只通过 Cookie 下发。
+### 前后端契约同步机制
+**新增** 系统通过 Next.js Route Handler 实现了完整的前后端契约同步机制：
+
+#### 请求转发策略
+- **头部白名单**：仅转发 cookie、origin、referer 三个关键头部
+- **路径编码**：逐段编码后拼接到配置的 origin 之后，防止客户端重定向到其他主机
+- **运行期配置**：支持通过环境变量 BACKEND_URL 动态配置后端地址
+
+#### 响应处理机制
+- **Retry-After 透传**：429 限流响应的 Retry-After 头必须一并透传
+- **Set-Cookie 处理**：使用 getSetCookie() 逐条回传，避免多条 cookie 合并导致属性错位
+- **内容类型保持**：透传上游响应的 content-type 头
 
 ```mermaid
-sequenceDiagram
-participant Client as "客户端"
-participant RegCtrl as "注册控制器"
-participant RegSvc as "注册服务"
-participant Cookie as "AuthCookie"
-Client->>RegCtrl : "POST /api/auth/register"
-RegCtrl->>RegSvc : "register(email, code, password, displayName)"
-RegSvc-->>RegCtrl : "返回注册结果与令牌"
-RegCtrl->>Cookie : "write(token)"
-Cookie-->>Client : "Set-Cookie : wc_session=token"
-RegCtrl-->>Client : "200 + 回显字段"
+flowchart TD
+ClientReq["客户端请求"] --> NextProxy["Next.js Route Handler"]
+NextProxy --> HeaderFilter["头部过滤<br/>仅保留 cookie/origin/referer"]
+HeaderFilter --> PathEncode["路径编码"]
+PathEncode --> BackendReq["后端请求"]
+BackendReq --> BackendResp["后端响应"]
+BackendResp --> RetryAfter["透传 Retry-After"]
+BackendResp --> SetCookie["逐条处理 Set-Cookie"]
+SetCookie --> ClientResp["客户端响应"]
 ```
 
 **图表来源**
-- [RegisterController.java:37-47](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterController.java#L37-L47)
-- [RegisterService.java:10-18](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterService.java#L10-L18)
-- [AuthCookie.java:32-45](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L32-L45)
+- [route.ts:1-103](file://frontend/app/api/[...path]/route.ts#L1-L103)
 
 **章节来源**
-- [RegisterController.java:16-49](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterController.java#L16-L49)
-- [RegisterService.java:7-19](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterService.java#L7-L19)
-
-### 验证码与注册码换发
-- 图形验证码接口无状态、无副作用，每次返回新的 id 与图片。
-- 注册码换发接口消费图形码后生成验证码摘要并投递，返回 202 表示受理。
-
-```mermaid
-sequenceDiagram
-participant Client as "客户端"
-participant CaptchaCtrl as "验证码控制器"
-participant CaptchaSvc as "验证码服务"
-Client->>CaptchaCtrl : "GET /api/auth/captcha"
-CaptchaCtrl->>CaptchaSvc : "issue()"
-CaptchaSvc-->>CaptchaCtrl : "返回 captchaId 与 image"
-CaptchaCtrl-->>Client : "返回验证码响应"
-Client->>CaptchaCtrl : "POST /api/auth/register-code"
-CaptchaCtrl->>CaptchaSvc : "issue(email, captchaId, answer)"
-CaptchaSvc-->>CaptchaCtrl : "完成换发"
-CaptchaCtrl-->>Client : "202 已受理"
-```
-
-**图表来源**
-- [CaptchaController.java:26-30](file://backend/src/main/java/com/luyi/myfirst/web/auth/CaptchaController.java#L26-L30)
-- [CaptchaService.java:13-17](file://backend/src/main/java/com/luyi/myfirst/service/auth/CaptchaService.java#L13-L17)
-- [RegisterCodeController.java:27-31](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterCodeController.java#L27-L31)
-- [RegisterCodeService.java:11-15](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterCodeService.java#L11-L15)
-
-**章节来源**
-- [CaptchaController.java:10-32](file://backend/src/main/java/com/luyi/myfirst/web/auth/CaptchaController.java#L10-L32)
-- [RegisterCodeController.java:11-33](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterCodeController.java#L11-L33)
-- [CaptchaService.java:5-19](file://backend/src/main/java/com/luyi/myfirst/service/auth/CaptchaService.java#L5-L19)
-- [RegisterCodeService.java:3-17](file://backend/src/main/java/com/luyi/myfirst/service/auth/RegisterCodeService.java#L3-L17)
+- [route.ts:1-103](file://frontend/app/api/[...path]/route.ts#L1-L103)
 
 ### 来源守卫与认证拦截器
 - 来源守卫优先执行，仅对写请求校验 Origin，拒绝未登记来源。
@@ -495,12 +471,52 @@ ACCOUNTS ||--o{ AUTH_SESSIONS : "拥有"
 **章节来源**
 - [schema.sql:1-47](file://backend/src/main/resources/schema.sql#L1-L47)
 
+### JWT 令牌管理机制
+系统实现了完整的 JWT 令牌管理功能：
+
+#### 令牌签发（TokenIssuer）
+- **算法选择**：使用 HS256 对称加密算法
+- **载荷结构**：包含 subject(publicId)、ver(令牌版本)、jti、iat、exp 声明
+- **有效期管理**：基于配置的 session-ttl 设置绝对过期时间，不支持滑动续期
+- **安全密钥**：从配置中读取 jwt-secret，短密钥会启动失败
+
+#### 令牌验证（TokenVerifier）
+- **三步验证**：签名验证 → 会话检查 → 账户状态验证
+- **吊销机制**：通过 jti 检查会话是否被吊销
+- **版本控制**：通过 tokenVersion 实现令牌的批量失效
+- **状态检查**：确保账户处于 active 状态且版本号匹配
+
+```mermaid
+flowchart TD
+Issue["令牌签发"] --> CreateClaims["创建 JWT 载荷<br/>subject/publicId, ver/tokenVersion, jti, iat, exp"]
+CreateClaims --> Sign["HS256 签名"]
+Sign --> Store["存储会话记录<br/>auth_sessions 表"]
+Store --> Return["返回 IssuedToken"]
+Verify["令牌验证"] --> Parse["解析 JWT 载荷"]
+Parse --> CheckSig["验证签名与过期时间"]
+CheckSig --> CheckSession["检查 jti 会话状态"]
+CheckSession --> CheckAccount["验证账户状态与版本"]
+CheckAccount --> Valid{"验证通过？"}
+Valid --> |是| ReturnVerified["返回 VerifiedToken"]
+Valid --> |否| ReturnEmpty["返回空值"]
+```
+
+**图表来源**
+- [TokenIssuer.java:44-56](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenIssuer.java#L44-L56)
+- [TokenVerifier.java:44-71](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenVerifier.java#L44-L71)
+
+**章节来源**
+- [TokenIssuer.java:16-58](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenIssuer.java#L16-L58)
+- [TokenVerifier.java:20-73](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenVerifier.java#L20-L73)
+
 ## 依赖关系分析
 - Web 层依赖服务层接口，不直接操作数据源。
 - 拦截器依赖 TokenVerifier（由服务层支撑）与配置项。
 - Cookie 写入点依赖配置项决定 Secure 与 Max-Age。
 - 配置项集中声明认证链路的各项阈值与开关，缺失时启动失败。
 - **新增依赖**：LoginThrottle 依赖 Redis 进行计数存储，LoginServiceImpl 依赖 LoginThrottle 进行限流控制，同时依赖 PasswordHasher 进行时序攻击防护。
+- **新增令牌依赖**：TokenIssuer 依赖 AuthProperties 获取密钥配置，TokenVerifier 依赖 AccountRepository 和 AuthSessionRepository 进行验证。
+- **新增前端依赖**：Next.js Route Handler 依赖环境变量配置后端地址，自动处理认证相关头部转发。
 
 ```mermaid
 graph LR
@@ -511,25 +527,32 @@ SERVICES --> DATA["数据层<br/>MySQL/Redis"]
 CONFIG --> APP["应用配置<br/>application.yml"]
 SERVICES --> THROTTLE["限流器<br/>LoginThrottle"]
 SERVICES --> HASHER["密码哈希器<br/>BcryptPasswordHasher"]
+SERVICES --> TOKEN_ISSUER["令牌签发<br/>TokenIssuer"]
+SERVICES --> TOKEN_VERIFIER["令牌验证<br/>TokenVerifier"]
 THROTTLE --> REDIS["Redis 缓存"]
 HASHER --> BCrypt["BCrypt 加密库"]
+TOKEN_ISSUER --> JWT_LIB["JWT 库"]
+TOKEN_VERIFIER --> ACCOUNTS["账户仓库"]
+TOKEN_VERIFIER --> SESSIONS["会话仓库"]
+NEXT_PROXY["Next.js Route Handler"] --> CONTROLLERS
+NEXT_PROXY --> HEADERS["头部转发<br/>cookie/origin/referer"]
 ```
 
 **图表来源**
-- [LoginController.java:1-48](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L1-L48)
-- [RegisterController.java:1-49](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterController.java#L1-L49)
-- [CaptchaController.java:1-32](file://backend/src/main/java/com/luyi/myfirst/web/auth/CaptchaController.java#L1-L32)
-- [RegisterCodeController.java:1-33](file://backend/src/main/java/com/luyi/myfirst/web/auth/RegisterCodeController.java#L1-L33)
+- [LoginController.java:1-62](file://backend/src/main/java/com/luyi/myfirst/web/auth/LoginController.java#L1-L62)
 - [OriginGuard.java:1-106](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/OriginGuard.java#L1-L106)
 - [AuthInterceptor.java:1-67](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/AuthInterceptor.java#L1-L67)
-- [AuthProperties.java:1-78](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java#L1-L78)
-- [application.yml:41-66](file://backend/src/main/resources/application.yml#L41-L66)
-- [LoginThrottle.java:1-99](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L1-L99)
+- [AuthProperties.java:1-84](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java#L1-L84)
+- [application.yml:41-72](file://backend/src/main/resources/application.yml#L41-L72)
+- [LoginThrottle.java:1-109](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L1-L109)
 - [BcryptPasswordHasher.java:1-37](file://backend/src/main/java/com/luyi/myfirst/common/security/BcryptPasswordHasher.java#L1-L37)
+- [TokenIssuer.java:1-58](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenIssuer.java#L1-L58)
+- [TokenVerifier.java:1-73](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenVerifier.java#L1-L73)
+- [route.ts:1-103](file://frontend/app/api/[...path]/route.ts#L1-L103)
 
 **章节来源**
 - [application.yml:10-40](file://backend/src/main/resources/application.yml#L10-L40)
-- [application.yml:41-66](file://backend/src/main/resources/application.yml#L41-L66)
+- [application.yml:41-72](file://backend/src/main/resources/application.yml#L41-L72)
 
 ## 性能与安全性考量
 - **令牌安全**：Cookie 使用 HttpOnly 与 SameSite=Lax，防止脚本读取与跨站写请求附带；Secure 由配置决定，生产环境必须开启。**重要**：令牌不再出现在响应体中，从根本上避免了 XSS 攻击窃取令牌的风险。
@@ -543,9 +566,11 @@ HASHER --> BCrypt["BCrypt 加密库"]
   - 在构造期预生成虚拟哈希，避免硬编码成本参数
   - 确保账户不存在和账户存在但密码错误的响应时间基本一致
   - 通过单元测试验证时序等价性的正确性
+- **前后端契约同步**：Next.js Route Handler 确保 Cookie、Origin、Referer 等关键头部正确转发，防止认证链路静默失效。
 - **验证码策略**：图形码一次性、注册码有冷却时间与每日配额，降低枚举与暴力攻击面。
 - **会话管理**：会话表记录 jti 与过期时间，支持吊销与清理。
 - **响应安全**：登录成功响应只包含必要的用户信息和过期时间，不包含敏感令牌数据。
+- **JWT 安全**：使用 HS256 算法，强密钥验证，支持令牌版本控制和批量吊销。
 
 ## 故障排查指南
 - 启动失败且提示配置未解析：检查环境变量是否设置，尤其是 JWT 密钥与数据库凭据。
@@ -562,17 +587,35 @@ HASHER --> BCrypt["BCrypt 加密库"]
   - 如果发现登录响应时间有明显差异，检查 LoginServiceImpl 中的时序攻击防护实现
   - 确认 TIMING_EQUALIZATION_SEED 常量没有被修改
   - 验证虚拟哈希的生成和使用是否正确
+- **JWT 令牌问题**：
+  - 检查 jwt-secret 配置是否正确，短密钥会导致启动失败
+  - 确认令牌版本与账户 tokenVersion 匹配
+  - 验证会话记录是否存在且未被吊销
+- **前后端契约同步问题**：
+  - 检查 Next.js Route Handler 是否正确转发 Cookie、Origin、Referer 头部
+  - 确认 BACKEND_URL 环境变量配置正确
+  - 验证 Set-Cookie 头是否被正确透传，避免多条 cookie 合并
+- **配置问题**：
+  - 确认所有认证相关配置项都已正确设置
+  - 检查 trusted-proxies 配置是否符合当前部署拓扑
+  - 验证 allowed-origins 是否包含实际的前端来源
 
 **章节来源**
-- [AuthProperties.java:39-54](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java#L39-L54)
-- [application.yml:41-66](file://backend/src/main/resources/application.yml#L41-L66)
+- [AuthProperties.java:39-84](file://backend/src/main/java/com/luyi/myfirst/config/AuthProperties.java#L39-L84)
+- [application.yml:41-72](file://backend/src/main/resources/application.yml#L41-L72)
 - [AuthCookie.java:32-65](file://backend/src/main/java/com/luyi/myfirst/web/auth/AuthCookie.java#L32-L65)
 - [OriginGuard.java:51-61](file://backend/src/main/java/com/luyi/myfirst/web/auth/interceptor/OriginGuard.java#L51-L61)
-- [LoginResponse.java:5-12](file://backend/src/main/java/com/luyi/myfirst/web/auth/dto/LoginResponse.java#L5-L12)
-- [LoginThrottle.java:50-88](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L50-L88)
-- [LoginServiceImpl.java:39-70](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L39-L70)
+- [LoginThrottle.java:50-98](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/LoginThrottle.java#L50-L98)
+- [LoginServiceImpl.java:39-163](file://backend/src/main/java/com/luyi/myfirst/service/auth/impl/LoginServiceImpl.java#L39-L163)
+- [TokenIssuer.java:31-36](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenIssuer.java#L31-L36)
+- [TokenVerifier.java:36-42](file://backend/src/main/java/com/luyi/myfirst/service/auth/support/TokenVerifier.java#L36-L42)
+- [route.ts:1-103](file://frontend/app/api/[...path]/route.ts#L1-L103)
 
 ## 结论
-WanderChain 认证系统以清晰的契约与分层设计保障安全性与可维护性：**最新的安全改进**包括令牌仅通过 Cookie 下发，不再出现在响应体中，从根本上缓解了跨站脚本攻击风险；写请求来源严格校验，登录流程坚持"先凭证后状态"，所有关键参数集中配置并在缺失时启动失败。该体系便于扩展更多受保护端点，同时保持统一的错误输出与安全策略。
+WanderChain 认证系统以清晰的契约与分层设计保障安全性与可维护性：**最新的安全改进**包括令牌仅通过 HttpOnly Cookie 下发，不再出现在响应体中，从根本上缓解了跨站脚本攻击风险；写请求来源严格校验，登录流程坚持"先凭证后状态"，所有关键参数集中配置并在缺失时启动失败。**最重要的架构增强**是实现了三重防护机制：账户级别通过验证码挑战进行保护，来源级别通过 HTTP 429 响应进行限制，同时引入了时序攻击防护以防止邮箱枚举攻击。这种设计消除了递增等待惩罚，使账户级别保护仅依赖验证码挑战，而来源级别保护使用固定的 Retry-After 值，避免了 NAT 后的合法用户受到指数惩罚。
 
-**最重要的架构增强**是实现了三重防护机制：账户级别通过验证码挑战进行保护，来源级别通过 HTTP 429 响应进行限制，同时引入了时序攻击防护以防止邮箱枚举攻击。这种设计消除了递增等待惩罚，使账户级别保护仅依赖验证码挑战，而来源级别保护使用固定的 Retry-After 值，避免了 NAT 后的合法用户受到指数惩罚。通过移除响应体中的令牌、实现智能限流策略和时序攻击防护，系统实现了更高级别的安全性，符合现代 Web 应用的安全最佳实践。时序攻击防护通过确保无论账户是否存在都执行相同强度的 bcrypt 哈希比对，彻底消除了通过响应时间分析进行邮箱枚举的可能性，进一步提升了系统的整体安全性。
+**前后端契约同步**：通过 Next.js Route Handler 实现了完整的前后端契约同步机制，确保 Cookie、Origin、Referer 等关键头部正确转发，防止认证链路静默失效。这一机制保证了现代 Web 应用的跨域认证需求，同时保持了安全性和可维护性。
+
+**时序攻击防护**：通过确保无论账户是否存在都执行相同强度的 bcrypt 哈希比对，彻底消除了通过响应时间分析进行邮箱枚举的可能性，进一步提升了系统的整体安全性。
+
+该体系便于扩展更多受保护端点，同时保持统一的错误输出与安全策略，符合现代 Web 应用的安全最佳实践。

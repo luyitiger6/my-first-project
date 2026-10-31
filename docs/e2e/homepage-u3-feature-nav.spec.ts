@@ -4,6 +4,7 @@ import {
   expectNoHorizontalOverflow,
   gotoHome,
   gridColumnCount,
+  waitForUrl,
 } from './support/helpers'
 
 const NAV = '[data-section="feature-nav"]'
@@ -64,13 +65,13 @@ test.describe('U3 · 功能导航栏 · 桌面端', () => {
     const community = section.getByRole('link', { name: /Travel community/ })
     await expect(community).toHaveAttribute('href', '/community')
     await community.click()
-    await page.waitForURL((url) => url.pathname === '/community')
+    await waitForUrl(page,(url) => url.pathname === '/community')
 
     await gotoHome(page)
     const attractions = page.locator(NAV).getByRole('link', { name: /Attraction guides/ })
     await expect(attractions).toHaveAttribute('href', '/attractions')
     await attractions.click()
-    await page.waitForURL((url) => url.pathname === '/attractions')
+    await waitForUrl(page,(url) => url.pathname === '/attractions')
   })
 
   test('S3 · 点击 AI assistant 卡打开面板且 URL 不变', async ({ page }) => {

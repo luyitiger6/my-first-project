@@ -5,6 +5,7 @@ import {
   expectNoHorizontalOverflow,
   gotoHome,
   gotoSearch,
+  waitForUrl,
 } from './support/helpers'
 
 const GROUPS = 'section[aria-labelledby^="search-group-"]'
@@ -95,7 +96,7 @@ test.describe('Search · 搜索结果页 · 桌面端', () => {
       const link = page.getByRole('link', { name: anchor.label })
       await expect(link).toHaveAttribute('href', `/${anchor.hash}`)
       await link.click()
-      await page.waitForURL((url) => url.hash === anchor.hash)
+      await waitForUrl(page,(url) => url.hash === anchor.hash)
 
       const section = page.locator(anchor.hash)
       await expect(section).toHaveCount(1)

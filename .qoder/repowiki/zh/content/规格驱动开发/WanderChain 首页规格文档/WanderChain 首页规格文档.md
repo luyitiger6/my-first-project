@@ -23,6 +23,8 @@
 - [frontend/components/home/editor-picks.tsx](file://frontend/components/home/editor-picks.tsx)
 - [frontend/components/home/editor-picks.test.tsx](file://frontend/components/home/editor-picks.test.tsx)
 - [frontend/components/home/hot-posts.tsx](file://frontend/components/home/hot-posts.tsx)
+- [frontend/components/home/hot-posts.module.css](file://frontend/components/home/hot-posts.module.css)
+- [frontend/components/home/hot-posts.test.tsx](file://frontend/components/home/hot-posts.test.tsx)
 - [frontend/components/home/hot-attractions.tsx](file://frontend/components/home/hot-attractions.tsx)
 - [frontend/components/home/hot-attractions.module.css](file://frontend/components/home/hot-attractions.module.css)
 - [frontend/components/home/hot-attractions.test.tsx](file://frontend/components/home/hot-attractions.test.tsx)
@@ -37,15 +39,19 @@
 - [frontend/app/community/page.tsx](file://frontend/app/community/page.tsx)
 - [frontend/app/attractions/page.tsx](file://frontend/app/attractions/page.tsx)
 - [frontend/components/site/placeholder.tsx](file://frontend/components/site/placeholder.tsx)
+- [frontend/components/posts/post-card-stats.tsx](file://frontend/components/posts/post-card-stats.tsx)
+- [frontend/components/posts/post-card-stats.module.css](file://frontend/components/posts/post-card-stats.module.css)
+- [frontend/components/posts/sort-tabs.tsx](file://frontend/components/posts/sort-tabs.tsx)
+- [frontend/app/posts/posts-content.tsx](file://frontend/app/posts/posts-content.tsx)
 </cite>
 
 ## 更新摘要
 **所做更改**
-- **全面规格覆盖率审计**：新增前端 wanderchain 模块 79.5% 覆盖率审计，包含严格覆盖率、宽松覆盖率与逐项场景覆盖明细
-- **响应式断点策略调整**：热门景点区块从移动优先调整为桌面优先策略，断点从 640px/1024px 更新为 1080px/720px/480px
-- **AI 助手测试覆盖扩展**：测试用例从 S1-S9 扩展至 S1-S17，新增焦点陷阱、背景滚动锁定、键盘导航等无障碍功能验证
-- **双语界面 alt 文本规范修正**：编辑推荐区块的 alt 文本统一使用英文字段 `titleEn`，确保国际化一致性
-- **测试框架增强**：新增 use-section-data.test.ts、section-boundary.test.tsx、section-state.test.tsx 等系统性测试覆盖
+- **HotPosts 组件增强**：集成 PostCardStats 组件实现图标化互动统计展示，包含点赞、评论、收藏计数
+- **新增导航链接**：在热门帖子区块头部添加"View all posts"链接，指向 `/posts?sortBy=hottest`
+- **PostCardStats 组件引入**：新增可复用的互动统计组件，使用 SVG 图标和无障碍支持
+- **样式系统扩展**：新增 post-card-stats.module.css 样式文件和 hot-posts.module.css 响应式适配
+- **测试覆盖增强**：新增图标化统计行和导航链接的测试用例，确保功能完整性
 
 ## 目录
 1. [引言](#引言)
@@ -73,6 +79,7 @@ WanderChain 首页由一个页面级路由和多个可复用区块组成：
 - **Hero 首屏（已重构）**：全新的自包含 Server Component，包含背景大图、品牌标识、主标题、导语、原生搜索框和文字入口。
 - **搜索页面（新增）**：独立的 `/search` 页面，处理关键词检索、结果分组和三态显示。
 - 区块组件：功能导航、城市切换、编辑推荐、热门帖子、热门景点分别位于 `components/home/*`。
+- **互动统计组件（新增）**：`PostCardStats` 组件提供统一的图标化互动统计展示，被 HotPosts 和其他帖子相关组件复用。
 - 共享 Hook：`useSectionData` 统一封装加载、就绪、错误三态。
 - **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭、遮罩点击关闭，以及完整的键盘导航支持。
 - **响应式图片优化**：自定义 image loader、srcset 生成、sizes 属性计算，针对封面图进行性能优化。
@@ -91,6 +98,7 @@ Home --> HotAttractions["热门景点<br/>hot-attractions.tsx"]
 FeatureNav --> AiAssistant["AI 助手面板<br/>ai-assistant.tsx"]
 EditorPicks --> UseSection["区块数据钩子<br/>use-section-data.ts"]
 HotPosts --> UseSection
+HotPosts --> PostCardStats["互动统计组件<br/>post-card-stats.tsx"]
 HotAttractions --> UseSection
 AiAssistant --> FocusTrap["焦点陷阱<br/>Tab/Shift+Tab 循环"]
 AiAssistant --> ScrollLock["滚动锁定<br/>body.style.overflow"]
@@ -104,6 +112,7 @@ CommunityPage["社区占位页<br/>community/page.tsx"] --> Placeholder["占位�
 AttractionsPage["景点占位页<br/>attractions/page.tsx"] --> Placeholder
 Placeholder --> SiteHeader
 Placeholder --> SiteFooter
+HotPosts --> ViewAllLink["View all posts 链接<br/>/posts?sortBy=hottest"]
 ```
 
 **图表来源**
@@ -111,8 +120,9 @@ Placeholder --> SiteFooter
 - [frontend/components/home/hero.tsx:1-76](file://frontend/components/home/hero.tsx#L1-L76)
 - [frontend/components/home/feature-nav.tsx:1-116](file://frontend/components/home/feature-nav.tsx#L1-L116)
 - [frontend/components/home/editor-picks.tsx:1-75](file://frontend/components/home/editor-picks.tsx#L1-L75)
-- [frontend/components/home/hot-posts.tsx:1-66](file://frontend/components/home/hot-posts.tsx#L1-L66)
+- [frontend/components/home/hot-posts.tsx:1-75](file://frontend/components/home/hot-posts.tsx#L1-L75)
 - [frontend/components/home/hot-attractions.tsx:1-71](file://frontend/components/home/hot-attractions.tsx#L1-L71)
+- [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/app/search/page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
 - [frontend/app/community/page.tsx:1-18](file://frontend/app/community/page.tsx#L1-L18)
 - [frontend/app/attractions/page.tsx:1-18](file://frontend/app/attractions/page.tsx#L1-L18)
@@ -127,6 +137,7 @@ Placeholder --> SiteFooter
 - **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。**新增完整无障碍支持**：焦点陷阱（Tab/Shift+Tab 循环）、背景滚动锁定、键盘导航支持。
 - 城市切换：根据 URL `?city=` 渲染选中项，点击时替换查询参数，保持其他查询键不变。
 - 内容区块：编辑推荐、热门帖子、热门景点均通过 `mockRepository` 获取数据，并按各自排序与过滤规则展示。
+- **PostCardStats 互动统计组件（新增）**：可复用的组件，使用 SVG 图标展示点赞、评论、收藏计数，提供无障碍支持和格式化数字显示。
 - **响应式图片优化系统**：自定义 next/image loader 将宽度档位直接写入 Unsplash CDN 参数，结合 srcset 和 sizes 属性实现智能图片加载。
 - **增强的占位页系统**：社区和景点占位页现在使用统一的 `PlaceholderPage` 组件，包含完整的站点框架元素。
 
@@ -136,8 +147,9 @@ Placeholder --> SiteFooter
 - [frontend/components/home/feature-nav.tsx:71-116](file://frontend/components/home/feature-nav.tsx#L71-L116)
 - [frontend/components/home/ai-assistant.tsx:56-177](file://frontend/components/home/ai-assistant.tsx#L56-L177)
 - [frontend/components/home/editor-picks.tsx:12-75](file://frontend/components/home/editor-picks.tsx#L12-L75)
-- [frontend/components/home/hot-posts.tsx:11-66](file://frontend/components/home/hot-posts.tsx#L11-L66)
+- [frontend/components/home/hot-posts.tsx:11-75](file://frontend/components/home/hot-posts.tsx#L11-L75)
 - [frontend/components/home/hot-attractions.tsx:13-71](file://frontend/components/home/hot-attractions.tsx#L13-L71)
+- [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/components/site/placeholder.tsx:13-35](file://frontend/components/site/placeholder.tsx#L13-L35)
 
 ## 架构总览
@@ -162,6 +174,10 @@ subgraph "内容区块"
 Picks["编辑推荐 editor-picks.tsx"]
 Posts["热门帖子 hot-posts.tsx"]
 Attractions["热门景点 hot-attractions.tsx"]
+end
+subgraph "互动统计层"
+PostCardStats["PostCardStats 组件<br/>post-card-stats.tsx"]
+StatsStyles["统计样式<br/>post-card-stats.module.css"]
 end
 subgraph "占位页框架"
 Placeholder["占位符组件 placeholder.tsx"]
@@ -193,6 +209,7 @@ Hero --> SearchPage
 SearchPage --> Query
 Picks --> Hook
 Posts --> Hook
+Posts --> PostCardStats
 Attractions --> Hook
 Hook --> Repo
 Picks --> Loader
@@ -210,6 +227,7 @@ CommunityPage --> Placeholder
 AttractionsPage --> Placeholder
 Placeholder --> SiteHeader
 Placeholder --> SiteFooter
+PostCardStats --> StatsStyles
 ```
 
 **图表来源**
@@ -218,8 +236,9 @@ Placeholder --> SiteFooter
 - [frontend/components/home/hero.tsx:14-76](file://frontend/components/home/hero.tsx#L14-L76)
 - [frontend/components/home/feature-nav.tsx:71-116](file://frontend/components/home/feature-nav.tsx#L71-L116)
 - [frontend/components/home/editor-picks.tsx:12-75](file://frontend/components/home/editor-picks.tsx#L12-L75)
-- [frontend/components/home/hot-posts.tsx:11-66](file://frontend/components/home/hot-posts.tsx#L11-L66)
+- [frontend/components/home/hot-posts.tsx:11-75](file://frontend/components/home/hot-posts.tsx#L11-L75)
 - [frontend/components/home/hot-attractions.tsx:13-71](file://frontend/components/home/hot-attractions.tsx#L13-L71)
+- [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/app/search/page.tsx:32-113](file://frontend/app/search/page.tsx#L32-L113)
 - [frontend/app/community/page.tsx:9-17](file://frontend/app/community/page.tsx#L9-L17)
 - [frontend/app/attractions/page.tsx:9-17](file://frontend/app/attractions/page.tsx#L9-L17)
@@ -376,6 +395,49 @@ AiAssistantProvider <.. FocusManagement : "焦点控制"
 **章节来源**
 - [frontend/components/home/ai-assistant.tsx:1-213](file://frontend/components/home/ai-assistant.tsx#L1-L213)
 
+### PostCardStats 互动统计组件（新增）
+PostCardStats 是一个全新的可复用组件，专门用于展示帖子的互动统计数据。该组件使用 SVG 图标和语义化 HTML 结构，提供一致的视觉体验和无障碍支持。
+
+**核心特性：**
+- **图标化展示**：使用内联 SVG 图标展示点赞、评论、收藏三种互动类型
+- **无障碍支持**：每个统计项都有适当的 `aria-label` 属性，便于屏幕阅读器理解
+- **数字格式化**：使用 `formatCount` 函数统一格式化大数字显示
+- **响应式设计**：灵活的布局适应不同屏幕尺寸
+- **样式隔离**：独立的 CSS 模块确保样式不会污染其他组件
+
+**组件接口：**
+```typescript
+interface PostCardStatsProps {
+  upVoteCount: number      // 点赞数
+  commentCount: number     // 评论数  
+  bookmarkCount: number    // 收藏数
+}
+```
+
+**视觉设计：**
+- 图标尺寸：16x16px，使用 stroke 描边风格
+- 颜色：继承 `var(--wc-muted)` 主题色
+- 间距：统计项之间 14px 间距，图标与数字间 5px 间距
+- 字体：等宽数字显示，最小宽度 1ch 防止布局抖动
+
+```mermaid
+flowchart TD
+Start["PostCardStats 组件"] --> Props["接收三个计数属性<br/>upVoteCount, commentCount, bookmarkCount"]
+Props --> Icons["渲染三个 SVG 图标<br/>UpVoteIcon, CommentIcon, BookmarkIcon"]
+Icons --> Format["使用 formatCount 格式化数字"]
+Format --> ARIA["设置无障碍标签<br/>aria-label 描述每个统计项"]
+ARIA --> Display["显示统计结果<br/>图标 + 格式化数字"]
+Display --> Styles["应用样式<br/>stats, item, value 类名"]
+```
+
+**图表来源**
+- [frontend/components/posts/post-card-stats.tsx:4-83](file://frontend/components/posts/post-card-stats.tsx#L4-L83)
+- [frontend/components/posts/post-card-stats.module.css:1-19](file://frontend/components/posts/post-card-stats.module.css#L1-L19)
+
+**章节来源**
+- [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
+- [frontend/components/posts/post-card-stats.module.css:1-19](file://frontend/components/posts/post-card-stats.module.css#L1-L19)
+
 ### 响应式图片优化系统（已更新）
 WanderChain 首页实现了完整的响应式图片优化系统，专门针对编辑推荐和热门景点区块的封面图进行性能优化。该系统基于 next/image 组件，通过自定义 loader 和精确的 sizes 属性计算，实现智能图片加载。
 
@@ -472,8 +534,13 @@ Sizes --> Loader["调用自定义 image loader"]
 **章节来源**
 - [frontend/components/home/editor-picks.tsx:1-75](file://frontend/components/home/editor-picks.tsx#L1-L75)
 
-### 热门帖子区块
+### 热门帖子区块（已更新）
 热门帖子最多展示 10 条已发布帖子，三级排序为评论数降序 → 浏览数降序 → 发布时间降序。草稿与已删除帖子一律排除。
+
+**重大更新**：
+- **集成 PostCardStats 组件**：每个帖子项现在显示图标化的互动统计行，包含点赞、评论、收藏计数
+- **新增导航链接**：区块头部添加了"View all posts"链接，指向 `/posts?sortBy=hottest`
+- **增强的用户体验**：用户可以直接从首页热门帖子区块跳转到完整的帖子列表页面
 
 **更新** 所有用户界面文本已本地化为英文，包括区块标题、描述、加载状态、错误消息和空态提示。数据字段使用英文版本（`titleEn`、`authorEn`）。
 
@@ -483,14 +550,17 @@ Start["HotPosts(city)"] --> Fetch["mockRepository.listHotPosts({ city })"]
 Fetch --> FilterPublished["过滤 ContentStatus=published"]
 FilterPublished --> Sort["评论数降序 → 浏览数降序 → 发布时间降序"]
 Sort --> Limit["截断至 Top 10"]
-Limit --> Render["渲染序号、标题、作者、评论数、浏览数、发布时间"]
+Limit --> RenderList["渲染帖子列表"]
+RenderList --> AddStats["为每个帖子添加 PostCardStats<br/>显示点赞、评论、收藏计数"]
+AddStats --> AddLink["添加 View all posts 链接<br/>href='/posts?sortBy=hottest'"]
+AddLink --> Complete["完成渲染"]
 ```
 
 **图表来源**
-- [frontend/components/home/hot-posts.tsx:11-66](file://frontend/components/home/hot-posts.tsx#L11-L66)
+- [frontend/components/home/hot-posts.tsx:11-75](file://frontend/components/home/hot-posts.tsx#L11-L75)
 
 **章节来源**
-- [frontend/components/home/hot-posts.tsx:1-66](file://frontend/components/home/hot-posts.tsx#L1-L66)
+- [frontend/components/home/hot-posts.tsx:1-75](file://frontend/components/home/hot-posts.tsx#L1-L75)
 
 ### 热门景点区块（已更新）
 热门景点按浏览量与发布时间排序，展示封面、名称、城市与评分、浏览数。空态与错误态沿用通用区块状态。**已集成响应式图片优化**，使用精确的 sizes 属性和自定义 image loader 实现最佳加载性能。
@@ -515,7 +585,7 @@ Sort --> Render["渲染封面、名称、城市、评分、浏览数"]
 Render --> ImageOpt["应用响应式图片优化"]
 ImageOpt --> Sizes["计算 sizes 属性"]
 Sizes --> Loader["调用自定义 image loader"]
-Render --> RatingDisplay["显示 0-5 分制评分<br/>Rating {item.rating.toFixed(1)}"]
+Render --> RatingDisplay["显示 0-5 分制评分<br/>Rating X.X"]
 Render --> ResponsiveGrid["响应式网格布局<br/>5列 → 3列 → 2列 → 1列"]
 ```
 
@@ -691,6 +761,7 @@ WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据
 - **搜索页面依赖（新增）**：查询引擎 `searchContent()`，站点框架组件。
 - 区块依赖：`useSectionData`、`mockRepository`、城市名称格式化。
 - **AI 助手依赖**：Provider 上下文，被功能导航与站点头部触发。**新增无障碍依赖**：焦点管理、键盘事件监听、滚动控制。
+- **PostCardStats 依赖（新增）**：`formatCount` 工具函数，`post-card-stats.module.css` 样式文件。
 - **图片优化依赖**：next/image 组件、自定义 image loader、Next.js 配置。
 - **双语数据依赖**：`cities.ts` 提供中英文数据映射，所有区块组件依赖 `cityNameEn()` 函数。
 - **评分系统依赖**：`types.ts` 定义评分字段类型，`mock-data.ts` 提供标准化的 0–5 分制数据，`query.ts` 使用标准化的搜索标签。
@@ -712,6 +783,7 @@ U2 --> U8
 Hero["Hero 首屏重构"] --> U0
 Search["搜索页面新增"] --> Query["查询引擎"]
 Accessibility["无障碍功能"] --> U4
+PostCardStats["PostCardStats 组件新增"] --> U7
 ImageOpt["图片优化系统"] --> U6
 ImageOpt --> U8
 Loader["image-loader.ts"] --> Config["next.config.ts"]
@@ -734,6 +806,7 @@ AttractionsPage["景点占位页"] --> Placeholder
 - [frontend/components/home/editor-picks.tsx:5-5](file://frontend/components/home/editor-picks.tsx#L5-L5)
 - [frontend/components/home/hot-posts.tsx:3-3](file://frontend/components/home/hot-posts.tsx#L3-L3)
 - [frontend/components/home/hot-attractions.tsx:5-5](file://frontend/components/home/hot-attractions.tsx#L5-L5)
+- [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/lib/home/types.ts:41-51](file://frontend/lib/home/types.ts#L41-L51)
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 - [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
@@ -743,6 +816,7 @@ AttractionsPage["景点占位页"] --> Placeholder
 - [frontend/components/home/editor-picks.tsx:5-5](file://frontend/components/home/editor-picks.tsx#L5-L5)
 - [frontend/components/home/hot-posts.tsx:3-3](file://frontend/components/home/hot-posts.tsx#L3-L3)
 - [frontend/components/home/hot-attractions.tsx:5-5](file://frontend/components/home/hot-attractions.tsx#L5-L5)
+- [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/lib/home/types.ts:41-51](file://frontend/lib/home/types.ts#L41-L51)
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 - [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
@@ -753,6 +827,11 @@ AttractionsPage["景点占位页"] --> Placeholder
 - **搜索功能优化（新增）**：纯函数查询引擎避免客户端状态，Server Component 渲染确保首屏可见性。
 - **三态加载**：`useSectionData` 统一管理 loading/error/ready，减少重复请求与竞态条件。
 - **城市参数稳定**：首页对 `searchParams` 做单值归一，避免数组参数导致的不必要重渲染。
+- **PostCardStats 组件优化（新增）**：
+  - 轻量级 SVG 图标，无需外部图标库依赖
+  - 内存高效的组件设计，无状态管理开销
+  - 样式隔离，避免 CSS 冲突
+  - 无障碍友好的语义化 HTML 结构
 - **响应式图片优化（已更新）**：
   - 自定义 image loader 直接将宽度参数传递给 Unsplash CDN，避免经过 Next.js 的 `/_next/image` 端点
   - 精确的 sizes 属性计算确保浏览器选择最优图片尺寸
@@ -781,6 +860,7 @@ AttractionsPage["景点占位页"] --> Placeholder
   - AI 助手测试从 S1-S9 扩展至 S1-S17，覆盖焦点陷阱、背景滚动锁定等无障碍功能
   - 热门景点响应式行为测试覆盖 1080px/720px/480px 断点
   - 双语界面 alt 文本测试确保国际化一致性
+  - **新增 PostCardStats 组件测试**：验证图标化统计显示、无障碍标签、数字格式化等功能
 
 ## 故障排查指南
 - **Hero 组件问题（已重构）**：
@@ -801,6 +881,17 @@ AttractionsPage["景点占位页"] --> Placeholder
   - 滚动穿透：确认 `document.body.style.overflow` 设置为 `hidden`；检查组件卸载时的清理函数。
   - 键盘导航失效：检查 `keydown` 事件监听是否正确注册和清理。
   - **文本本地化问题**：确认面板内所有文本已转换为英文
+- **PostCardStats 组件问题（新增）**：
+  - 组件未显示：确认 HotPosts 组件正确导入并使用了 `PostCardStats` 组件
+  - 图标不显示：检查 SVG 图标路径和样式是否正确应用
+  - 数字显示异常：确认 `formatCount` 函数正确处理数字格式化
+  - 无障碍标签缺失：检查 `aria-label` 属性是否正确设置
+  - 样式冲突：确认 `post-card-stats.module.css` 样式文件正确导入
+- **View all posts 链接问题（新增）**：
+  - 链接未显示：检查 HotPosts 组件的头部区域是否正确渲染链接
+  - 链接地址错误：确认 `href` 属性值为 `/posts?sortBy=hottest`
+  - 导航失败：检查 `/posts` 页面是否存在且支持 `sortBy=hottest` 参数
+  - 样式异常：检查 `.viewAll` 类名是否正确应用
 - **图片优化问题（已更新）**：
   - 图片未优化：确认 next.config.ts 中已配置自定义 loader；检查 image-loader.ts 是否正确导出。
   - 图片尺寸不正确：检查 sizes 属性是否与 CSS 网格布局匹配；确认 width/height 属性设置合理。
@@ -837,6 +928,8 @@ AttractionsPage["景点占位页"] --> Placeholder
 - [frontend/components/home/hero.tsx:14-76](file://frontend/components/home/hero.tsx#L14-L76)
 - [frontend/app/search/page.tsx:32-113](file://frontend/app/search/page.tsx#L32-L113)
 - [frontend/components/home/ai-assistant.tsx:56-177](file://frontend/components/home/ai-assistant.tsx#L56-L177)
+- [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
+- [frontend/components/home/hot-posts.tsx:31-35](file://frontend/components/home/hot-posts.tsx#L31-L35)
 - [frontend/lib/home/cities.ts:88-96](file://frontend/lib/home/cities.ts#L88-L96)
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 - [frontend/lib/search/query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
@@ -847,14 +940,18 @@ WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，�
 
 **重大更新** 本次变更实施了全面的英语优先本地化战略，将所有用户可见文本从中文转换为英文，同时建立了强大的双语数据层架构。这一架构不仅满足了当前的国际化需求，更为未来的多语言扩展奠定了坚实基础。所有组件的用户界面文本都已本地化，包括 Hero 首屏、功能导航、AI 助手、编辑推荐、热门帖子和热门景点。数据层采用中英文分离的设计，中文作为内容资产保留，英文用于界面展示，通过 TypeScript 类型确保数据完整性。
 
+**PostCardStats 组件引入** 本次变更引入了全新的 PostCardStats 组件，为热门帖子区块提供了图标化的互动统计展示。该组件使用 SVG 图标和语义化 HTML 结构，提供一致的视觉体验和无障碍支持，展示了点赞、评论、收藏三种互动类型的计数。
+
+**导航功能增强** 热门帖子区块现在包含了"View all posts"导航链接，直接指向 `/posts?sortBy=hottest`，为用户提供从首页快速访问完整帖子列表的能力，增强了用户体验的连贯性。
+
 **评分系统标准化** 本次变更还实施了严格的评分系统规范，将景点评分从 10 分制统一转换为 0–5 分制，确保数据一致性和产品规范的符合性。评分转换保持了原始数据的排序关系，并通过数据完整性守卫防止未来数据漂移。搜索标签也进行了标准化处理，GROUP_META 配置中的分组标题和回链文案已统一为英文常量，提升了国际化体验的一致性。
 
 **占位页框架增强** 社区和景点占位页现在使用统一的 PlaceholderPage 组件，提供完整的站点框架体验，包括站点头部、页脚和 main-content 区域，确保用户在任何入口都能获得一致的导航体验。
 
-**测试覆盖率提升** 测试套件从 208 个测试提升至约 228 个测试，新增了对热门景点响应式行为、占位页站点框架和 AI 助手错误消息的覆盖，显著提升了代码质量和可靠性。
+**测试覆盖率提升** 测试套件从 208 个测试提升至约 228 个测试，新增了对热门景点响应式行为、占位页站点框架、AI 助手错误消息和 PostCardStats 组件功能的覆盖，显著提升了代码质量和可靠性。
 
 **规格覆盖率审计** 全面的规格覆盖率审计显示前端 wanderchain 模块达到 79.5% 的覆盖率，其中严格覆盖率 47.2%，宽松覆盖率 64.8%。AI 助手测试从 S1-S9 扩展至 S1-S17，热门景点区块的响应式断点从移动优先调整为桌面优先策略，双语界面的 alt 文本规范得到修正。
 
 架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。双语数据层的引入进一步增强了系统的可扩展性和可维护性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。随着 `redesign-home-hero-with-search` 变更的归档，所有规格引用现已指向生产就绪的主规格文件 `openspec/specs/wanderchain-homepage/spec.md`，确保了文档与代码实现的完全同步。
 
-**更新** 随着英语优先本地化、评分系统标准化、占位页框架增强、测试覆盖率提升和规格覆盖率审计的完成，WanderChain 首页现在为全球用户提供一致的英文体验和标准化的评分显示，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。数据完整性验证机制确保了 Mock 数据和未来真实数据源都遵循统一的 0–5 评分约束，为系统的长期可维护性提供了保障。新增的单列断点和增强的站点框架进一步提升了用户体验的一致性和可访问性。全面的规格覆盖率审计为代码质量提供了量化评估基准，79.5% 的前端覆盖率表明系统在功能完整性和测试覆盖方面已达到较高水平。
+**更新** 随着英语优先本地化、PostCardStats 组件引入、导航功能增强、评分系统标准化、占位页框架增强、测试覆盖率提升和规格覆盖率审计的完成，WanderChain 首页现在为全球用户提供一致的英文体验和标准化的评分显示，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。数据完整性验证机制确保了 Mock 数据和未来真实数据源都遵循统一的 0–5 评分约束，为系统的长期可维护性提供了保障。新增的单列断点和增强的站点框架进一步提升了用户体验的一致性和可访问性。全面的规格覆盖率审计为代码质量提供了量化评估基准，79.5% 的前端覆盖率表明系统在功能完整性和测试覆盖方面已达到较高水平。

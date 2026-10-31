@@ -4,6 +4,7 @@ import {
   gotoHome,
   gotoPath,
   observedText,
+  waitForUrl,
   watchText,
 } from './support/helpers'
 
@@ -87,7 +88,7 @@ test.describe('U2 · 首页骨架与区块编排', () => {
     ])
 
     await page.getByRole('button', { name: 'Shanghai', exact: true }).click()
-    await page.waitForURL((url) => url.searchParams.get('city') === 'shanghai')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'shanghai')
 
     await expect(page.locator('#editor-picks')).toContainText(
       'Plane trees and coffee on Wukang Road',
@@ -113,7 +114,7 @@ test.describe('U2 · 首页骨架与区块编排', () => {
 
     for (const city of ['Beijing', 'Shanghai', 'Chengdu']) {
       await page.getByRole('button', { name: city, exact: true }).click()
-      await page.waitForURL((url) => url.searchParams.get('city') === city.toLowerCase())
+      await waitForUrl(page,(url) => url.searchParams.get('city') === city.toLowerCase())
     }
 
     await expect(page.locator('#editor-picks')).toContainText("A gaiwan of tea in People's Park")
@@ -160,7 +161,7 @@ test.describe('U2 · 城市参数', () => {
     )
 
     await page.getByRole('button', { name: 'Shanghai', exact: true }).click()
-    await page.waitForURL(
+    await waitForUrl(page,
       (url) => url.searchParams.get('city') === 'shanghai' && url.searchParams.get('utm') === 'x',
     )
   })

@@ -4,6 +4,7 @@ import {
   expectNoHorizontalOverflow,
   gotoHome,
   gridColumnCount,
+  waitForUrl,
 } from './support/helpers'
 
 const SECTION = '#editor-picks'
@@ -74,7 +75,7 @@ test.describe('U6 · 编辑推荐区块 · 桌面端', () => {
   test('S4 · 切换城市后重新取数并展示新城市精选', async ({ page }) => {
     // S4 When city 由 all 变为 shanghai · Then 区块重新取数，展示上海相关精选
     await page.getByRole('button', { name: 'Shanghai', exact: true }).click()
-    await page.waitForURL((url) => url.searchParams.get('city') === 'shanghai')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'shanghai')
 
     const section = page.locator(SECTION)
     await expect(section.locator('ul > li h3')).toHaveText([
@@ -162,7 +163,7 @@ test.describe('U6 · 编辑推荐区块 · 桌面端', () => {
     for (const city of ['Beijing', 'Shanghai', 'Chengdu']) {
       await page.getByRole('button', { name: city, exact: true }).click()
     }
-    await page.waitForURL((url) => url.searchParams.get('city') === 'chengdu')
+    await waitForUrl(page,(url) => url.searchParams.get('city') === 'chengdu')
 
     const section = page.locator(SECTION)
     await expect(section.locator('ul > li h3')).toHaveText([

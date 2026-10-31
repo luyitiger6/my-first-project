@@ -4,6 +4,7 @@ import {
   NARROW_VIEWPORT,
   expectNoHorizontalOverflow,
   gotoHome,
+  waitForUrl,
 } from './support/helpers'
 
 const HERO = 'section[aria-labelledby="hero-title"]'
@@ -81,7 +82,7 @@ test.describe('首页首屏 · 桌面端 1440×900', () => {
     await input.fill('chengdu')
     await input.press('Enter')
 
-    await page.waitForURL((url) => url.pathname === '/search' && url.searchParams.get('q') === 'chengdu')
+    await waitForUrl(page, (url) => url.pathname === '/search' && url.searchParams.get('q') === 'chengdu')
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Search the site')
   })
 
@@ -104,7 +105,7 @@ test.describe('首页首屏 · 桌面端 1440×900', () => {
     const link = page.locator(HERO).getByRole('link', { name: 'Enter the travel community' })
     await expect(link).toHaveAttribute('href', '/community')
     await link.click()
-    await page.waitForURL((url) => url.pathname === '/community')
+    await waitForUrl(page, (url) => url.pathname === '/community')
   })
 
   test('S4 · 文字入口 “Browse attraction guides” 跳转 /attractions', async ({ page }) => {
@@ -112,7 +113,7 @@ test.describe('首页首屏 · 桌面端 1440×900', () => {
     const link = page.locator(HERO).getByRole('link', { name: 'Browse attraction guides' })
     await expect(link).toHaveAttribute('href', '/attractions')
     await link.click()
-    await page.waitForURL((url) => url.pathname === '/attractions')
+    await waitForUrl(page, (url) => url.pathname === '/attractions')
   })
 
   test('S4 · 文字入口 “Browse by city” 滚动到 #cities 且不改变路径', async ({ page }) => {
