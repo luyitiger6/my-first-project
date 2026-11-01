@@ -77,27 +77,30 @@ ai-workspace/
 ├── AGENTS.md                  ← 你正在读的文件
 ├── README.md                  人看的快速上手
 ├── .gitmodules                两个子模块的 URL（使用者可替换；工作区改名不碰）
-├── backend/  [submodule]      独立仓库：Spring Boot 3.5.5 / Java 17，wanderchain 账户认证（Maven 项目根）
+├── backend/  [submodule]      独立仓库：Spring Boot 3.5.5 / Java 17，wanderchain 账户认证、帖子与景点读接口（Maven 项目根）
 │   ├── pom.xml                Maven 构建文件（web / JPA / MySQL / Redis / BCrypt / jjwt）
 │   └── src/
 │       ├── main/java/com/luyi/myfirst/
 │       │   ├── Application.java
-│       │   ├── common/enums/        账户与帖子状态枚举
-│       │   ├── common/exception/    错误码基类、认证/帖子错误枚举与业务异常
-│       │   ├── common/id/           ULID 生成（账户、会话、帖子主键）
+│       │   ├── common/enums/        账户、帖子与景点状态枚举
+│       │   ├── common/exception/    错误码基类、认证/帖子/景点错误枚举与业务异常
+│       │   ├── common/id/           ULID 生成（账户、会话、帖子、景点主键）
 │       │   ├── common/persistence/  业务实体公共八列基类（MappedSuperclass）
 │       │   ├── common/security/     口令哈希抽象与 BCrypt 实现、强度规则
 │       │   ├── common/web/          统一错误体、全局异常处理、响应基类型
 │       │   ├── config/              wanderchain.auth 配置绑定、MVC 拦截器装配
 │       │   ├── dao/auth/            entity / repository / converter（账户与会话持久化）
 │       │   ├── dao/post/            entity / repository / converter（帖子持久化）
+│       │   ├── dao/attraction/      entity / repository / converter（景点持久化）
 │       │   ├── service/auth/        接口，impl/ 实现，model/ 载体，support/ 支撑件
 │       │   ├── service/post/        帖子接口、impl/ 实现、model/ 视图、support/ 校验与游标
+│       │   ├── service/attraction/  景点读接口、impl/ 实现、model/ 载体、support/ 查询白名单与钳制
 │       │   ├── web/auth/            REST 控制器，dto/ 请求响应体，interceptor/ 认证拦截与来源校验
-│       │   └── web/post/            帖子 REST 控制器与 dto
+│       │   ├── web/post/            帖子 REST 控制器与 dto
+│       │   └── web/attraction/      景点两个公开 GET（列表/榜单与详情）与 dto
 │       ├── main/resources/
 │       │   ├── application.yml      数据源、Redis、wanderchain.auth 配置
-│       │   ├── schema.sql           wanderchain 库建表（accounts / auth_sessions / posts）
+│       │   ├── schema.sql           wanderchain 库建表（accounts / auth_sessions / posts / attractions，含景点种子）
 │       │   └── db/ai-chat/schema.sql  ai_chat_gate 库建表（AI 会话四表）
 │       └── test/java/com/luyi/myfirst/  按被测类所在包放置的单元测试 + 容器装配契约测试
 ├── frontend/ [submodule]      独立仓库：Next.js 16 App Router + React 19 + TypeScript（npm 项目根）
@@ -107,21 +110,30 @@ ai-workspace/
 │   │   ├── layout.tsx          根布局（语言、标题、全局样式、AuthProvider）
 │   │   ├── page.tsx            首页（城市筛选 + 五个区块）
 │   │   ├── login/ register/    登录与两步注册（图形码 → 邮箱码）
-│   │   ├── community/ attractions/  板块占位页
+│   │   ├── search/             全站搜索（服务端算三态，景点条目可点）
+│   │   ├── posts/              帖子列表与 `/posts/[publicId]` 详情
+│   │   ├── attractions/        景点列表（三个约束型榜单 + 完整列表）与 `/attractions/[publicId]` 详情
+│   │   ├── community/          板块占位页
 │   │   └── api/[...path]/route.ts  同源 API 代理（运行期 BACKEND_URL）
 │   ├── components/
 │   │   ├── home/               功能导航、城市入口、AI 助手与三类内容区块
+│   │   ├── attractions/        景点卡片、三个榜单区块、列表、详情与事实卡
+│   │   ├── posts/              帖子卡片、列表、详情、评论与互动条
 │   │   ├── auth/               认证 Provider、表单与账号菜单（会话只来自 /api/auth/me）
 │   │   └── site/               页头、页脚与占位页
 │   ├── lib/
 │   │   ├── home/               类型契约、城市白名单、Mock 数据与仓储
-│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对；当前覆盖 auth / posts）
-│   │   └── auth/               认证 HTTP 客户端与错误归一化
+│   │   ├── attractions/        景点 HTTP 客户端、视图模型；server.ts 供搜索页服务端取数
+│   │   ├── posts/              帖子 HTTP 客户端、视图模型与评论输入校验
+│   │   ├── search/             纯同步检索函数（编辑推荐 / 帖子 / 景点分组）
+│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对；当前覆盖 auth / posts / attractions）
+│   │   ├── auth/               认证 HTTP 客户端与错误归一化
+│   │   └── backend-url.ts      后端地址的唯一读法（同源代理与服务端取数共用）
 │   ├── vitest.config.ts        测试配置（vitest + jsdom）
 │   └── vitest.setup.ts         jest-dom 断言扩展
 ├── docs/                      人与 agent 共读的说明文档
 │   ├── conventions/            开发约定唯一入口（`README.md` 索引 + 三份约定正文）
-│   ├── specs/wanderchain/      首页与搜索页的单元文档（断点由 08 号闸门比对实现）
+│   ├── specs/wanderchain/      首页、搜索页与景点列表 / 详情的单元文档（断点由 08 号闸门比对实现）
 │   ├── e2e/                    Playwright 端到端用例与报告（工作区根运行）
 │   ├── db-design-spec.md       数据库设计规范（命名、主键、公共字段）
 │   └── spec-coverage-audit.md  spec 覆盖审计
@@ -176,7 +188,7 @@ ai-workspace/
 | 只查建表 | `powershell -File harness\checks\06-schema-check.ps1`（默认连 `127.0.0.1:8806` 的 `ai_chat_gate` 与 `wanderchain`） |
 | 只查文档断点 | `powershell -File harness\checks\08-spec-doc-breakpoints.ps1` |
 | 只查缓存 | `powershell -File harness\checks\09-redis-check.ps1`（默认连 `127.0.0.1:6606` 的 db 3） |
-| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 的字段名与类型双向比对；当前受管 auth / posts，清单见脚本顶部 `$contractPairs`） |
+| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 的字段名与类型双向比对；当前受管 auth / posts / attractions，清单见脚本顶部 `$contractPairs`） |
 | 只查约定 | `powershell -File harness\checks\11-conventions-check.ps1`（约定文档四个固定小节与真源路径、依赖描述与两侧清单一致、后端分层依赖方向） |
 | 写新模块前 | 读 `docs/conventions/README.md`——约定入口与索引，后端/前端/样式三份正文从这里进入 |
 | 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
@@ -186,6 +198,7 @@ ai-workspace/
 | 工作区改名 | `node scaffold/rename.mjs --name <新 slug> --display "<新展示名>"`（只改 AGENTS.md / README.md，改名后跑一键验收） |
 | 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（监听 `http://localhost:8989`；需先设置 DB / Redis / JWT 环境变量） |
 | 帖子接口 | `GET /api/posts?limit=&cursor=` / `GET /api/posts/{publicId}` 公开；`POST` / `PUT` / `DELETE /api/posts/{publicId}` 需登录 |
+| 景点接口 | `GET /api/attractions?city=&sortBy=&collection=&limit=` / `GET /api/attractions/{publicId}` 公开只读（只返回已发布、未删除、已核实；`limit` 默认 20、上限 50） |
 | 前端开发 | `cd frontend; npm run dev`（访问 `http://localhost:3000`，`/api` 由 Route Handler 代理到 8989） |
 | 前端构建 | `cd frontend; npm run build`（产物含 `.next/standalone`） |
 | 前端测试 | `cd frontend; npm run test` |
@@ -213,7 +226,7 @@ ai-workspace/
 - 运行期**依赖** `127.0.0.1:8806` 的 `wanderchain` 库与 `127.0.0.1:6606` 的 Redis（db 3）：两者不可达时启动即失败，不存在内存兜底。`mvn test` 直连真实实例而非 H2 / 嵌入式 Redis——生成列与唯一索引的语义本身就是断言对象，替身测不出真实行为。`06-schema-check` 复用同一 MySQL 实例，但只操作 `ai_chat_gate` 与 `wanderchain` 两个专用 schema；不新建/删除容器，不触碰 `green-note` 业务库。
 - 建表由受版本控制的 DDL 脚本承担（`backend/src/main/resources/schema.sql` 与 `db/ai-chat/schema.sql`），应用启动时幂等执行，`ddl-auto=none`。本项目不做迁移：库里没有需要保住的数据，改结构直接 drop 重建，因此不引入迁移框架，也没有 `flyway_schema_history` 这类迁移账本。
 - 静态红线目前四条：Java 的 TODO 占位、`System.out`、`@Disabled`，以及前端的 TODO 占位与跳过写法；由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
-- `10-contract-check` 只覆盖**认证契约面**（后端 `web/auth/dto/*.java`、`common/web/ErrorResponse.java` 与前端 `lib/contracts/auth.ts`），受管范围由脚本顶部的 `$contractPairs` 清单配置、追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。
+- `10-contract-check` 覆盖**已登记契约面**（受管清单由脚本顶部的 `$contractPairs` 配置，当前 auth / posts / attractions 三组）：后端 `web/*/dto/*.java` 与 `common/web/ErrorResponse.java` 对前端 `lib/contracts/*.ts`，追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。
 - `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。
 - 子模块初始化需要访问两个远程仓库（网络与凭据）。00 闸门本身不联网、不自动初始化：未就绪时以退出码 1 失败并打印 `git submodule update --init --recursive`，这是护栏行为而非环境故障。
 - 应用身份（Java 包名、Maven artifactId、前端包名）的改名职责在 `backend` / `frontend` 各自仓库内；工作区改名只改 `AGENTS.md` 与 `README.md`，不改 `.gitmodules`，也不改写子模块 URL。

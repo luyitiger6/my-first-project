@@ -14,61 +14,81 @@ const ALL_POSTS = [
     rank: '01',
     title: 'Chengdu rain, falling into a cup of tea',
     meta: 'Xiaozhou · Chengdu · Oct 11',
-    stats: '42 comments · 9,100 views',
+    upvotes: '245',
+    comments: '42',
+    bookmarks: '81',
   },
   {
     rank: '02',
     title: 'The Bund: wind from dusk into the night',
     meta: 'Aran · Shanghai · Oct 12',
-    stats: '42 comments · 8,600 views',
+    upvotes: '198',
+    comments: '42',
+    bookmarks: '73',
   },
   {
     rank: '03',
     title: "Riding the whole Xi'an city wall",
     meta: "Chenmo · Xi'an · Oct 10",
-    stats: '31 comments · 7,400 views',
+    upvotes: '156',
+    comments: '31',
+    bookmarks: '44',
   },
   {
     rank: '04',
     title: 'Guangzhou morning tea map: seven days, no repeats',
     meta: 'Aran · Guangzhou · Oct 9',
-    stats: '28 comments · 6,800 views',
+    upvotes: '134',
+    comments: '28',
+    bookmarks: '62',
   },
   {
     rank: '05',
     title: 'Hiking the Hangzhou tea hills: the wrong turn is the surprise',
     meta: 'Linshen · Hangzhou · Oct 8',
-    stats: '27 comments · 6,100 views',
+    upvotes: '128',
+    comments: '27',
+    bookmarks: '51',
   },
   {
     rank: '06',
     title: 'Winter in Sanya starts with a glass of coconut water',
     meta: 'Xiaozhou · Sanya · Oct 7',
-    stats: '25 comments · 5,900 views',
+    upvotes: '142',
+    comments: '25',
+    bookmarks: '58',
   },
   {
     rank: '07',
     title: 'Independent bookshops in Beijing hutongs',
     meta: 'Chenmo · Beijing · Oct 6',
-    stats: '22 comments · 5,200 views',
+    upvotes: '115',
+    comments: '22',
+    bookmarks: '49',
   },
   {
     rank: '08',
     title: "A walking route through Shanghai's plane-tree district",
     meta: 'Linshen · Shanghai · Oct 5',
-    stats: '19 comments · 4,800 views',
+    upvotes: '98',
+    comments: '19',
+    bookmarks: '37',
   },
   {
     rank: '09',
     title: 'Two days around Chengdu: old towns and bamboo groves',
     meta: 'Aran · Chengdu · Oct 4',
-    stats: '18 comments · 4,400 views',
+    upvotes: '87',
+    comments: '18',
+    bookmarks: '33',
   },
   {
     rank: '10',
     title: 'Sweet soup shops under Guangzhou arcades',
     meta: 'Xiaozhou · Guangzhou · Oct 3',
-    stats: '16 comments · 3,900 views',
+    upvotes: '76',
+    comments: '16',
+    bookmarks: '29',
   },
 ]
 
@@ -85,12 +105,14 @@ test.describe('U7 · 热门帖子区块 · 桌面端', () => {
     for (const card of await cards.all()) {
       await expect(card.locator('span[aria-hidden="true"]')).toHaveCount(1)
       await expect(card.locator('h3')).toHaveCount(1)
-      await expect(card.locator('p')).toHaveCount(2)
+      await expect(card.locator('p')).toHaveCount(1)
+      // 互动统计是图标化三列（赞 / 评 / 藏），不再是「N comments · N views」一行文本。
+      await expect(card.locator('[aria-label="Post interactions"] > span')).toHaveCount(3)
     }
 
     const first = cards.first()
     await expect(first.locator('h3')).toHaveText(ALL_POSTS[0].title)
-    await expect(first.locator('p')).toHaveText([ALL_POSTS[0].meta, ALL_POSTS[0].stats])
+    await expect(first.locator('p')).toHaveText(ALL_POSTS[0].meta)
   })
 
   test('S2 · 排名从 01 起两位补零且 aria-hidden，顺序由 ol 承担', async ({ page }) => {
@@ -134,9 +156,7 @@ test.describe('U7 · 热门帖子区块 · 桌面端', () => {
     ])
     await expect(section.locator('ol > li p')).toHaveText([
       'Xiaozhou · Chengdu · Oct 11',
-      '42 comments · 9,100 views',
       'Aran · Chengdu · Oct 4',
-      '18 comments · 4,400 views',
     ])
   })
 
@@ -147,11 +167,23 @@ test.describe('U7 · 热门帖子区块 · 桌面端', () => {
     await expect(cards.nth(4).locator('p').first()).toHaveText('Linshen · Hangzhou · Oct 8')
   })
 
-  test('S7 · 浏览数按千分位格式化，评论数保留原值', async ({ page }) => {
-    // S7 When 浏览数 9100 · Then 显示 9,100 views；评论数始终显示原值（42 comments）
+  test('S7 · 互动计数三列顺序为赞 / 评 / 藏，数值保持原值', async ({ page }) => {
+    // S7 When 首条帖子赞 245 · 评 42 · 藏 81 · Then 三列按该顺序渲染且各自带可读 aria-label
     const cards = page.locator(`${SECTION} ol > li`)
-    await expect(cards.nth(0).locator('p').nth(1)).toHaveText('42 comments · 9,100 views')
-    await expect(cards.nth(1).locator('p').nth(1)).toHaveText('42 comments · 8,600 views')
+    const first = cards.nth(0)
+    await expect(first.locator('[aria-label="Post interactions"] > span')).toHaveText([
+      ALL_POSTS[0].upvotes,
+      ALL_POSTS[0].comments,
+      ALL_POSTS[0].bookmarks,
+    ])
+    await expect(first.locator(`[aria-label="${ALL_POSTS[0].upvotes} upvotes"]`)).toBeVisible()
+    await expect(first.locator(`[aria-label="${ALL_POSTS[0].comments} comments"]`)).toBeVisible()
+    await expect(first.locator(`[aria-label="${ALL_POSTS[0].bookmarks} bookmarks"]`)).toBeVisible()
+    await expect(cards.nth(1).locator('[aria-label="Post interactions"] > span')).toHaveText([
+      ALL_POSTS[1].upvotes,
+      ALL_POSTS[1].comments,
+      ALL_POSTS[1].bookmarks,
+    ])
   })
 
   test('S8 · 切换城市后重新取数，排名从 01 重新开始', async ({ page }) => {
@@ -165,9 +197,11 @@ test.describe('U7 · 热门帖子区块 · 桌面端', () => {
     await expect(section.locator('ol > li h3')).toHaveText([
       'Independent bookshops in Beijing hutongs',
     ])
-    await expect(section.locator('ol > li p')).toHaveText([
-      'Chenmo · Beijing · Oct 6',
-      '22 comments · 5,200 views',
+    await expect(section.locator('ol > li p')).toHaveText(['Chenmo · Beijing · Oct 6'])
+    await expect(section.locator('ol > li [aria-label="Post interactions"] > span')).toHaveText([
+      ALL_POSTS[6].upvotes,
+      ALL_POSTS[6].comments,
+      ALL_POSTS[6].bookmarks,
     ])
   })
 
@@ -178,21 +212,24 @@ test.describe('U7 · 热门帖子区块 · 桌面端', () => {
     const metrics = await first.evaluate((element) => {
       const rank = element.querySelector('span')
       const title = element.querySelector('h3')
-      const stats = element.querySelectorAll('p')[1]
+      const stats = element.querySelector('[aria-label="Post interactions"]')
       const titleStyle = title ? getComputedStyle(title) : null
-      const statsStyle = stats ? getComputedStyle(stats) : null
+      // 图标化统计的三列必须落在同一行，才不会被挤压成三行。
+      const itemTops = stats
+        ? Array.from(stats.children).map((child) => Math.round(child.getBoundingClientRect().top))
+        : []
       return {
         rankWidth: rank ? rank.getBoundingClientRect().width : 0,
         titleWhiteSpace: titleStyle?.whiteSpace ?? '',
         titleLineClamp: titleStyle?.getPropertyValue('-webkit-line-clamp') ?? '',
-        statsWhiteSpace: statsStyle?.whiteSpace ?? '',
+        statsOnOneLine: itemTops.length === 3 && new Set(itemTops).size === 1,
       }
     })
 
     expect(metrics.rankWidth).toBe(28)
     expect(metrics.titleWhiteSpace).not.toBe('nowrap')
     expect(metrics.titleLineClamp === '' || metrics.titleLineClamp === 'none').toBe(true)
-    expect(metrics.statsWhiteSpace).toBe('nowrap')
+    expect(metrics.statsOnOneLine).toBe(true)
     await expectNoHorizontalOverflow(page, '桌面端热门帖子')
   })
 
@@ -225,7 +262,7 @@ test.describe('U7 · 热门帖子区块 · 超窄屏 320×667', () => {
     const first = page.locator(`${SECTION} ol > li`).first()
     const layout = await first.evaluate((element) => {
       const title = element.querySelector('h3')
-      const stats = element.querySelectorAll('p')[1]
+      const stats = element.querySelector('[aria-label="Post interactions"]')
       const titleBox = title?.getBoundingClientRect()
       const statsBox = stats?.getBoundingClientRect()
       return {

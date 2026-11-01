@@ -148,8 +148,9 @@ test.describe('U2 · 城市参数', () => {
     await expect(page.locator('#hot-posts')).toContainText(
       'Independent bookshops in Beijing hutongs',
     )
-    await expect(page.locator('#hot-attractions ul li')).toHaveCount(1)
-    await expect(page.locator('#hot-attractions')).toContainText('The Palace Museum')
+    // 6.1 起热门景点读后端：北京种子 2 条（Forbidden City / Temple of Heaven）。
+    await expect(page.locator('#hot-attractions ul li')).toHaveCount(2)
+    await expect(page.locator('#hot-attractions')).toContainText('Forbidden City')
   })
 
   test('S3 · 其余单值参数在城市切换后被保留', async ({ page }) => {

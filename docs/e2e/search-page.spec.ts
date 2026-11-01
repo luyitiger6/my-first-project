@@ -37,11 +37,12 @@ test.describe('Search · 搜索结果页 · 桌面端', () => {
 
   test('S2 · 三类同时命中，分组顺序固定且每组显示组名与条数', async ({ page }) => {
     // S2 When 访问 /search?q=成都 · Then 分组顺序 Editor's picks → Posts → Attractions，每组显示组名与条数
+    // 6.3 起景点分组由后端取数：成都种子 2 条（Panda Base / Wuhou Shrine）。
     await gotoSearch(page, '成都')
     const groups = page.locator(GROUPS)
     await expect(groups).toHaveCount(3)
     await expect(groups.locator('h2')).toHaveText(["Editor's picks", 'Posts', 'Attractions'])
-    await expect(groups.locator('h2 + p')).toHaveText(['1', '2', '1'])
+    await expect(groups.locator('h2 + p')).toHaveText(['1', '2', '2'])
 
     await expect(groups.nth(0).locator('li')).toHaveCount(1)
     await expect(groups.nth(0)).toContainText("A gaiwan of tea in People's Park")
@@ -52,31 +53,35 @@ test.describe('Search · 搜索结果页 · 桌面端', () => {
     await expect(groups.nth(1)).toContainText('Two days around Chengdu: old towns and bamboo groves')
     await expect(groups.nth(1)).toContainText('Chengdu · Xiaozhou · 42 comments')
 
-    await expect(groups.nth(2).locator('li')).toHaveCount(1)
-    await expect(groups.nth(2)).toContainText('Kuanzhai Alley')
-    await expect(groups.nth(2)).toContainText('Chengdu · Rating 4.3 · 17,000 views')
+    await expect(groups.nth(2).locator('li')).toHaveCount(2)
+    await expect(groups.nth(2).locator('li > p:first-of-type')).toHaveText([
+      'Chengdu Panda Base',
+      'Wuhou Shrine',
+    ])
+    await expect(groups.nth(2)).toContainText('Chengdu · Rating 4.9 · 14,200 views')
+    await expect(groups.nth(2)).toContainText('Chengdu · Rating 4.3 · 5,100 views')
   })
 
   test('S2 · And 顶部回显总条数与去空白后的关键词', async ({ page }) => {
-    // S2 And 顶部回显 {N} results for “成都”.，N = 各组 items 之和 = 4
+    // S2 And 顶部回显 {N} results for “成都”.，N = 各组 items 之和 = 5
     await gotoSearch(page, '成都')
-    await expect(page.locator('#main-content')).toContainText('4 results for “成都”.')
+    await expect(page.locator('#main-content')).toContainText('5 results for “成都”.')
     const counts = await page.locator(`${GROUPS} h2 + p`).allTextContents()
-    expect(counts.reduce((sum, value) => sum + Number(value), 0)).toBe(4)
+    expect(counts.reduce((sum, value) => sum + Number(value), 0)).toBe(5)
   })
 
   test('S4 · 关键词去首尾空白，结果与无空白时一致', async ({ page }) => {
     // S4 When q=%20%20chengdu%20%20 · Then 回显 chengdu，结果与 q=chengdu 完全一致
     await gotoSearch(page, '  chengdu  ')
-    await expect(page.locator('#main-content')).toContainText('4 results for “chengdu”.')
+    await expect(page.locator('#main-content')).toContainText('5 results for “chengdu”.')
     await expect(page.locator(`${GROUPS} h2`)).toHaveText(["Editor's picks", 'Posts', 'Attractions'])
-    await expect(page.locator(`${GROUPS} h2 + p`)).toHaveText(['1', '2', '1'])
+    await expect(page.locator(`${GROUPS} h2 + p`)).toHaveText(['1', '2', '2'])
   })
 
   test('S4 · And 大小写不敏感，slug 不参与匹配（xian 零命中）', async ({ page }) => {
     // S4 And Chengdu 同样命中；英文名 Xi'an 与 slug xian 不同形，因此 xian 零命中
     await gotoSearch(page, 'Chengdu')
-    await expect(page.locator('#main-content')).toContainText('4 results for “Chengdu”.')
+    await expect(page.locator('#main-content')).toContainText('5 results for “Chengdu”.')
 
     await gotoSearch(page, 'xian')
     await expect(page.locator('#main-content')).toContainText('Nothing found for “xian”.')
@@ -118,13 +123,13 @@ test.describe('Search · 搜索结果页 · 桌面端', () => {
     await expect(page.locator(GROUPS)).toHaveCount(0)
   })
 
-  test('S7 · 草稿与已删除内容不可搜', async ({ page }) => {
-    // S7 When 搜索只存在于 draft / removed 内容中的文字 · Then 结果为 0 条
-    // 这些条目真实存在于 Mock 数据，只是不可发布态；零命中证明发布态过滤生效。
+  test('S7 · 草稿与不可发布内容不可搜', async ({ page }) => {
+    // S7 When 搜索只存在于 draft / removed 内容里的文字 · Then 结果为 0 条
+    // 'Yu Garden' 是景点种子里的 draft（其余 12 条 published），零命中证明发布态过滤生效。
     const draftOnlyQueries = [
       'removed old post',
       'viewing deck',
-      'retired old attraction',
+      'Yu Garden',
       'last half hour',
     ]
 
@@ -158,8 +163,9 @@ test.describe('Search · 搜索结果页 · 桌面端', () => {
     expect(html).not.toContain('<script>alert')
   })
 
-  test('§4.1 · 结构契约：唯一 h1、分组 section 语义、条目非链接', async ({ page }) => {
-    // §4.1 全页唯一 h1；每个分组是带 aria-labelledby 的 section；条目为 li 且内部无 <a>
+  test('§4.1 · 结构契约：唯一 h1、分组 section 语义、只有景点条目带链接', async ({ page }) => {
+    // §4.1 全页唯一 h1；每个分组是带 aria-labelledby 的 section；
+    // 条目为 li，景点标题是链接（6.3 起 href 来自后端 publicId），其余两类为纯文本
     await gotoSearch(page, '成都')
     await expect(page.locator('h1')).toHaveCount(1)
     await expect(page.locator('h1')).toHaveText('Search the site')
@@ -172,8 +178,28 @@ test.describe('Search · 搜索结果页 · 桌面端', () => {
       await expect(group).toHaveAttribute('aria-labelledby', /^search-group-/)
       await expect(group.locator('h2')).toHaveCount(1)
     }
-    expect(await page.locator(`${GROUPS} li a`).count()).toBe(0)
-    await expect(page.locator(`${GROUPS} li`)).toHaveCount(4)
+
+    const links = page.locator(`${GROUPS} li a`)
+    await expect(links).toHaveCount(2)
+    await expect(links.first()).toHaveAttribute('href', /^\/attractions\/[0-9A-Z]{26}$/)
+    // 编辑推荐与帖子没有详情页，条目内部不得有链接。
+    await expect(groups.nth(0).locator('li a')).toHaveCount(0)
+    await expect(groups.nth(1).locator('li a')).toHaveCount(0)
+    await expect(page.locator(`${GROUPS} li`)).toHaveCount(5)
+  })
+
+  test('§4.1 · 景点条目点进去就是详情页', async ({ page }) => {
+    // 7.2 链路三：/search?q= 景点条目 → 详情（公共 publicId 来自后端）
+    await gotoSearch(page, '沙面岛')
+    const link = page.locator(`${GROUPS} li a`).first()
+    await expect(link).toHaveText('Shamian Island')
+    await expect(link).toHaveAttribute('href', /^\/attractions\/[0-9A-Z]{26}$/)
+    await link.click()
+
+    await waitForUrl(page, (url) => url.pathname.startsWith('/attractions/'))
+    await expect(page.locator('h1')).toHaveText('Shamian Island')
+    // 详情页必须带着核实时间，否则这条链路就退化成了一张卡片。
+    await expect(page.getByText(/^Checked/)).toHaveText(/^Checked [A-Z][a-z]{2} \d{4}$/)
   })
 })
 

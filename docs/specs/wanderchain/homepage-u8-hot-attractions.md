@@ -19,39 +19,40 @@
 | # | 能力 | 说明 |
 |---|---|---|
 | 1 | 景点卡片网格 | 1:1 封面 + 名称 + 城市与评分 + 浏览量 |
-| 2 | 排序 | 浏览量降 → 发布时间降 → `id` 升（由 U0 保证） |
-| 3 | 只展示已发布 | `status === 'published'`（由 U0 保证） |
-| 4 | 城市过滤 | 当前城市 + 全城通用（`all`） |
-| 5 | 上限 5 条 | `HOT_ATTRACTIONS_LIMIT` |
-| 6 | 评分展示 | 固定一位小数（`toFixed(1)`） |
+| 2 | 排序 | 按后端 `sortBy=hot` 的返回顺序渲染，组件不重排 |
+| 3 | 只展示已发布 | 由后端保证（只返回 `published`、未删除、已核实的景点），组件不做状态过滤 |
+| 4 | 城市过滤 | 当前城市 + 全城通用（`all`）；过滤条件交给后端查询参数 |
+| 5 | 上限 5 条 | `attractionsApi.listHotAttractions` 固定传 `limit=5` |
+| 6 | 评分展示 | 有评分时固定一位小数（`toFixed(1)`）；`null` 显示 `Not rated yet` |
 | 7 | 浏览数格式化 | `formatCount`（`en-US` 千分位） |
 | 8 | 三态 | 复用 U2 的 `SectionLoading` / `SectionError` / `EmptyState` |
-| 9 | 封面图 | 固定 1:1，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<name> cover"` |
+| 9 | 封面图 | 固定 1:1，走 `next/image` + 自定义 loader 按响应式档位出图，懒加载，`alt="<name> cover"`；`coverUrl` 为空时渲染 1:1 占位块 |
+| 10 | 卡片跳转 | 整卡 `<Link>` 到 `/attractions/{publicId}`，`publicId` 直接用作 React key |
 
 ### 1.2 不包含
 
 | 排除项 | 归属 |
 |---|---|
-| 景点详情页与跳转 | 未立项（当前卡片不可点） |
 | 收藏、打卡、路线规划 | 未立项 |
 | 评分交互（打分 / 评论） | 未立项，评分只读 |
-| 景点标签、开放时间、门票 | 数据模型无这些字段 |
-| 「共 N 条」总数展示 | 当前不展示 |
+| 景点标签、开放时间、门票 | 本区块不展示；详情页有，见 `attractions-detail.md` |
+| 「共 N 条」总数展示 | 当前不展示（接口返回了 `total`，本区块不消费） |
 | 分页 / 地图 | 未立项 |
+| 详情页排版与内容 | `attractions-detail.md`（本区块只负责跳转） |
 
 ### 1.3 数据来源
 
 | 依赖项 | 形态 | 说明 |
 |---|---|---|
-| 景点数据 | **Mock 契约**（U0 `mockRepository.listHotAttractions`） | 形状 `ListResult<Attraction>` |
-| 当前城市 | **静态**（U2 传入的 `city` prop） | 组件不读 URL |
-| 封面图 | 静态 URL（`images.unsplash.com`） | 由 U0 `cover()` 生成，1:1 展示；渲染前经自定义 loader 把宽度档位写进 `w` 参数 |
-| 热门景点接口 | **需要 API（本期未接）** | 本期零网络请求 |
+| 景点数据 | **后端 API**（`attractionsApi.listHotAttractions`） | `GET /api/attractions?sortBy=hot&limit=5`（带城市时追加 `city=<slug>`），经同源 `/api` 代理转发；返回 `AttractionPage` |
+| 当前城市 | **静态**（U2 传入的 `city` prop） | 组件不读 URL；`all` 是页面语义，不拼进查询参数 |
+| 封面图 | 静态 URL（`images.unsplash.com`） | 由后端种子数据给出，1:1 展示；渲染前经自定义 loader 把宽度档位写进 `w` 参数；空串渲染占位块 |
+| 失败与空页 | 组件内三态 | 接口失败 → `role="alert"`；返回 0 条 → 空态文案 |
 
 ### 1.4 与其他单元的关系
 
-- **依赖**：U0（类型 / 仓储 / 排序 / 格式化）、U2（三态 + Hook）、U5（间接：`city`）
-- **被依赖**：U2（挂载）
+- **依赖**：U0（城市名与 `formatCount`）、U2（三态 + `useSectionData`）、`lib/attractions` 客户端（取数与字段搬运）
+- **被依赖**：U2（挂载）、`attractions-detail`（卡片的跳转目标）
 - **结论**：与 U6 同为「封面卡片网格」，但比例不同（4:3 vs 1:1）且多了评分字段；两者**不得**共用同一卡片组件，除非同时参数化比例与字段
 
 ---
@@ -66,22 +67,25 @@
 - And 每张卡含封面、名称、城市 + 评分、浏览量
 
 **S2 · 排序正确**
-- When 数据乱序返回
-- Then 按 `viewCount` 降 → `publishedAt` 降 → `id` 升
-- And 组件自身不排序
+- When 后端按 `sortBy=hot` 返回一页
+- Then 组件按返回顺序渲染
+- And 组件自身不排序（首页不重排后端结果）
 
 **S3 · 只展示已发布**
-- When Mock 中含 `draft` / `removed` 景点
-- Then 它们不出现，也不计入 `total`
+- Given 库中存在 `draft` / 已删除 / 未核实的景点
+- Then 接口不会返回它们，本区块因此不出现它们
+- And 组件内没有状态过滤逻辑（过滤职责在后端）
 
 **S4 · 城市过滤**
 - When `city='xian'`
-- Then 只展示 `Xi'an` 与全城通用的已发布景点
+- Then 请求带 `city=xian`，只展示该城市的已发布景点
+- And `city='all'` 时不带 `city` 参数，展示全部城市
 
 **S5 · 评分展示**
 - When `rating = 4.25`
 - Then 显示 `Rating 4.3`（`toFixed(1)` 四舍五入）
 - And 评分只读，不可点击
+- And `rating === null` 时显示 `Not rated yet`，不写成 `0.0`
 
 **S6 · 浏览数格式化**
 - When `viewCount = 38000`
@@ -111,8 +115,8 @@
 - Then 保留 1:1 占位，`alt="<name> cover"` 可读，布局不塌陷
 
 **S12 · 评分边界**
-- When `rating = 0` / `5` / `4.95`
-- Then 分别显示 `0.0` / `5.0` / `5.0`（`toFixed(1)` 结果），不出现空值或 `NaN`
+- When `rating = 0` / `5` / `4.95` / `null`
+- Then 分别显示 `0.0` / `5.0` / `5.0` / `Not rated yet`，不出现空值或 `NaN`
 
 **S13 · 超窄屏（320px）**
 - When 视口 320px
@@ -121,6 +125,11 @@
 **S14 · 快速切换城市**
 - When 短时间内多次切换
 - Then 只渲染最后一次结果，不出现新旧城市混排
+
+**S15 · 跳转详情页**
+- When 点击任意卡片
+- Then 进入 `/attractions/{publicId}`
+- And 整卡是一处链接（图片、名称、元信息都在同一个 `<a>` 里），不是只有标题可点
 
 ---
 
@@ -141,32 +150,34 @@ export function HotAttractions({ city }: HotAttractionsProps): JSX.Element
 |---|---|---|---|
 | `city` | `CitySlug` | 是 | 8 值闭集；不得在组件内二次归一化 |
 
-### 3.2 依赖的数据类型（U0）
+### 3.2 依赖的数据类型
 
 ```ts
-interface Attraction {
-  id: number
-  name: string      // 中文名称（内容资产，不渲染）
-  nameEn: string    // 英文名称（界面唯一可读名称）
-  city: CitySlug
-  coverUrl: string
-  rating: number
+// frontend/lib/attractions/types.ts（字段与后端 DTO 同形，10 号闸门双向比对）
+interface AttractionSummary {
+  publicId: string       // ULID，用作 React key 与详情页路径
+  nameEn: string         // 英文名称（界面唯一可读名称）
+  nameCn: string         // 中文名称（内容资产，不渲染）
+  city: string           // 城市 slug；后端 CHECK 保证落在白名单内
+  coverUrl: string       // 后端 null 归一成空串
+  rating: number | null  // null = 未知评分
   viewCount: number
-  status: ContentStatus
   publishedAt: string
+  freeEntry: boolean
+  bookingRequired: boolean
+  openOnMonday: boolean
 }
 ```
 
 | 字段 | 约束 | 展示规则 |
 |---|---|---|
 | `nameEn` | 非空，1–6 个英文单词 | h3，允许换行 |
-| `city` | `CitySlug` | `cityNameEn`（`all` → `All cities`） |
-| `coverUrl` | 绝对 URL | 1:1，`loading="lazy"`，`alt="<name> cover"`，经自定义 loader 按档位改写 `w` |
-| `rating` | 0–5 的数字 | `toFixed(1)`，前缀 `Rating ` |
+| `city` | 白名单 slug | `cityNameEn`（`all` → `All cities`）；白名单外原样展示 |
+| `coverUrl` | 绝对 URL 或空串 | 1:1，`loading="lazy"`，`alt="<name> cover"`，经自定义 loader 按档位改写 `w`；空串渲染占位块 |
+| `rating` | 0–5 的数字或 `null` | 有值时 `toFixed(1)` 前缀 `Rating `；`null` 为 `Not rated yet` |
 | `viewCount` | 非负整数 | `formatCount` → `en-US` 千分位，后缀 ` views` |
-| `status` | 闭集 | 不展示；非 `published` 不进入列表 |
-| `publishedAt` | 合法 ISO | 不展示，仅参与排序 |
-| `id` | 唯一正整数 | React key + 排序兜底 |
+| `publishedAt` | 合法 ISO | 不展示（排序由后端完成） |
+| `publicId` | 26 位 ULID | React key；详情页路径 `/attractions/{publicId}` |
 
 ### 3.3 文案契约
 
@@ -178,7 +189,7 @@ interface Attraction {
 | 加载 | `Gathering attraction data…`（`role="status"`） |
 | 错误 | `Popular attractions could not load. Please try again later.`（`role="alert"`） |
 | 空态 | `Browse attractions in {cityNameEn(city)}.` |
-| 元信息 | `{cityNameEn(city)} · Rating {rating.toFixed(1)}` |
+| 元信息 | `{cityNameEn(city)} · Rating {rating.toFixed(1)}`；无评分时为 `{cityNameEn(city)} · Not rated yet` |
 | 浏览量 | `{formatCount(viewCount)} views` |
 
 ---
@@ -189,16 +200,17 @@ interface Attraction {
 
 - [ ] 卡片数 ≤ 5 且等于 `items.length`
 - [ ] 每张卡含封面、名称、城市 + 评分、浏览量
-- [ ] 元信息格式为 `{cityNameEn} · Rating 4.6`
-- [ ] 评分固定一位小数；`4.25 → 4.3`、`5 → 5.0`
+- [ ] 元信息格式为 `{cityNameEn} · Rating 4.6`；无评分时为 `{cityNameEn} · Not rated yet`
+- [ ] 评分固定一位小数；`4.25 → 4.3`、`5 → 5.0`、`null → Not rated yet`
 - [ ] 浏览数按 `en-US` 千分位展示（如 `38,000 views`）
+- [ ] 整卡是一个链接，指向 `/attractions/{publicId}`
 
 ### 4.2 数据规则
 
-- [ ] 排序为浏览量 → 发布时间 降序，`id` 升序兜底
-- [ ] `draft` / `removed` 景点不出现且不计入总数
-- [ ] 城市过滤包含本城与全城通用
-- [ ] 组件内无排序与状态过滤逻辑
+- [ ] 排序与城市过滤由后端完成，组件按返回顺序渲染、不重排
+- [ ] `draft` / 已删除 / 未核实景点不会出现（由后端保证，组件无过滤逻辑）
+- [ ] `city='all'` 时不拼 `city` 参数
+- [ ] 取数走 `attractionsApi.listHotAttractions`，不直接读 `mock-data`
 
 ### 4.3 状态
 
@@ -218,8 +230,8 @@ interface Attraction {
 ### 4.5 工程
 
 - [ ] `data-section="hot-attractions"` 存在
-- [ ] 组件不直接 import `mock-data`
-- [ ] `hot-attractions.test.tsx` 覆盖 S2–S5、S9、S10
+- [ ] 组件不直接 import `mock-data` / `mockRepository`
+- [ ] `hot-attractions.test.tsx` 覆盖 S1、S4、S5、S9、S10、S15
 - [ ] `npx vitest run components/home/hot-attractions.test.tsx` 全绿
 - [ ] `npm run build` 通过
 - [ ] 无 `TODO` / `FIXME`，未被 `03-static-guard` 拦截
@@ -232,9 +244,9 @@ interface Attraction {
 ### 5.1 React + Next.js App Router
 
 - 文件首行 `'use client'`（使用 `useSectionData`）
-- 取数：`useSectionData(() => mockRepository.listHotAttractions({ city }), [city])`
-- 评分格式化在渲染处调用 `rating.toFixed(1)`，**不得**在 U0 数据层预先格式化（保持数据为 `number`）
-- 卡片不可点：当前无详情页，禁止套 `<Link>` 造死链
+- 取数：`useSectionData(() => attractionsApi.listHotAttractions({ city }), [city])`
+- 评分无值时在渲染处写 `Not rated yet`，**不得**在数据层把 `null` 归一成 0
+- 卡片整卡包一层 `<Link href={`/attractions/${publicId}`}>`；详情页已存在（见 `attractions-detail.md`），不得退回不可点
 
 ### 5.2 Tailwind CSS + shadcn/ui
 
@@ -285,8 +297,9 @@ interface Attraction {
 | 1 | `next/image` + 按档位出图 | 已接入（`lib/image-loader.ts` + `images.loader = 'custom'`） | 已解决 |
 | 2 | 域名注册 | 不适用 | 自定义 loader 直连 CDN，不经过 `/_next/image` |
 | 3 | 默认五列、`≤ 1080px` 三列、`≤ 720px` 两列 | 与 `hot-attractions.module.css` 一致 | 已核对；与 U6（以 900px 为界）不同，勿盲目统一 |
-| 4 | 卡片可点击 | 不可点（无详情页） | 与 spec 一致 |
-| 5 | 评分只读 | 纯文本，无交互 | 一致 |
+| 4 | 卡片可点击 | 已接入：整卡跳 `/attractions/{publicId}` | 与详情页单元同时生效 |
+| 5 | 评分只读 | 纯文本，无交互；新增 `null → Not rated yet` | 一致 |
+| 6 | 数据来自后端 | 已从 Mock 仓储切到 `attractionsApi.listHotAttractions` | 首页不再零网络请求 |
 
 ---
 
@@ -296,7 +309,7 @@ interface Attraction {
 |---|---|
 | 组件 | `frontend/components/home/hot-attractions.tsx` |
 | 样式 | `frontend/components/home/hot-attractions.module.css` |
-| 数据 | `frontend/lib/home/repository.ts`（`listHotAttractions`） |
+| 数据 | `frontend/lib/attractions/attractions-api.ts`（`listHotAttractions`） |
 | 格式化 | `frontend/lib/home/format.ts`（`formatCount`） |
 | 挂载 | `frontend/app/page.tsx` |
 | 测试 | `frontend/components/home/hot-attractions.test.tsx` |

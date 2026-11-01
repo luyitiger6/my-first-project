@@ -29,12 +29,16 @@ const POST_TITLES = [
   'Sweet soup shops under Guangzhou arcades',
 ]
 
+/**
+ * 6.1 起热门景点读后端种子（`schema.sql`），不再是前端 Mock；
+ * 编辑推荐与帖子仍走 Mock 仓储，本文件两类断言因此并存。
+ */
 const ATTRACTION_TITLES = [
-  'The Palace Museum',
-  'The Bund',
   'West Lake',
+  'The Bund',
+  'Chengdu Panda Base',
+  'Forbidden City',
   'Terracotta Army',
-  'Yalong Bay',
 ]
 
 test.describe('U0 · 默认首页（/）', () => {
@@ -62,7 +66,7 @@ test.describe('U0 · 默认首页（/）', () => {
   })
 
   test('S4 · 景点按浏览、时间降序，id 升序兜底', async ({ page }) => {
-    // S4 When 调用 listHotAttractions · Then 按 viewCount → publishedAt → id 排序
+    // S4 When 调用 listHotAttractions · Then 顺序由后端 hot 排序决定（viewCount → publishedAt → id）
     await expect(page.locator('#hot-attractions ul li h3')).toHaveText(ATTRACTION_TITLES)
   })
 
@@ -79,10 +83,10 @@ test.describe('U0 · 默认首页（/）', () => {
   })
 
   test('S5 · 景点只展示前 5 条，第 6 名以后被截断', async ({ page }) => {
-    // S5 When 匹配结果超过上限 · Then items 只含前 limit 条（HOT_ATTRACTIONS_LIMIT=5）
+    // S5 When 已发布景点共 12 条 · Then 首页只取前 limit 条（HOT_ATTRACTIONS_LIMIT=5）
     const items = page.locator('#hot-attractions ul li')
     await expect(items).toHaveCount(5)
-    await expect(page.locator('#hot-attractions')).not.toContainText('Kuanzhai Alley')
+    await expect(page.locator('#hot-attractions')).not.toContainText('Yalong Bay')
     await expect(page.locator('#hot-attractions')).not.toContainText('Shamian Island')
   })
 
@@ -92,14 +96,20 @@ test.describe('U0 · 默认首页（/）', () => {
   })
 
   test('S6 · formatCount 输出 en-US 千分位（以真实数据代理）', async ({ page }) => {
-    // S6 When formatCount(20000) → '20,000'；页面可观察代理为 32,000 与 9,100
+    // S6 When formatCount(16700) → '16,700'；千分位的页面可观察代理是景点 16,700
+    // 帖子侧互动统计已图标化（主 spec：点赞 / 评论 / 收藏三列），数值取自 Mock 契约首条
     const topPost = page.locator('#hot-posts ol li').first()
-    await expect(topPost).toContainText('42 comments · 9,100 views')
+    await expect(topPost.locator('[aria-label="Post interactions"] > span')).toHaveText([
+      '245',
+      '42',
+      '81',
+    ])
+    await expect(topPost.locator('[aria-label="245 upvotes"]')).toBeVisible()
+    await expect(topPost.locator('[aria-label="42 comments"]')).toBeVisible()
+    await expect(topPost.locator('[aria-label="81 bookmarks"]')).toBeVisible()
 
-    const palace = page
-      .locator('#hot-attractions ul li')
-      .filter({ hasText: 'The Palace Museum' })
-    await expect(palace).toContainText('32,000 views')
+    const westLake = page.locator('#hot-attractions ul li').filter({ hasText: 'West Lake' })
+    await expect(westLake).toContainText('16,700 views')
   })
 
   test('S6 · formatDate 输出 MMM D、锁定 Asia/Shanghai 且不含年份', async ({ page }) => {
@@ -110,12 +120,12 @@ test.describe('U0 · 默认首页（/）', () => {
   })
 
   test('S10 · draft / removed 的帖子与景点不出现在页面上', async ({ page }) => {
-    // S10 When Mock 中存在 draft / removed · Then 两个列表不含它们，也不计入结果
+    // S10 When 数据里存在 draft / removed · Then 两个列表不含它们，也不计入结果
+    // 景点侧的可观察代理是种子里的 draft 条目 Yu Garden（其余 12 条均为 published）。
     for (const hidden of [
       'The last half hour before the Forbidden City closes',
       'A removed old post',
-      'A viewing deck not yet open',
-      'A retired old attraction',
+      'Yu Garden',
     ]) {
       await expect(page.getByText(hidden, { exact: true })).toHaveCount(0)
     }

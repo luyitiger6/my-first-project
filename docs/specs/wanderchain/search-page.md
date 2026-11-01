@@ -7,7 +7,7 @@
 | 对应主 spec | [openspec/specs/wanderchain-search/spec.md](../../../openspec/specs/wanderchain-search/spec.md)（已归档，5 Requirement / 19 Scenario） |
 | 关联单元 | `hero`（提交入口，见 `homepage-hero.md`） |
 | 规格层级 | 人读契约（`docs/specs/`，草稿层），行为真相以主 spec 为准 |
-| 现状 | 页面 `frontend/app/search/page.tsx`，样式 `frontend/app/search/search.module.css`，检索纯函数 `frontend/lib/search/query.ts` |
+| 现状 | 页面 `frontend/app/search/page.tsx`，样式 `frontend/app/search/search.module.css`，检索纯函数 `frontend/lib/search/query.ts`，景点服务端取数 `frontend/lib/attractions/server.ts` |
 
 ---
 
@@ -20,15 +20,16 @@
 | # | 功能 | 说明 |
 |---|---|---|
 | 1 | 查询参数解析 | 读 `q`，只取第一个值；缺失或只有空白 → 引导态 |
-| 2 | 全量检索 | 直接扫 `lib/home/mock-data.ts` 的三个原始数组，不受首页 `*_LIMIT` 截断 |
-| 3 | 发布态过滤 | 帖子与景点只收 `status === 'published'`，草稿与已删除不出现在结果里 |
-| 4 | 匹配字段 | 编辑推荐 `title` / `titleEn` / `summary` / `summaryEn` / `editor` / `editorEn` / 城市中英文名；帖子 `title` / `titleEn` / `author` / `authorEn` / 城市中英文名；景点 `name` / `nameEn` / 城市中英文名。城市 slug 不单独参与匹配 |
+| 2 | 全量检索 | 编辑推荐与帖子扫 `lib/home/mock-data.ts` 原始数组，不受首页 `*_LIMIT` 截断；景点来自后端列表（最多 50 条） |
+| 3 | 可见性过滤 | 帖子的 `status === 'published'` 在本地过滤；景点的草稿 / 已删除 / 未核实由后端剔除 |
+| 4 | 匹配字段 | 编辑推荐 `title` / `titleEn` / `summary` / `summaryEn` / `editor` / `editorEn` / 城市中英文名；帖子 `title` / `titleEn` / `author` / `authorEn` / 城市中英文名；景点 `nameCn` / `nameEn` / 城市中英文名。城市 slug 不单独参与匹配 |
 | 5 | 分组 | 固定顺序 `Editor's picks` → `Posts` → `Attractions`，组内保持数据源顺序，只输出有命中的组 |
-| 6 | 结果条目 | 英文标题 + 城市英文名 + 一条英文类型元信息；条目本身**不是**链接 |
+| 6 | 结果条目 | 英文标题 + 城市英文名 + 一条英文类型元信息；景点条目标题是链接，指向 `/attractions/{publicId}`，其余类型暂无详情页，不产出链接 |
 | 7 | 分组回链 | 每组末尾回首页对应锚点：`/#editor-picks`、`/#hot-posts`、`/#hot-attractions` |
 | 8 | 三态 | 引导态（无关键词）/ 空态（零命中）/ 结果态（有命中） |
 | 9 | 站点框架 | 复用 `SiteHeader` / `SiteFooter`，全页唯一 `h1` |
 | 10 | 响应式 | desktop-first，单一 `max-width: 720px` 断点做单列收窄 |
+| 11 | 景点源不可达 | 服务端取数失败一律返回空数组，景点分组降级缺席；其余分组照常输出 |
 
 ### 1.2 不包含
 
@@ -37,9 +38,9 @@
 | 首屏搜索框本身 | `hero` | 提交在首页，结果在本页 |
 | 城市筛选（`?city=`） | U5 `city-switcher` | 搜索结果覆盖全部城市，不继承首页筛选 |
 | 搜索建议、历史、热门词 | 未立项 | 本期只做提交即跳转的真检索 |
-| 结果条目详情页 | 未立项 | 条目暂不可点击，避免死链 |
-| 分页、排序、二次筛选 | 未立项 | 全量数据量小，一屏可呈现 |
-| 任何客户端请求 | — | Server Component 同步渲染，零 `fetch` |
+| 编辑推荐与帖子的详情页 | 未立项 | 这两类条目暂不可点击，避免死链 |
+| 分页、排序、二次筛选 | 未立项 | 数据量小，一屏可呈现；景点最多取 50 条 |
+| 客户端取数 | — | Server Component 内 `await` 一次景点接口，浏览器不发搜索请求 |
 
 ---
 
@@ -59,10 +60,11 @@
 - Then 分组顺序为 `Editor's picks` → `Posts` → `Attractions`，每组显示组名与条数
 - And 顶部回显 `{N} results for “成都”.`
 
-**S3 · 被首页截断的内容可见**
-- When 搜索只出现在首页列表之外的内容（如 `沙面岛`、`回民街`、`后海村`）
+**S3 · 首页列表之外的内容可见**
+- When 搜索只出现在首页列表之外的内容（如 `回民街`、`后海村`）
 - Then 结果中包含该条目
 - And 检索不复用 `mockRepository.list*`（它们按首页上限截断）
+- And 景点的可见范围由后端决定：首页只展示浏览量前 5 个，搜索页能看到全部已发布景点
 
 **S4 · 关键词归一化**
 - When 访问 `/search?q=%20%20chengdu%20%20`
@@ -84,9 +86,9 @@
 - And 不渲染空的结果分组
 
 **S7 · 草稿 / 已删除内容不可搜**
-- When 搜索只存在于 `draft` 帖子或 `draft` / `removed` 景点中的文字
+- When 搜索只存在于 `draft` 帖子中的文字
 - Then 结果为 0 条
-- And 不因「首页没显示」而误以为内容不存在
+- And 景点的草稿 / 已删除 / 未核实由后端剔除，页面没有机会拿到它们
 
 **S8 · 关键词含特殊字符**
 - When `q` 含引号、尖括号等字符
@@ -97,6 +99,17 @@
 - When 视口宽度 320px
 - Then 结果卡片内边距收窄，组头由「组名 + 条数」横排改为上下两行
 - And 页面无横向滚动条
+
+**S10 · 景点服务不可达**
+- When 后端景点接口失败或超时
+- Then 页面正常渲染，`Attractions` 分组缺席
+- And 编辑推荐与帖子照常命中；顶部条数只统计实际存在的结果
+
+**S11 · 景点条目跳转**
+- When 命中一个景点条目
+- Then 条目标题是链接，指向 `/attractions/{publicId}`
+- And `publicId` 来自后端列表，不使用 Mock 数值 id 拼地址
+- And `publicId` 不存在时后端返回 404，由详情页展示 `Attraction not found` 空态
 
 ---
 
@@ -109,11 +122,12 @@
 export type SearchKind = 'editor-pick' | 'post' | 'attraction'
 
 export interface SearchHit {
-  readonly id: number
+  readonly key: string // 跨分组唯一（`editor-pick-3` / `post-12` / `attraction-<publicId>`），直接用作列表 key
   readonly title: string
-  readonly city: CitySlug
-  readonly cityLabel: string // city 为 all 时显示 `All cities`，否则为 `cityNameEn`
+  readonly city: string
+  readonly cityLabel: string // 城市白名单外原样展示；`all` 为 `All cities`
   readonly meta: string // 编辑署名 / 作者与评论数 / 评分与浏览量
+  readonly href?: string // 只有有详情页的条目才带：景点为 `/attractions/{publicId}`
 }
 
 export interface SearchGroup {
@@ -131,7 +145,10 @@ export interface SearchOutcome {
   readonly groups: readonly SearchGroup[] // 只含有命中的组
 }
 
-export function searchContent(rawQuery: string): SearchOutcome
+export function searchContent(
+  rawQuery: string,
+  attractions: readonly AttractionSummary[], // 后端列表，失败时为 []
+): SearchOutcome
 ```
 
 ### 3.2 约束表
@@ -142,6 +159,8 @@ export function searchContent(rawQuery: string): SearchOutcome
 | `total` | `number` | 等于各组 `items.length` 之和 | 顶部条数与分组不符 |
 | `groups` | `SearchGroup[]` | 顺序固定，不含空组 | 出现 `0` 条的空分组 |
 | `items` | `SearchHit[]` | 保持数据源顺序，不重排 | 结果顺序不可预期 |
+| `key` | `string` | 跨分组唯一 | React 重复 key、条目错位 |
+| `href` | `string \| undefined` | 只给有详情页的条目 | 点进去 404 |
 | `anchorHref` | `string` | 必须是三个首页锚点之一 | 回链落到 404 或错位区块 |
 
 ### 3.3 页面契约
@@ -150,9 +169,9 @@ export function searchContent(rawQuery: string): SearchOutcome
 |---|---|
 | 渲染类型 | React Server Component，`async function SearchPage({ searchParams })`，不写 `'use client'` |
 | 入参 | `searchParams: Promise<Record<string, string \| string[] \| undefined>>`，只取第一个值 |
-| 数据来源 | `searchContent()` 一个纯函数；页面不直接读 `mock-data` |
+| 数据来源 | 编辑推荐与帖子来自 `searchContent()` 纯函数；景点由 `listAttractionsForSearch()` 在服务端 `await` 一次 |
 | 状态 | 无 `useState` / `useEffect`；三态由 `query` 与 `total` 推导 |
-| 副作用 | 无 `fetch` / `XHR` / `localStorage` |
+| 副作用 | 仅在有关键词时请求一次景点接口；无 `XHR` / `localStorage` / 客户端 `fetch` |
 | 元信息 | 导出 `metadata`（title `Search` + description），全页唯一 `h1` |
 
 ---
@@ -164,7 +183,8 @@ export function searchContent(rawQuery: string): SearchOutcome
 - [x] 全页唯一 `h1`，文案 `Search the site`
 - [x] 含 `SiteHeader`（`banner`）与 `SiteFooter`（`contentinfo`）
 - [x] 每个分组是 `<section aria-labelledby>`，组名为 `h2`
-- [x] 结果条目是 `li`，内部不含 `<a>`
+- [x] 结果条目是 `li`；只有景点条目的标题是 `<a>`，指向 `/attractions/{publicId}`
+- [x] 编辑推荐与帖子条目内部不含 `<a>`（暂无详情页，不产出死链）
 
 ### 4.2 交互
 
@@ -178,7 +198,9 @@ export function searchContent(rawQuery: string): SearchOutcome
 - [x] 无 `q` 或 `q` 只含空白 → 引导态，无分组
 - [x] `q=成都` → 三类命中，分组顺序 `Editor's picks` → `Posts` → `Attractions`
 - [x] `q=chengdu` 与 `q=成都` 命中同一组结果（城市中文名与英文名都参与匹配）
-- [x] `q=沙面岛` → 命中被首页上限截断的景点（中文内容字段仍可搜）
+- [x] `q=沙面岛` → 命中只存在于后端列表、首页前 5 条之外的景点（中文名仍参与匹配）
+- [x] 景点数据来自 `listAttractionsForSearch()`；编辑推荐与帖子仍扫 `mock-data` 原始数组
+- [x] 景点链接的 `publicId` 取自后端返回，不是 Mock 数值 id
 - [x] `draft` / `removed` 内容零命中
 - [x] 关键词回显去首尾空白；`xian` 零命中（英文名 `Xi'an`，slug 不参与匹配）
 
@@ -192,7 +214,7 @@ export function searchContent(rawQuery: string): SearchOutcome
 ### 4.5 工程
 
 - [x] 页面为 Server Component，无 `'use client'`
-- [x] 打开页面期间零 `fetch`
+- [x] 打开页面期间浏览器不发搜索请求：关键词非空时服务端 `await` 一次景点接口，无关键词时零请求
 - [x] `npx vitest run lib/search/query.test.ts app/search/page.test.tsx` 全绿
 - [ ] `npm run build` 通过
 - [ ] `powershell -File harness\checks\08-spec-doc-breakpoints.ps1` 退出码 0
@@ -206,12 +228,15 @@ export function searchContent(rawQuery: string): SearchOutcome
 - 文件 `frontend/app/search/page.tsx`，`searchParams` 为 `Promise`，必须 `await`
 - 不写 `'use client'`：三态在服务端一次算出，首屏即可见
 - 复用 `next/link` 的 `<Link>` 做站内跳转；表单提交由首页原生表单完成
+- 景点取数在服务端完成：`listAttractionsForSearch()` 用绝对地址直连后端（`lib/backend-url.ts`），因为 Server Component 里没有页面 origin，相对 `/api` 解析不了
+- 编译期保证取数真的被传进来：`searchContent(rawQuery, attractions)` 第二参必填，不给默认值
 
 ### 5.2 样式体系
 
 - CSS Modules + `globals.css` 设计 token（`.wc-container` / `.wc-eyebrow`）；页面复用 `search.module.css`
 - 颜色只用 `--wc-*` token，禁止新增十六进制字面量
-- 结果条目为纯文本卡片，不引入图片，避免为不可点击的条目加载封面
+- 结果条目为纯文本卡片，不引入图片：景点条目即使可点也不加载封面，不为一次搜索多拉图
+- 景点标题链接继承正文色（`color: inherit`），`overflow-wrap` 与正文一致，只在 `:hover` / `:focus-visible` 出现下划线
 
 ### 5.3 响应式（desktop-first）
 
@@ -230,9 +255,11 @@ export function searchContent(rawQuery: string): SearchOutcome
 | # | 本文档要求 | 仓库现状 | 影响 |
 |---|---|---|---|
 | 1 | 存在 `/search` 路由 | 改版前无此路由 | 新增；同时在 08 闸门登记断点配对 |
-| 2 | 检索扫原始数组 | 首页仓储按 `*_LIMIT` 截断 | 若复用仓储会漏掉截断内容，属功能缺陷 |
+| 2 | 检索扫原始数组（编辑推荐与帖子） | 首页仓储按 `*_LIMIT` 截断 | 若复用仓储会漏掉截断内容，属功能缺陷 |
 | 3 | 三个首页区块有 `id` | 改版前只有 `data-section` | 本轮补 `id`，供分组回链落地 |
 | 4 | 有独立主 spec | 新能力，归档后生成 `openspec/specs/wanderchain-search/spec.md` | 归档前以 delta 形式存在 |
+| 5 | 景点来自后端列表（最多 50 条） | 改版前景点与其他两类一起读 `mock-data` | 数据源改为运行期后端；后端不可达时景点分组降级缺席，另两类照常 |
+| 6 | 景点条目可点 | 改版前所有条目都是纯文本 | 只有景点有详情页；`publicId` 来自后端，不用 Mock 数值 id 拼地址 |
 
 ---
 
@@ -243,6 +270,8 @@ export function searchContent(rawQuery: string): SearchOutcome
 | 页面 | `frontend/app/search/page.tsx` |
 | 样式 | `frontend/app/search/search.module.css` |
 | 检索纯函数 | `frontend/lib/search/query.ts` |
+| 景点服务端取数 | `frontend/lib/attractions/server.ts`（`listAttractionsForSearch`） |
+| 后端地址入口 | `frontend/lib/backend-url.ts`（与同源代理共用） |
 | 测试 | `frontend/lib/search/query.test.ts`、`frontend/app/search/page.test.tsx` |
 | 提交入口 | `frontend/components/home/hero.tsx`（`<form action="/search" method="get">`） |
 

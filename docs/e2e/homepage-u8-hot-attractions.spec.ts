@@ -9,13 +9,37 @@ import {
 
 const SECTION = '#hot-attractions'
 
-/** 已发布景点按浏览数降 → 发布时间降 → id 升，上限 5 条。 */
+/**
+ * 6.1 起本区块读后端 `GET /api/attractions?sortBy=hot&limit=5`，
+ * 不再是前端 Mock：名称、城市、评分、浏览量全部以 `schema.sql` 的种子为准。
+ * 顺序为浏览量降 → 发布时间降 → id 升。
+ */
 const ALL_ATTRACTIONS = [
-  { name: 'The Palace Museum', meta: 'Beijing · Rating 4.8', views: '32,000 views' },
-  { name: 'The Bund', meta: 'Shanghai · Rating 4.6', views: '28,000 views' },
-  { name: 'West Lake', meta: 'Hangzhou · Rating 4.7', views: '26,000 views' },
-  { name: 'Terracotta Army', meta: "Xi'an · Rating 4.5", views: '21,000 views' },
-  { name: 'Yalong Bay', meta: 'Sanya · Rating 4.4', views: '19,000 views' },
+  {
+    publicId: '01JQATTR000000000000000011',
+    name: 'West Lake',
+    meta: 'Hangzhou · Rating 4.9',
+    views: '16,700 views',
+  },
+  { publicId: '01JQATTR000000000000000003', name: 'The Bund', meta: 'Shanghai · Rating 4.7', views: '15,400 views' },
+  {
+    publicId: '01JQATTR000000000000000007',
+    name: 'Chengdu Panda Base',
+    meta: 'Chengdu · Rating 4.9',
+    views: '14,200 views',
+  },
+  {
+    publicId: '01JQATTR000000000000000001',
+    name: 'Forbidden City',
+    meta: 'Beijing · Rating 4.8',
+    views: '12,800 views',
+  },
+  {
+    publicId: '01JQATTR000000000000000009',
+    name: 'Terracotta Army',
+    meta: "Xi'an · Rating 4.8",
+    views: '11,300 views',
+  },
 ]
 
 test.describe('U8 · 热门景点区块 · 桌面端', () => {
@@ -40,38 +64,37 @@ test.describe('U8 · 热门景点区块 · 桌面端', () => {
   })
 
   test('S2 · 顺序为浏览量降 → 发布时间降 → id 升', async ({ page }) => {
-    // S2 When 数据乱序返回 · Then 展示顺序按浏览量降序（组件自身不排序）
+    // S2 When 后端按 hot 返回 · Then 展示顺序与响应一致（组件自身不排序）
     await expect(page.locator(`${SECTION} ul > li h3`)).toHaveText(
       ALL_ATTRACTIONS.map((attraction) => attraction.name),
     )
   })
 
-  test('S3 · 草稿与已删除景点不出现，也不占前五', async ({ page }) => {
-    // S3 When Mock 中含 draft / removed 景点 · Then 它们不出现（draft 的 99,999 浏览也不得成为第一）
+  test('S3 · 草稿与低浏览量的景点不出现，也不占前五', async ({ page }) => {
+    // S3 When 库中含 1 条 draft（Yu Garden）与 7 条 published 之外的名次 · Then draft 不出现，第 6 名起被截断
     const section = page.locator(SECTION)
-    await expect(section).not.toContainText('A viewing deck not yet open')
-    await expect(section).not.toContainText('A retired old attraction')
-    await expect(section.locator('ul > li h3').first()).toHaveText('The Palace Museum')
+    await expect(section).not.toContainText('Yu Garden')
+    await expect(section).not.toContainText('Yalong Bay')
+    await expect(section).not.toContainText('Shamian Island')
+    await expect(section.locator('ul > li h3').first()).toHaveText('West Lake')
     await expect(section.locator('ul > li')).toHaveCount(5)
   })
 
-  test('S4 · 城市过滤只保留 Xi\'an 与全城通用景点', async ({ page }) => {
-    // S4 When city='xian' · Then 只展示 Xi'an 与 all 的已发布景点
+  test("S4 · 城市过滤只保留 Xi'an 的已发布景点", async ({ page }) => {
+    // S4 When city='xian' · Then 只展示 Xi'an 的已发布景点（种子 2 条）
     await gotoHome(page, { city: 'xian' })
     const section = page.locator(SECTION)
-    await expect(section.locator('ul > li')).toHaveCount(1)
-    await expect(section.locator('ul > li h3')).toHaveText(['Terracotta Army'])
-    await expect(section.locator('ul > li p')).toHaveText([
-      "Xi'an · Rating 4.5",
-      '21,000 views',
+    await expect(section.locator('ul > li')).toHaveCount(2)
+    await expect(section.locator('ul > li h3')).toHaveText(['Terracotta Army', "Xi'an City Wall"])
+    await expect(section.locator('ul > li').first().locator('p')).toHaveText([
+      "Xi'an · Rating 4.8",
+      '11,300 views',
     ])
   })
 
-  test('S5 · 评分固定一位小数且只读不可点击', async ({ page }) => {
-    // S5 When rating 为 0–5 的数字 · Then 显示 Rating 4.8 形式（toFixed(1)），且评分不可交互
-    // 数据集没有两位小数评分，用「所有卡片均为一位小数」验证同一格式化契约。
+  test('S5 · 评分固定一位小数，整卡链接到详情页', async ({ page }) => {
+    // S5 When rating 为 0–5 的数字 · Then 显示 Rating 4.9 形式（toFixed(1)）
     const metas = page.locator(`${SECTION} ul > li p:first-of-type`)
-    // allTextContents 不会自动等待数据就绪，先等卡片渲染完再取值。
     await expect(metas).toHaveCount(5)
     const texts = await metas.allTextContents()
     expect(texts).toHaveLength(5)
@@ -79,37 +102,37 @@ test.describe('U8 · 热门景点区块 · 桌面端', () => {
       expect(text).toMatch(/^.+ · Rating \d\.\d$/)
     }
 
-    const interactive = await page
-      .locator(`${SECTION} ul > li`)
-      .evaluateAll((nodes) => nodes.filter((node) => node.querySelector('a, button')).length)
-    expect(interactive, '景点卡片当前不可点击，不应出现链接或按钮').toBe(0)
+    // 6.1 起卡片整卡是链接：点击进得去详情页，href 里的 publicId 来自后端。
+    const links = page.locator(`${SECTION} ul > li > a`)
+    await expect(links).toHaveCount(5)
+    await expect(links.first()).toHaveAttribute('href', `/attractions/${ALL_ATTRACTIONS[0].publicId}`)
   })
 
   test('S6 · 浏览数按 en-US 千分位格式化', async ({ page }) => {
-    // S6 When viewCount=38000 / 860 · Then 分别显示 38,000 views / 860 views（本数据集为 32,000 / 28,000）
+    // S6 When viewCount=16700 / 15400 · Then 分别显示 16,700 views / 15,400 views
     const cards = page.locator(`${SECTION} ul > li`)
-    await expect(cards.nth(0).locator('p').nth(1)).toHaveText('32,000 views')
-    await expect(cards.nth(1).locator('p').nth(1)).toHaveText('28,000 views')
-    await expect(cards.nth(0)).not.toContainText('32000 views')
+    await expect(cards.nth(0).locator('p').nth(1)).toHaveText('16,700 views')
+    await expect(cards.nth(1).locator('p').nth(1)).toHaveText('15,400 views')
+    await expect(cards.nth(0)).not.toContainText('16700 views')
   })
 
-  test('S7 · 元信息按 city · Rating 拼接（4.6 显示为 4.6）', async ({ page }) => {
-    // S7 When 景点在 hangzhou、评分 4.6 / 4.7 · Then 元信息为 Hangzhou · Rating 4.7
+  test('S7 · 元信息按 city · Rating 拼接', async ({ page }) => {
+    // S7 When 景点在 hangzhou、评分 4.9 · Then 元信息为 Hangzhou · Rating 4.9
     const cards = page.locator(`${SECTION} ul > li`)
-    await expect(cards.nth(2).locator('p').first()).toHaveText('Hangzhou · Rating 4.7')
+    await expect(cards.nth(0).locator('p').first()).toHaveText('Hangzhou · Rating 4.9')
   })
 
   test('S8 · 切换城市后重新取数', async ({ page }) => {
     // S8 When city 变化 · Then 区块重新取数并展示新城市景点
     await page.getByRole('button', { name: 'Beijing', exact: true }).click()
-    await waitForUrl(page,(url) => url.searchParams.get('city') === 'beijing')
+    await waitForUrl(page, (url) => url.searchParams.get('city') === 'beijing')
 
     const section = page.locator(SECTION)
-    await expect(section.locator('ul > li')).toHaveCount(1)
-    await expect(section.locator('ul > li h3')).toHaveText(['The Palace Museum'])
-    await expect(section.locator('ul > li p')).toHaveText([
+    await expect(section.locator('ul > li')).toHaveCount(2)
+    await expect(section.locator('ul > li h3')).toHaveText(['Forbidden City', 'Temple of Heaven'])
+    await expect(section.locator('ul > li').first().locator('p')).toHaveText([
       'Beijing · Rating 4.8',
-      '32,000 views',
+      '12,800 views',
     ])
   })
 
@@ -138,12 +161,24 @@ test.describe('U8 · 热门景点区块 · 桌面端', () => {
     for (const city of ['Beijing', 'Shanghai', 'Chengdu']) {
       await page.getByRole('button', { name: city, exact: true }).click()
     }
-    await waitForUrl(page,(url) => url.searchParams.get('city') === 'chengdu')
+    await waitForUrl(page, (url) => url.searchParams.get('city') === 'chengdu')
 
     const section = page.locator(SECTION)
-    await expect(section.locator('ul > li h3')).toHaveText(['Kuanzhai Alley'])
-    await expect(section).not.toContainText('The Palace Museum')
+    await expect(section.locator('ul > li h3')).toHaveText(['Chengdu Panda Base', 'Wuhou Shrine'])
+    await expect(section).not.toContainText('West Lake')
     await expect(section).not.toContainText('The Bund')
+  })
+})
+
+test.describe('U8 · 首页景点卡片 → 详情页', () => {
+  test('点第一张卡进入详情，标题与核实时间都在', async ({ page }) => {
+    // 7.2 链路一：首页热门景点 → 详情
+    await gotoHome(page)
+    await page.locator(`${SECTION} ul > li > a`).first().click()
+
+    await waitForUrl(page, (url) => url.pathname === `/attractions/${ALL_ATTRACTIONS[0].publicId}`)
+    await expect(page.locator('h1')).toHaveText('West Lake')
+    await expect(page.getByText(/Checked/)).toContainText('Checked Sep 2026')
   })
 })
 

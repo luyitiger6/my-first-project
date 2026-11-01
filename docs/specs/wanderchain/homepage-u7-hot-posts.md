@@ -18,7 +18,7 @@
 
 | # | 能力 | 说明 |
 |---|---|---|
-| 1 | 帖子列表 | 排名 + 标题 + 作者/城市/日期 + 评论与浏览数 |
+| 1 | 帖子列表 | 排名 + 标题 + 作者/城市/日期 + 图标化互动统计行（点赞 / 评论 / 收藏） |
 | 2 | 排名序号 | `01`–`10`，两位补零，`aria-hidden`（顺序由 `<ol>` 承担） |
 | 3 | 排序 | 评论数 → 浏览数 → 发布时间 降序，`id` 升序兜底（由 U0 保证） |
 | 4 | 只展示已发布 | `status === 'published'`，`draft` / `removed` 排除（由 U0 保证） |
@@ -26,6 +26,7 @@
 | 6 | 上限 10 条 | `HOT_POSTS_LIMIT` |
 | 7 | 数字与日期格式化 | `formatCount`（`en-US` 千分位）+ `formatDate`（`MMM D`） |
 | 8 | 三态 | 复用 U2 的 `SectionLoading` / `SectionError` / `EmptyState` |
+| 9 | 查看全部入口 | 头部 `View all posts` 链接，跳转 `/posts?sortBy=hottest` |
 
 ### 1.2 不包含
 
@@ -36,7 +37,7 @@
 | 帖子封面 / 摘要 / 标签 | 当前数据模型无这些字段 |
 | 「共 N 条」总数展示 | 当前不展示 |
 | 分页 / 加载更多 | 未立项 |
-| 按点赞数排序 | 数据模型无 `likeCount` |
+| 按点赞数排序 | 排序仍为评论 → 浏览 → 时间；点赞只展示、不参与排序 |
 
 ### 1.3 数据来源
 
@@ -62,7 +63,7 @@
 **S1 · 渲染列表**
 - When 数据 `ready` 且非空
 - Then 渲染有序列表，条目数 = `items.length` ≤ 10
-- And 每条含排名、标题、作者、城市、发布日期、评论数、浏览数
+- And 每条含排名、标题、作者、城市、发布日期与图标化互动统计行（点赞 / 评论 / 收藏）
 
 **S2 · 排名序号**
 - When 渲染第 1、2、10 条
@@ -87,8 +88,8 @@
 - Then 元信息行为 `Traveler Zhou · Hangzhou · Oct 5`
 
 **S7 · 计数格式化**
-- When 浏览数为 `26000`
-- Then 显示 `26,000 views`；评论数始终显示原值（如 `128 comments`）
+- When 点赞 / 评论 / 收藏为 `26000` / `128` / `9000`
+- Then 统计行依次显示 `26,000`、`128`、`9,000`（`formatCount`，`en-US` 千分位），三列各带图标
 
 **S8 · 切换城市重取**
 - When `city` 变化
@@ -112,8 +113,8 @@
 - And 不截断语义（不用 `line-clamp` 掩盖）
 
 **S12 · 极端数值**
-- When `viewCount=0` / `commentCount=0`
-- Then 显示 `0 comments · 0 views`，不显示 `NaN` 或空白
+- When `upVoteCount=0` / `commentCount=0` / `bookmarkCount=0`
+- Then 三列各显示 `0` 且图标不隐藏，不显示 `NaN` 或空白
 
 **S13 · 超窄屏（320px）**
 - When 视口 320px
@@ -155,6 +156,8 @@ interface Post {
   status: ContentStatus
   commentCount: number
   viewCount: number
+  upVoteCount: number
+  bookmarkCount: number
   publishedAt: string
 }
 ```
@@ -165,8 +168,10 @@ interface Post {
 | `authorEn` | 非空，人名 | 元信息首位，**无前缀** |
 | `city` | `CitySlug` | 显示 `cityNameEn`（`all` → `All cities`） |
 | `publishedAt` | 合法 ISO | `formatDate` → `MMM D`（`en-US`） |
-| `commentCount` | 非负整数 | **原值**展示，不做缩写 |
-| `viewCount` | 非负整数 | `formatCount` → `en-US` 千分位 |
+| `upVoteCount` | 非负整数 | 统计行第 1 列，`formatCount` → `en-US` 千分位 |
+| `commentCount` | 非负整数 | 统计行第 2 列，`formatCount` → `en-US` 千分位 |
+| `bookmarkCount` | 非负整数 | 统计行第 3 列，`formatCount` → `en-US` 千分位 |
+| `viewCount` | 非负整数 | **不渲染**，只参与排序 |
 | `status` | 闭集 | 不展示；非 `published` 不进入列表 |
 | `id` | 唯一正整数 | React key + 排序兜底 |
 
@@ -180,7 +185,9 @@ interface Post {
 | 加载 | `Measuring this week's buzz…`（`role="status"`） |
 | 错误 | `Trending posts could not load. Please try again later.`（`role="alert"`） |
 | 空态 | `Be the first to ask in {cityNameEn(city)}.` |
-| 计数行 | `{commentCount} comments · {formatCount(viewCount)} views` |
+| 统计行容器 | `aria-label="Post interactions"`，三列依次为图标 + 数字 |
+| 统计行三列 | `aria-label` 依次为 `{formatCount(upVoteCount)} upvotes` / `{formatCount(commentCount)} comments` / `{formatCount(bookmarkCount)} bookmarks` |
+| 查看全部 | `View all posts` → `/posts?sortBy=hottest` |
 
 ---
 
@@ -189,10 +196,10 @@ interface Post {
 ### 4.1 内容
 
 - [ ] 条目数 ≤ 10，且等于 `items.length`
-- [ ] 每条含排名、标题、作者、城市、日期、评论数、浏览数
+- [ ] 每条含排名、标题、作者、城市、日期与三列互动统计（点赞 / 评论 / 收藏）
 - [ ] 排名从 `01` 起两位补零，连续无跳号
 - [ ] 元信息格式为 `{authorEn} · {cityNameEn} · {MMM D}`
-- [ ] 浏览数按 `en-US` 千分位展示（如 `26,000`）；评论数显示原值
+- [ ] 三列计数按 `formatCount`（`en-US` 千分位）展示；浏览数不渲染
 
 ### 4.2 数据规则
 
@@ -211,6 +218,7 @@ interface Post {
 
 - [ ] 列表使用 `<ol>`，条目使用 `<li>`
 - [ ] 排名元素 `aria-hidden="true"`
+- [ ] 统计行容器 `aria-label="Post interactions"`，三列各带 `aria-label`（upvotes / comments / bookmarks）
 - [ ] 320px 下堆叠、无横向滚动、标题换行不截断
 - [ ] 极端值 0 正常渲染，不出现 `NaN`
 
@@ -218,6 +226,7 @@ interface Post {
 
 - [ ] `data-section="hot-posts"` 存在
 - [ ] 组件不直接 import `mock-data`
+- [ ] 统计行复用 `frontend/components/posts/post-card-stats.tsx`，与帖子广场同一实现
 - [ ] `hot-posts.test.tsx` 覆盖 S2–S4、S9、S10
 - [ ] `npx vitest run components/home/hot-posts.test.tsx` 全绿
 - [ ] `npm run build` 通过
@@ -238,7 +247,7 @@ interface Post {
 
 ### 5.2 Tailwind CSS + shadcn/ui
 
-**⚠ 现状：无 Tailwind、无 shadcn/ui**，样式在 `hot-posts.module.css`（`.list` / `.item` / `.rank` / `.content` / `.title` / `.meta` / `.stats`）。
+**⚠ 现状：无 Tailwind、无 shadcn/ui**，样式在 `hot-posts.module.css`（`.list` / `.item` / `.rank` / `.content` / `.title` / `.meta` / `.headActions` / `.viewAll`）；互动统计行样式在 `post-card-stats.module.css`（`.stats` / `.item` / `.value`）。
 
 若引入后：
 
@@ -247,7 +256,7 @@ interface Post {
 | `<ol className={styles.list}>` | `divide-y` + `<ol>` 语义保留（**不要**换成 `Table`，帖子不是表格数据） |
 | 单条 `<li>` | `grid grid-cols-[auto_1fr_auto] items-center gap-4` |
 | `.rank` 序号 | `text-sm tabular-nums text-muted-foreground`（**必须** `tabular-nums` 防数字跳动） |
-| 评论 / 浏览计数 | `Badge variant="outline"` 或纯文本，二者择一，同一区块内保持一致 |
+| 互动统计行 | 图标 + 数字的 `inline-flex` 行，与帖子广场共用 `PostCardStats`，不另写一套 |
 
 约束：`shadcn` 无「有序列表」组件，本单元**不应**为套组件而改变语义结构；引入 Tailwind 后也须保留 `<ol>`。
 
@@ -257,11 +266,11 @@ interface Post {
 
 | 断点 | 布局 |
 |---|---|
-| 默认（宽屏） | 两列网格 `grid-template-columns: repeat(2, minmax(0,1fr))`，`gap: 0 36px`；单条为「排名 / 内容 / 计数」三栏不换行 |
+| 默认（宽屏） | 两列网格 `grid-template-columns: repeat(2, minmax(0,1fr))`，`gap: 0 36px`；单条为「排名 / 内容 / 统计」三栏不换行 |
 | `≤ 900px` | 网格收为单列，条目内部仍保持三栏 |
-| `≤ 640px` | 条目允许换行，计数列另起一行并左缩进对齐标题 |
+| `≤ 640px` | 条目允许换行，统计行另起一行并左缩进 42px 对齐标题 |
 
-- 计数列需 `white-space: nowrap`，避免 `128 comments · 26,000 views` 被拆成两行
+- 统计行三列保持同一行（`inline-flex`），数字间距固定，切换城市时宽度不跳动
 - 标题列 `min-width: 0`，防长标题撑破三栏
 - 数字统一 `font-variant-numeric: tabular-nums`，切换城市时宽度不跳动
 
@@ -278,9 +287,10 @@ interface Post {
 |---|---|---|---|
 | 1 | 无图片 | 已如此 | 一致 |
 | 2 | 排序与状态过滤在仓储 | 已如此 | 一致，组件内无重复逻辑 |
-| 3 | `tabular-nums` | 一致：`.rank` 原本已声明，`.stats` 于 2026-10-27 补齐 | 无 |
+| 3 | `tabular-nums` | 一致：`.rank` 原本已声明，`.stats`（`post-card-stats.module.css`）也已声明 | 无 |
 | 4 | 条目可点击 | 不可点（无详情页） | 与 spec 一致，勿擅自加链接 |
 | 5 | Tailwind + shadcn | CSS Modules 手写 | 换栈须保留 `<ol>`/`<li>` 语义 |
+| 6 | 计数行纯文本 | 已改为图标化统计行（`PostCardStats`），与帖子广场共用 | 本文件已按主 spec 同步，勿回退成 `comments · views` 文本 |
 
 ---
 
@@ -294,6 +304,7 @@ interface Post {
 | 格式化 | `frontend/lib/home/format.ts`（`formatCount` / `formatDate`） |
 | 挂载 | `frontend/app/page.tsx` |
 | 测试 | `frontend/components/home/hot-posts.test.tsx` |
+| 互动统计 | `frontend/components/posts/post-card-stats.tsx`（+ `post-card-stats.module.css`） |
 
 ```powershell
 cd frontend
