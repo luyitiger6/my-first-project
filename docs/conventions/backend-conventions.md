@@ -15,16 +15,18 @@ com.luyi.myfirst
 │   ├── security/               PasswordHasher / BcryptPasswordHasher / PasswordRules
 │   └── web/                    AuthResponseBody / AuthResponseGuard / ErrorResponse / GlobalExceptionHandler
 ├── config/                     AuthProperties / WebMvcConfig
-├── dao/                        Account / AuthSession / *Repository / AccountStatusConverter
+├── dao/<域>/                   entity/ + repository/ + converter/
 ├── service/<域>/               接口 + impl/ + support/ + model/
 └── web/<域>/                   Controller + dto/ + interceptor/
 ```
 
-依赖方向**单向**，箭头右侧不得 import 左侧：
+业务层的依赖方向**单向**，箭头表示左侧依赖右侧，不得反向依赖：
 
 ```
-common  <--  config / dao  <--  service  <--  web
+web  -->  service  -->  dao  -->  common
 ```
+
+这是分层方向示意，不代表现有闸门自动覆盖所有依赖关系；机械校验范围以下列禁止项为准。
 
 具体禁止项（由 `11-conventions-check.ps1` 机械校验）：
 
@@ -32,14 +34,101 @@ common  <--  config / dao  <--  service  <--  web
 - `service/` 不得 import `web/`
 - `common/` 不得 import `dao/` / `service/` / `web/`
 
-`service/<域>/` 内按四档组织，职责固定：
+### 总则：简单平铺，复杂按需聚合
 
-| 目录 | 放什么 | 不放什么 |
-|---|---|---|
-| （根） | 对外接口，Controller 只依赖这一层 | 实现细节 |
-| `impl/` | 接口的唯一实现 | 被多个实现共享的工具 |
-| `support/` | 无业务语义的协作件（哈希、限流、令牌签发、来源解析） | 业务编排 |
-| `model/` | 服务层内部的值对象（`LoginAttempt` / `LoginResult`） | 会被序列化的响应体 |
+包结构首先服务于阅读和维护。简单功能放在所属模块已有的职责目录中；当功能形成边界清晰的一组文件，继续平铺已经不利于定位时，才按功能聚合为子包。不能仅因为“它是一个子功能”就再复制一套目录。
+
+本项目顶层按技术层组织，层内按业务模块组织：`dao/<域>`、`service/<域>`、`web/<域>`。`auth` 与 `post` 是业务模块；`post/interaction` 是帖子模块内的功能分组，不因此成为独立部署或独立构建的模块。
+
+### 1. 简单功能默认平铺
+
+- 多个服务接口可以在同一个模块包根并列，分别将实现、模型、辅助类放入已有职责目录；平铺不等于合并成一个大 Service。
+- 当前 `auth` 保持这种结构，不为登录、注册、验证码各建一套嵌套目录。
+- 没有明确的聚合收益时保持平铺；不为了未来可能增长提前拆包。
+
+以下目录树为代表性节选，不是每个模块必须照抄的模板：
+
+```text
+service/auth/
+├── LoginService.java
+├── RegisterService.java
+├── impl/
+│   ├── LoginServiceImpl.java
+│   └── RegisterServiceImpl.java
+├── model/
+│   ├── LoginAttempt.java
+│   └── Registration.java
+└── support/
+    ├── EmailNormalizer.java
+    └── EmailCodeFlow.java
+```
+
+### 2. 复杂功能按需聚合
+
+考虑增加功能子包时，需要同时说明：
+- 功能边界是什么，哪些文件主要服务于它；
+- 当前平铺会造成什么实际定位或维护困难；
+- 聚合如何改善这些困难，跨功能共享类型仍归哪里。
+
+接口、实现、模型、支撑件形成相对完整的一组时，可放在同一功能子包下。当前 `post/interaction` 保留为这种组织方式的例子；不由此自动继续拆出 `comment/impl/model`、`vote/impl/model` 等更深目录。
+
+以下同样是目录节选：
+
+```text
+service/post/
+├── PostService.java
+├── impl/
+│   └── PostServiceImpl.java
+├── model/
+│   ├── PostCommand.java
+│   └── PostView.java
+├── support/
+│   └── PostReadAccess.java
+└── interaction/
+    ├── PostInteractionService.java
+    ├── impl/
+    │   └── PostInteractionServiceImpl.java
+    ├── model/
+    │   ├── CommentView.java
+    │   ├── VoteView.java
+    │   └── BookmarkView.java
+    └── support/
+        └── CommentCursor.java
+```
+
+不设置“达到几个文件就必须分包”的阈值；有独立接口、有若干张表、未来可能拆走，都不是单独的充分理由。每增加一层功能目录，都要重新说明实际收益，不能机械递归套用结构。
+
+### 3. 目录职责统一，目录形状不必一致
+
+| 位置 | 职责 |
+|---|---|
+| `service/<域>/` 或经审阅的功能包根 | 服务接口；Controller 依赖接口而非实现 |
+| 该服务包的 `impl/` | 接口实现与业务编排 |
+| 该服务包的 `model/` | 服务调用的入参、结果与值对象，例如 Command、View、Result、Page |
+| 该服务包的 `support/` | 辅助校验、游标、限流等协作件；不是第二个业务编排入口 |
+| `dao/<域>/entity/` | 持久化实体；仓储与持久化转换放在同层对应职责目录 |
+| `web/<域>/dto/` 或对应功能包的 `dto/` | HTTP 请求与响应契约；Controller 留在所属 web 包 |
+
+- 目录按实际类型创建，不为凑齐 `impl/model/support` 建空壳。
+- service 层分子包不意味着 dao、web 各层必须同步复制相同包树；各层按自己的文件归属组织。
+- 多个功能共同使用的服务类型优先留在该模块共同的职责目录，不复制多份，也不因同模块共享就搬进全局 `common`。
+- `auth` 平铺与 `post/interaction` 聚合可以并存。统一的是职责和分包依据，不是所有模块目录深度完全相同。
+
+### 4. 类型按所属边界放置
+
+`model` 在这里表示服务层的数据载体，不是所有模型的总目录，也不只允许 Service 实现类引用。Controller 调用服务时可以使用这些类型；HTTP 请求与响应仍使用 web 层 DTO。
+
+例如：持久化对象位于 `dao/post/entity/Post`，服务详情结果位于 `service/post/model/PostView`，HTTP 响应位于 `web/post/dto/PostResponse`。保持既有转换及字段白名单，不将实体直接用作响应，也不将服务入参和结果搬入 Controller 包而造成 service 对 web 的反向依赖。
+
+本项目没有一个同时包含 dao、service、web 的统一 `post/` 根目录，因此不另建跨层的 `post/model` 作为杂物包。其他项目采用模块优先布局或独立契约模块可以有不同放置方式；本规则不把当前目录方案推广为唯一正确架构，也不要求为简单数据机械新增一套 BO。
+
+### 5. 新增或加深功能子包先说明理由
+
+在相应 change 的设计中，用简短说明和目录示例写清：功能边界、代表性类型、平铺的实际问题、聚合收益、共享类型位置。沿用项目的人工审阅后实施流程；不能把“已写进设计”或“已归档”本身当作用户明确批准的证据。
+
+没有实际收益依据时保持平铺。已有代码不因为新增这条规则就批量搬迁；需要调整时，在涉及该结构的变更中单独说明影响，不在其他功能开发中顺手重排。
+
+分包粒度与聚合收益由人工审阅；现有闸门的覆盖边界见本文“机械守卫”小节。
 
 ## Controller 的拆分粒度
 
@@ -61,7 +150,7 @@ common  <--  config / dao  <--  service  <--  web
 
 ## DTO 与响应
 
-- 请求体与响应体都是 Java `record`，放在 `web/<域>/dto/`。
+- 请求体与响应体都是 Java `record`，放在 `web/<域>/dto/`；采用功能子包时，放在对应 web 功能包的 `dto/`，不与服务层 `model/` 混放。
 - **禁止把实体（`dao/` 下的类）作为响应体返回**。实体字段随表结构变，响应字段随契约变，两者必须能独立演进。
 - 响应字段白名单以能力 spec 为准，不以「这个字段反正有用」为准。
 - 字段名 `camelCase`，与前端 `lib/contracts/` 的镜像逐字一致，由 `10-contract-check.ps1` 比对。
@@ -114,7 +203,7 @@ public interface AuthResponseBody { }
 - `docs/db-design-spec.md` — 数据库命名、主键策略、公共字段与数据类型（§2–§4）
 - `openspec/specs/` — 各能力的可验收行为，含错误码固定集合与响应字段白名单
 
-本文不重述以上内容。发现自己在抄规则时，先回到真源。
+本文不完整复制以上真源的规则正文；分包粒度的操作说明与目录示例在本文集中维护，其他约定通过索引引用，不另存平行版本。
 
 ## 依赖现状
 
@@ -135,7 +224,9 @@ public interface AuthResponseBody { }
 
 ## 机械守卫
 
-- `11-conventions-check.ps1` — 分层依赖方向（`dao`/`service` 不得 import `web`，`common` 不得 import 业务层），以及本文四个固定小节与真源路径的有效性
+- `11-conventions-check.ps1` — 约定索引、四个固定小节、真源与闸门路径、依赖描述的自洽性，以及列出的分层 import 禁止项（`dao`/`service` 不得 import `web`，`common` 不得 import `dao`/`service`/`web`）；不判断业务复杂度、子包深度或聚合收益
 - `10-contract-check.ps1` — 后端 DTO 与前端契约的字段名、类型一致
 - `02-test.ps1` — 行为与容器装配，含出站守卫的「未标记即失败」用例
 - `03-static-guard.ps1` — 禁止 `TODO` / `System.out` / `@Disabled`
+
+人工审阅范围：分包粒度、共享类型归属与聚合收益在对应 change 的设计审阅中判断。闸门通过只证明其实际覆盖的检查通过，不能代替分包合理性判断，也不能当作用户批准某项设计的证据。
