@@ -1,4 +1,7 @@
-import { expect, type Locator, type Page, type Route } from '@playwright/test'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+
+import { expect, type Locator, type Page, type Route, type TestInfo } from '@playwright/test'
 
 /**
  * 项目标准视口：桌面取 1440×900（与既有手测截图一致），
@@ -342,4 +345,107 @@ export async function expectNoBrowserReadableAuthState(page: Page): Promise<void
   expect(sizes.local, 'localStorage 不应留下任何认证信息').toBe(0)
   expect(sizes.session, 'sessionStorage 不应留下任何认证信息').toBe(0)
   expect(sizes.cookie, '令牌 cookie 必须是 HttpOnly，脚本读不到').toBe('')
+}
+
+/** ------------------------------------------------------------------ *
+ * 帖子端点的桩与请求录制
+ * ------------------------------------------------------------------ */
+
+export interface RecordedPostsRequest {
+  method: string
+  pathname: string
+  search: URLSearchParams
+  body: unknown
+}
+
+export interface PostsStubResponse {
+  status?: number
+  body?: unknown
+  /** 延迟响应毫秒数，用于构造「迟到响应」竞态。 */
+  delayMs?: number
+}
+
+/** 按键分发太僵硬，这里直接按请求本身计算响应，便于用计数器构造第一条失败、第二条成功。 */
+export type PostsStubHandler = (
+  request: RecordedPostsRequest,
+) => PostsStubResponse | Promise<PostsStubResponse>
+
+/**
+ * 把 `/api/posts/**` 全部桩掉。
+ *
+ * 断言的是前端对后端的契约：请求打到哪个端点、方法、查询参数与请求体逐字是什么，
+ * 拿到真实 DTO 形状之后界面怎么渲染；后端自身的读法由 backend 的单元与容器装配测试负责。
+ * 桩掉之后这条链路不依赖后端进程、MySQL 与 Redis。
+ */
+export async function stubPostsApi(page: Page, handler: PostsStubHandler): Promise<void> {
+  await page.route('**/api/posts**', async (route: Route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    const raw = request.postData()
+    let body: unknown = null
+    if (raw) {
+      try {
+        body = JSON.parse(raw) as unknown
+      } catch {
+        body = raw
+      }
+    }
+
+    const resolved = await handler({
+      method: request.method(),
+      pathname: url.pathname,
+      search: url.searchParams,
+      body,
+    })
+    const status = resolved.status ?? 200
+    if (resolved.delayMs) {
+      await new Promise((resolve) => setTimeout(resolve, resolved.delayMs))
+    }
+
+    try {
+      await route.fulfill({
+        status,
+        contentType: 'application/json',
+        // 204 不允许带响应体。
+        body: status === 204 ? '' : JSON.stringify(resolved.body ?? {}),
+      })
+    } catch {
+      // 切换排序或离开页面会让浏览器取消在途请求，迟到响应本就该被丢弃。
+    }
+  })
+}
+
+/** 录制真正发到 `/api/posts/**` 的请求，用于断言端点、方法与请求体字段名。 */
+export function recordPostsRequests(page: Page): RecordedPostsRequest[] {
+  const recorded: RecordedPostsRequest[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (!url.pathname.startsWith('/api/posts')) {
+      return
+    }
+    let body: unknown = null
+    const raw = request.postData()
+    if (raw) {
+      try {
+        body = JSON.parse(raw) as unknown
+      } catch {
+        body = raw
+      }
+    }
+    recorded.push({ method: request.method(), pathname: url.pathname, search: url.searchParams, body })
+  })
+  return recorded
+}
+
+/**
+ * 显式证据截图：落到 `docs/e2e/screenshots/<spec>/<name>.png`（该目录在 .gitignore 中）。
+ * 与失败自动截图分开命名，避免把「证据」和「故障现场」混在一起。
+ */
+export async function saveEvidenceScreenshot(page: Page, testInfo: TestInfo, name: string): Promise<string> {
+  const specName = path.basename(testInfo.file, '.spec.ts')
+  const targetDir = path.join(path.dirname(testInfo.file), 'screenshots', specName)
+  await fs.mkdir(targetDir, { recursive: true })
+  const target = path.join(targetDir, `${name}.png`)
+  await page.screenshot({ path: target, fullPage: true })
+  return target
 }

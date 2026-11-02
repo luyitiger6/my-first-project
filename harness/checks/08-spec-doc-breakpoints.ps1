@@ -29,6 +29,10 @@ $pairs = @(
     @{ Doc = 'docs/specs/wanderchain/homepage-u8-hot-attractions.md';  Css = 'frontend/components/home/hot-attractions.module.css' },
     @{ Doc = 'docs/specs/wanderchain/search-page.md';                  Css = 'frontend/app/search/search.module.css' },
     @{ Doc = 'docs/specs/wanderchain/post-feed.md';                    Css = 'frontend/components/posts/post-list.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/post-detail.md';                  Css = 'frontend/components/posts/post-detail.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/post-interactions.md';            Css = 'frontend/components/posts/post-interaction-bar.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/post-comments.md';                Css = 'frontend/components/posts/post-comments.module.css' },
+    @{ Doc = 'docs/specs/wanderchain/post-comment-composer.md';        Css = 'frontend/components/posts/comment-composer.module.css' },
     @{ Doc = 'docs/specs/wanderchain/attractions-list.md';             Css = 'frontend/components/attractions/attraction-collections.module.css' },
     @{ Doc = 'docs/specs/wanderchain/attractions-detail.md';           Css = 'frontend/components/attractions/attraction-detail.module.css' }
 )
