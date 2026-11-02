@@ -47,24 +47,27 @@ $expectations[$aiChatDb] = @{
 }
 $expectations[$authDb] = @{
   Script      = 'backend/src/main/resources/schema.sql'
-  Tables      = @('accounts', 'auth_sessions', 'posts', 'attractions')
+  Tables      = @('accounts', 'auth_sessions', 'posts', 'attractions', 'attraction_comments')
   Indexes     = @(
     'uk_accounts_public_id', 'uk_accounts_active_email',
     'uk_auth_sessions_jti', 'idx_auth_sessions_account', 'idx_auth_sessions_expires',
     'uk_posts_public_id', 'idx_posts_feed', 'idx_posts_author',
     'uk_attractions_public_id',
     'idx_attractions_hot', 'idx_attractions_rating', 'idx_attractions_new',
-    'idx_attractions_curated_first_trip', 'idx_attractions_curated_no_booking', 'idx_attractions_curated_open_monday'
+    'idx_attractions_curated_first_trip', 'idx_attractions_curated_no_booking', 'idx_attractions_curated_open_monday',
+    'uk_attraction_comments_public_id', 'idx_attraction_comments_attraction', 'idx_attraction_comments_parent'
   )
   Constraints = @(
     'ck_accounts_status', 'ck_accounts_token_version', 'ck_accounts_version',
     'fk_auth_sessions_account', 'ck_auth_sessions_expires',
     'fk_posts_author', 'ck_posts_status', 'ck_posts_version',
     'ck_attractions_status', 'ck_attractions_rating', 'ck_attractions_view_count',
-    'ck_attractions_city_slug', 'ck_attractions_version'
+    'ck_attractions_city_slug', 'ck_attractions_version',
+    'fk_attraction_comments_attraction', 'fk_attraction_comments_account', 'fk_attraction_comments_parent',
+    'ck_attraction_comments_version'
   )
   Generated   = @('active_email')
-  CreatedAt   = @('accounts', 'posts', 'attractions')
+  CreatedAt   = @('accounts', 'posts', 'attractions', 'attraction_comments')
 }
 $databases = @($aiChatDb, $authDb)
 

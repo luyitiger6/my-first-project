@@ -1,7 +1,8 @@
 # wanderchain-auth-frontend Specification
 
 ## Purpose
-TBD - created by archiving change add-wanderchain-auth-frontend. Update Purpose after archive.
+
+让 wanderchain 前端在浏览器侧不持有任何可被脚本读取的凭据的前提下，完成登录、注册、登出与「当前是谁」的判定：会话状态只来自服务端 `GET /api/auth/me`，凭据只存在于 HttpOnly cookie；登录失败时按后端错误码分流到不同文案与后续动作（凭证错误、需要图形码、来源限流、邮箱未验证、跨站拒绝），而不是按 HTTP 状态码笼统处理。
 
 ## Requirements
 

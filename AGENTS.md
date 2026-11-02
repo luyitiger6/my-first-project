@@ -88,19 +88,21 @@ ai-workspace/
 │       │   ├── common/persistence/  业务实体公共八列基类（MappedSuperclass）
 │       │   ├── common/security/     口令哈希抽象与 BCrypt 实现、强度规则
 │       │   ├── common/web/          统一错误体、全局异常处理、响应基类型
-│       │   ├── config/              wanderchain.auth 配置绑定、MVC 拦截器装配
+│       │   ├── config/              wanderchain.auth / media / attraction-cache 配置绑定、MVC 拦截器装配
 │       │   ├── dao/auth/            entity / repository / converter（账户与会话持久化）
 │       │   ├── dao/post/            entity / repository / converter（帖子持久化）
 │       │   ├── dao/attraction/      entity / repository / converter（景点持久化）
 │       │   ├── service/auth/        接口，impl/ 实现，model/ 载体，support/ 支撑件
 │       │   ├── service/post/        帖子接口、impl/ 实现、model/ 视图、support/ 校验与游标
-│       │   ├── service/attraction/  景点读接口、impl/ 实现、model/ 载体、support/ 查询白名单与钳制
+│       │   ├── service/attraction/  景点读接口、impl/ 实现、model/ 载体、support/ 查询白名单与钳制、RankingCache 读缓存
+│       │   ├── service/media/       媒体存取接口、impl/ 本地磁盘实现、model/ 结果载体、support/ 判型与命名规则
 │       │   ├── web/auth/            REST 控制器，dto/ 请求响应体，interceptor/ 认证拦截与来源校验
 │       │   ├── web/post/            帖子 REST 控制器与 dto
-│       │   └── web/attraction/      景点两个公开 GET（列表/榜单与详情）与 dto
+│       │   ├── web/attraction/      景点两个公开 GET（列表/榜单与详情）与 dto
+│       │   └── web/media/           封面上传（受保护）与媒体读取（公开）端点及 dto
 │       ├── main/resources/
-│       │   ├── application.yml      数据源、Redis、wanderchain.auth 配置
-│       │   ├── schema.sql           wanderchain 库建表（accounts / auth_sessions / posts / attractions，含景点种子）
+│       │   ├── application.yml      数据源、Redis、wanderchain.auth / media / attraction-cache 配置
+│       │   ├── schema.sql           wanderchain 库建表（accounts / auth_sessions / posts / attraction_comments / attractions，含景点种子）
 │       │   └── db/ai-chat/schema.sql  ai_chat_gate 库建表（AI 会话四表）
 │       └── test/java/com/luyi/myfirst/  按被测类所在包放置的单元测试 + 容器装配契约测试
 ├── frontend/ [submodule]      独立仓库：Next.js 16 App Router + React 19 + TypeScript（npm 项目根）
@@ -126,7 +128,8 @@ ai-workspace/
 │   │   ├── attractions/        景点 HTTP 客户端、视图模型；server.ts 供搜索页服务端取数
 │   │   ├── posts/              帖子 HTTP 客户端、视图模型与评论输入校验
 │   │   ├── search/             纯同步检索函数（编辑推荐 / 帖子 / 景点分组）
-│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对；当前覆盖 auth / posts / attractions）
+│   │   ├── media/              封面图上传客户端（FormData 提交、错误归一化与本地上限镜像）
+│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对；当前覆盖 auth / posts / attractions / media）
 │   │   ├── auth/               认证 HTTP 客户端与错误归一化
 │   │   └── backend-url.ts      后端地址的唯一读法（同源代理与服务端取数共用）
 │   ├── vitest.config.ts        测试配置（vitest + jsdom）
@@ -137,6 +140,10 @@ ai-workspace/
 │   ├── e2e/                    Playwright 端到端用例与报告（工作区根运行）
 │   ├── db-design-spec.md       数据库设计规范（命名、主键、公共字段）
 │   └── spec-coverage-audit.md  spec 覆盖审计
+├── scripts/                   按需手动执行的辅助脚本（不进闸门）
+│   ├── seed-demo-data.ps1      一次性造数：景点与景点评论各千条；`-Cleanup` 按 `01BULK` / `01COMM` 前缀精确回滚
+│   ├── seed-posts-accounts.ps1 帖子与账号种子
+│   └── e2e-run.mjs             Playwright 运行器
 ├── openspec/                  【工件层】
 │   ├── config.yaml              OpenSpec 配置（schema: spec-driven）
 │   ├── specs/                   当前真相：已归档能力的需求描述
@@ -188,7 +195,7 @@ ai-workspace/
 | 只查建表 | `powershell -File harness\checks\06-schema-check.ps1`（默认连 `127.0.0.1:8806` 的 `ai_chat_gate` 与 `wanderchain`） |
 | 只查文档断点 | `powershell -File harness\checks\08-spec-doc-breakpoints.ps1` |
 | 只查缓存 | `powershell -File harness\checks\09-redis-check.ps1`（默认连 `127.0.0.1:6606` 的 db 3） |
-| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 的字段名与类型双向比对；当前受管 auth / posts / attractions，清单见脚本顶部 `$contractPairs`） |
+| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 的字段名与类型双向比对；当前受管 auth / posts / attractions / media，清单见脚本顶部 `$contractPairs`） |
 | 只查约定 | `powershell -File harness\checks\11-conventions-check.ps1`（约定文档四个固定小节与真源路径、依赖描述与两侧清单一致、后端分层依赖方向） |
 | 写新模块前 | 读 `docs/conventions/README.md`——约定入口与索引，后端/前端/样式三份正文从这里进入 |
 | 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
@@ -199,6 +206,9 @@ ai-workspace/
 | 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（监听 `http://localhost:8989`；需先设置 DB / Redis / JWT 环境变量） |
 | 帖子接口 | `GET /api/posts?limit=&cursor=` / `GET /api/posts/{publicId}` 公开；`POST` / `PUT` / `DELETE /api/posts/{publicId}` 需登录 |
 | 景点接口 | `GET /api/attractions?city=&sortBy=&collection=&limit=` / `GET /api/attractions/{publicId}` 公开只读（只返回已发布、未删除、已核实；`limit` 默认 20、上限 50） |
+| 景点缓存键族 | `wc:attraction:ranking:{sortBy}:{city\|all}:{limit}` 与 `wc:attraction:collection:{collection}:{city\|all}:{limit}`，TTL 取 `wanderchain.attraction-cache.ttl`（默认 5 分钟）；键只落在 db 3，`wc:` 前缀是共享实例上的唯一隔离层 |
+| 演示造数 | `powershell -File scripts\seed-demo-data.ps1`（景点与景点评论各 1000 条），`-Cleanup` 按 `01BULK` / `01COMM` 前缀回滚；库里没有账号时会建一个**不可登录**的演示账号满足评论外键 |
+| 媒体接口 | `POST /api/media`（`multipart/form-data` 的 `file` 字段）需登录，成功返回 `201` 与 `{url, contentType, size}`；`GET /api/media/{fileName}` 公开读取，带一年 `immutable` 缓存头 |
 | 前端开发 | `cd frontend; npm run dev`（访问 `http://localhost:3000`，`/api` 由 Route Handler 代理到 8989） |
 | 前端构建 | `cd frontend; npm run build`（产物含 `.next/standalone`） |
 | 前端测试 | `cd frontend; npm run test` |
@@ -224,9 +234,14 @@ ai-workspace/
 ## 9. 已知边界
 
 - 运行期**依赖** `127.0.0.1:8806` 的 `wanderchain` 库与 `127.0.0.1:6606` 的 Redis（db 3）：两者不可达时启动即失败，不存在内存兜底。`mvn test` 直连真实实例而非 H2 / 嵌入式 Redis——生成列与唯一索引的语义本身就是断言对象，替身测不出真实行为。`06-schema-check` 复用同一 MySQL 实例，但只操作 `ai_chat_gate` 与 `wanderchain` 两个专用 schema；不新建/删除容器，不触碰 `green-note` 业务库。
-- 建表由受版本控制的 DDL 脚本承担（`backend/src/main/resources/schema.sql` 与 `db/ai-chat/schema.sql`），应用启动时幂等执行，`ddl-auto=none`。本项目不做迁移：库里没有需要保住的数据，改结构直接 drop 重建，因此不引入迁移框架，也没有 `flyway_schema_history` 这类迁移账本。
+- 建表由受版本控制的 DDL 脚本承担（`backend/src/main/resources/schema.sql` 与 `db/ai-chat/schema.sql`），应用启动时幂等执行，`ddl-auto=none`。本项目不做迁移：库里没有需要保住的数据，改结构直接 drop 重建，因此不引入迁移框架，也没有 `flyway_schema_history` 这类迁移账本。新表若不同时登记进 `06-schema-check.ps1` 的 Tables / Indexes / Constraints / CreatedAt 四组清单，闸门对它会永久失明且不报错——DDL 与闸门清单必须成对修改。
+- 景点列表与榜单存在**不超过 TTL 的陈旧窗口**：结果取自 Redis 时，其可见性以缓存写入时刻的数据为准，最长一个 TTL（默认 5 分钟），期间已软删除或已改状态的景点仍可能被返回。景点当前没有写入口，所以失效只靠 TTL、不提供清除方法；将来出现写入口时按 `wc:attraction:` 前缀扫删。
+- `127.0.0.1:6606` 的 Redis 是**共享实例**：同一 `wc:` 前缀下还有登录限流、邮箱配额等其他键，实例里也存在与本项目无关的数据。本项目只读写自己构造的键，不执行 `FLUSHDB`、不按前缀清理他人键。
+- `attraction_comments` 本期**只有表**：列与约束逐项对齐 `post_comments`（只把归属列换成 `attraction_id` 并指向 `attractions.id`），没有实体、仓储、端点，也没有前端页面。它只是让「景点评论」这个能力有落点，不构成可用功能。
 - 静态红线目前四条：Java 的 TODO 占位、`System.out`、`@Disabled`，以及前端的 TODO 占位与跳过写法；由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
-- `10-contract-check` 覆盖**已登记契约面**（受管清单由脚本顶部的 `$contractPairs` 配置，当前 auth / posts / attractions 三组）：后端 `web/*/dto/*.java` 与 `common/web/ErrorResponse.java` 对前端 `lib/contracts/*.ts`，追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。
+- `10-contract-check` 覆盖**已登记契约面**（受管清单由脚本顶部的 `$contractPairs` 配置，当前 auth / posts / attractions / media 四组）：后端 `web/*/dto/*.java` 与 `common/web/ErrorResponse.java` 对前端 `lib/contracts/*.ts`，追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。
+- 封面图存在**本地磁盘**，不引入对象存储：落盘目录由 `wanderchain.media.root` 给出（缺省 `./media`，相对后端进程工作目录，已入 `backend/.gitignore`，**不纳入版本库**），对外地址前缀由 `wanderchain.media.public-base-url` 给出（缺省指向前端同源代理 `http://localhost:3000/api/media`）。地址里烘焙了主机名：**换域名或换端口后历史封面地址会失效**，需要迁移已上传文件或改写 `posts.cover_image`。
+- 媒体回收只覆盖**删帖**：删除帖子后其托管封面文件一并删除，但**编辑帖子换封面会留下孤儿文件**（本次已知缺口，留给后续定时清理）。上传无配额与频次限制，唯一门槛是登录 + 单文件 5 MB。
 - `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。
 - 子模块初始化需要访问两个远程仓库（网络与凭据）。00 闸门本身不联网、不自动初始化：未就绪时以退出码 1 失败并打印 `git submodule update --init --recursive`，这是护栏行为而非环境故障。
 - 应用身份（Java 包名、Maven artifactId、前端包名）的改名职责在 `backend` / `frontend` 各自仓库内；工作区改名只改 `AGENTS.md` 与 `README.md`，不改 `.gitmodules`，也不改写子模块 URL。
