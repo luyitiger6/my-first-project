@@ -32,15 +32,8 @@ const POST_TITLES = [
 /**
  * 6.1 起热门景点读后端种子（`schema.sql`），不再是前端 Mock；
  * 编辑推荐与帖子仍走 Mock 仓储，本文件两类断言因此并存。
+ * 景点侧只断言排序规则，不写死具体景点与浏览量——那是业务数据，会随种子调整。
  */
-const ATTRACTION_TITLES = [
-  'West Lake',
-  'The Bund',
-  'Chengdu Panda Base',
-  'Forbidden City',
-  'Terracotta Army',
-]
-
 test.describe('U0 · 默认首页（/）', () => {
   test.beforeEach(async ({ page }) => {
     await gotoHome(page)
@@ -67,7 +60,14 @@ test.describe('U0 · 默认首页（/）', () => {
 
   test('S4 · 景点按浏览、时间降序，id 升序兜底', async ({ page }) => {
     // S4 When 调用 listHotAttractions · Then 顺序由后端 hot 排序决定（viewCount → publishedAt → id）
-    await expect(page.locator('#hot-attractions ul li h3')).toHaveText(ATTRACTION_TITLES)
+    const cards = page.locator('#hot-attractions ul li')
+    await expect(cards).toHaveCount(5)
+
+    const counts: number[] = []
+    for (const card of await cards.all()) {
+      counts.push(Number((await card.locator('p').nth(1).innerText()).replace(/\D/g, '')))
+    }
+    expect(counts).toEqual([...counts].sort((left, right) => right - left))
   })
 
   test('S5 · 帖子只展示前 10 条，第 11 名以后被截断', async ({ page }) => {

@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test'
 import { expect, test } from './support/fixtures'
 import {
   DESKTOP_VIEWPORT,
@@ -14,6 +15,22 @@ const FULL_LIST = 'section[data-section="attraction-list"]'
 
 /** 卡片内部还有一层徽标 `ul`，计数与列数一律用直系子选择器。 */
 const FIRST_TRIP_GRID = `${SHORTLIST}[data-collection="first-trip"] > ul`
+
+/**
+ * 浏览数只承诺「en-US 千分位」这一形状（单元文档 S5 的口径），
+ * 具体数值属于业务数据，不在断言里锁死。
+ */
+const VIEWS_SHAPE = /^\d{1,3}(,\d{3})* views$/
+
+/** 把每张卡的浏览数读成数字，用来断言相对顺序而不是写死名次。 */
+async function readViewCounts(cards: Locator): Promise<number[]> {
+  const counts: number[] = []
+  for (const card of await cards.all()) {
+    const text = await card.locator('p').nth(1).innerText()
+    counts.push(Number(text.replace(/\D/g, '')))
+  }
+  return counts
+}
 
 /** 三个榜单的顺序、固定英文名与策展成员（`schema.sql` 的 `curated_rank_*` 列）。 */
 const SHORTLISTS = [
@@ -65,7 +82,8 @@ test.describe('景点列表页 · 桌面端', () => {
     )
     await expect(firstPick.locator('h3')).toHaveText('Forbidden City')
     await expect(firstPick.locator('p').nth(0)).toHaveText('Beijing · Rating 4.8')
-    await expect(firstPick.locator('p').nth(1)).toHaveText('12,800 views')
+    // 千分位是格式规则；具体浏览量随业务数据变化，锁死数值会让数据调整误伤本用例。
+    await expect(firstPick.locator('p').nth(1)).toHaveText(VIEWS_SHAPE)
     // 约束徽标由后端布尔事实推导：故宫需预约、周一闭馆。
     await expect(firstPick.locator('ul li')).toHaveText([
       'Paid entry',
@@ -81,7 +99,13 @@ test.describe('景点列表页 · 桌面端', () => {
     // 第一个 p 是区块说明，status line 在数据就绪后才出现，所以按整段文本断。
     await expect(list).toContainText('Showing 12 of 12 published attractions.')
     await expect(page.locator(`${FULL_LIST} > ul > li`)).toHaveCount(12)
-    await expect(page.locator(`${FULL_LIST} > ul > li h3`).first()).toHaveText('West Lake')
+
+    // 完整列表走默认 hot：断言「浏览量非递增」这一排序规则本身，
+    // 而不是锁死某个景点刚好排在第一。
+    const counts = await readViewCounts(page.locator(`${FULL_LIST} > ul > li`))
+    expect(counts).toHaveLength(12)
+    expect(counts).toEqual([...counts].sort((left, right) => right - left))
+
     // 草稿（draft）不得出现在任何位置。
     await expect(list).not.toContainText('Yu Garden')
   })

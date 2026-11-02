@@ -65,8 +65,12 @@ function summary(index: number, overrides: Partial<PostSummaryBody> = {}): PostS
   }
 }
 
-function detailBody(index: number): PostSummaryBody & { content: string } {
-  return { ...summary(index), content: 'Body text from the server.' }
+/** 详情是「同一条帖子 + 正文」：标题必须能从 feed 传入，否则两处 stub 会各写一个标题。 */
+function detailBody(
+  index: number,
+  overrides: Partial<PostSummaryBody> = {},
+): PostSummaryBody & { content: string } {
+  return { ...summary(index, overrides), content: 'Body text from the server.' }
 }
 
 const NOT_STUBBED = { status: 404, body: { code: 'POST_NOT_FOUND', message: 'not stubbed' } }
@@ -240,16 +244,20 @@ test.describe('帖子广场 · 真实 feed', () => {
   test('卡片详情链接进入真实详情路由', async ({ page }) => {
     // When 点击卡片标题
     // Then 落到 /posts/<publicId>?sortBy=latest 并渲染详情标题与游客入口
+    //
+    // feed 与详情返回的是同一条帖子，真实后端只可能有同一个标题；
+    // 两边各写一个标题会让「详情页显示的是不是刚刚点的那条」变成未验证。
+    const title = 'A walk through the old town'
     await stubAuthApi(page, { '/api/auth/me': { status: 401, body: UNAUTHENTICATED_BODY } })
     await stubPostsApi(page, (request) => {
       if (request.method !== 'GET') {
         return NOT_STUBBED
       }
       if (request.pathname === FEED) {
-        return { body: { items: [summary(1, { title: 'A walk through the old town' })], nextCursor: null } }
+        return { body: { items: [summary(1, { title })], nextCursor: null } }
       }
       if (request.pathname === `/api/posts/${postId(1)}`) {
-        return { body: detailBody(1) }
+        return { body: detailBody(1, { title }) }
       }
       if (request.pathname === `/api/posts/${postId(1)}/comments`) {
         return { body: { items: [], nextCursor: null } }
@@ -261,7 +269,7 @@ test.describe('帖子广场 · 真实 feed', () => {
     await page.locator('[data-testid="post-card"] h3 a').first().click()
 
     await expect(page).toHaveURL(new RegExp(`/posts/${postId(1)}\\?sortBy=latest$`))
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('A walk through the old town')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(title)
     await expect(page.getByText('Body text from the server.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Log in to comment' })).toBeVisible()
   })
