@@ -1,3 +1,5 @@
+基于我对代码的分析，我现在了解了搜索功能如何增强并整合景点结果。让我更新文档以反映这些变更：
+
 # WanderChain 搜索页面规格
 
 <cite>
@@ -9,17 +11,18 @@
 - [page.test.tsx（搜索结果页测试）](file://frontend/app/search/page.test.tsx)
 - [query.ts（检索纯函数）](file://frontend/lib/search/query.ts)
 - [query.test.ts（检索纯函数测试）](file://frontend/lib/search/query.test.ts)
-- [homepage-anchors.spec.ts（首页锚点E2E测试）](file://docs/e2e/homepage-anchors.spec.ts)
-- [helpers.ts（E2E辅助函数）](file://docs/e2e/support/helpers.ts)
+- [server.ts（景点服务端取数）](file://frontend/lib/attractions/server.ts)
 - [search-page.spec.ts（搜索页面E2E测试）](file://docs/e2e/search-page.spec.ts)
 </cite>
 
 ## 更新摘要
 **变更内容**   
-- 新增了锚点落地稳定性要求，目标区块需落在吸顶头部下沿附近（偏差小于视口高度的10%）
-- 强化了分组回链的锚点定位验收标准
-- 补充了首页锚点落位稳定性的E2E测试规范
-- 更新了相关章节以反映锚点定位的实现机制
+- **景点结果整合完成**：搜索功能现已完全整合景点类型，与编辑推荐和帖子并列显示
+- **后端数据源集成**：景点数据通过 `listAttractionsForSearch()` 从后端API获取，支持最多50条结果
+- **双语查询增强**：搜索引擎支持中英文双语查询，能够同时匹配标题、摘要、作者和名称字段的中英文版本
+- **分组配置标准化**：所有分组标题和回链文本统一使用英文常量，消除了中文分类名称与英文显示标签之间的歧义
+- **锚点落地稳定性增强**：从搜索页点击回链跳转到首页后，目标区块必须准确定位在吸顶头部下沿附近（偏差小于视口高度的10%）
+- **景点条目可点击**：景点结果现在可以链接到详情页 `/attractions/{publicId}`
 
 ## 目录
 1. [引言](#引言)
@@ -39,11 +42,12 @@
 该模块属于新增能力 `wanderchain-search`，其主契约已归档并迁移至生产就绪规格 `openspec/specs/wanderchain-search/spec.md`，而 `docs/specs/wanderchain/search-page.md` 作为人读契约补充了页面级细节、断点与验收项。
 
 **更新摘要**
-- 搜索引擎现已支持中英文双语查询，具备双语匹配逻辑
-- 搜索现在同时匹配标题、摘要、作者和名称字段的中英文版本
-- 显示层更新为展示英文字段值，并提供本地化的空态消息
-- **GROUP_META 配置已标准化**：所有分组标题和回链文本统一使用英文常量，消除了中文分类名称与英文显示标签之间的歧义
+- **景点结果整合已完成**：搜索功能现已完全整合景点类型，与编辑推荐和帖子并列显示
+- **后端数据源集成**：景点数据通过 `listAttractionsForSearch()` 从后端API获取，支持最多50条结果
+- **双语查询增强**：搜索引擎支持中英文双语查询，能够同时匹配标题、摘要、作者和名称字段的中英文版本
+- **分组配置标准化**：所有分组标题和回链文本统一使用英文常量，消除了中文分类名称与英文显示标签之间的歧义
 - **锚点落地稳定性增强**：从搜索页点击回链跳转到首页后，目标区块必须准确定位在吸顶头部下沿附近（偏差小于视口高度的10%）
+- **景点条目可点击**：景点结果现在可以链接到详情页 `/attractions/{publicId}`
 
 ## 项目结构定位
 搜索相关代码集中在前端 Next.js App Router 下：
@@ -53,10 +57,10 @@
 - 页面测试：`frontend/app/search/page.test.tsx`
 - 检索逻辑：`frontend/lib/search/query.ts`
 - 检索测试：`frontend/lib/search/query.test.ts`
+- 景点服务端取数：`frontend/lib/attractions/server.ts`
 - 规格契约：`docs/specs/wanderchain/search-page.md`
 - OpenSpec 生产规格：`openspec/specs/wanderchain-search/spec.md`
-- E2E测试：`docs/e2e/search-page.spec.ts`、`docs/e2e/homepage-anchors.spec.ts`
-- E2E辅助函数：`docs/e2e/support/helpers.ts`
+- E2E测试：`docs/e2e/search-page.spec.ts`
 
 ```mermaid
 graph TB
@@ -65,60 +69,63 @@ C["frontend/app/search/page.tsx<br/>搜索结果页"] --> D["frontend/lib/search
 C --> E["frontend/app/search/search.module.css<br/>页面样式"]
 F["frontend/app/search/page.test.tsx<br/>页面测试"] --> C
 G["frontend/lib/search/query.test.ts<br/>检索测试"] --> D
+H["frontend/lib/attractions/server.ts<br/>景点服务端取数"] --> C
 B --> C
 A --> C
-H["docs/e2e/search-page.spec.ts<br/>搜索页面E2E测试"] --> C
-I["docs/e2e/homepage-anchors.spec.ts<br/>首页锚点E2E测试"] --> J["docs/e2e/support/helpers.ts<br/>E2E辅助函数"]
+I["docs/e2e/search-page.spec.ts<br/>搜索页面E2E测试"] --> C
 ```
 
 **图表来源**
 - [search-page.md:1-10](file://docs/specs/wanderchain/search-page.md#L1-L10)
-- [spec.md:1-122](file://openspec/specs/wanderchain-search/spec.md#L1-L122)
-- [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
+- [spec.md:1-161](file://openspec/specs/wanderchain-search/spec.md#L1-L161)
+- [page.tsx:1-120](file://frontend/app/search/page.tsx#L1-L120)
 - [search.module.css:1-127](file://frontend/app/search/search.module.css#L1-L127)
-- [page.test.tsx:1-142](file://frontend/app/search/page.test.tsx#L1-L142)
-- [query.ts:1-170](file://frontend/lib/search/query.ts#L1-L170)
-- [query.test.ts:1-145](file://frontend/lib/search/query.test.ts#L1-L145)
-- [search-page.spec.ts:1-236](file://docs/e2e/search-page.spec.ts#L1-L236)
-- [homepage-anchors.spec.ts:1-48](file://docs/e2e/homepage-anchors.spec.ts#L1-L48)
-- [helpers.ts:38-71](file://docs/e2e/support/helpers.ts#L38-L71)
+- [page.test.tsx:1-214](file://frontend/app/search/page.test.tsx#L1-L214)
+- [query.ts:1-183](file://frontend/lib/search/query.ts#L1-L183)
+- [query.test.ts:1-235](file://frontend/lib/search/query.test.ts#L1-L235)
+- [server.ts:1-34](file://frontend/lib/attractions/server.ts#L1-L34)
+- [search-page.spec.ts:1-263](file://docs/e2e/search-page.spec.ts#L1-L263)
 
 **章节来源**
 - [search-page.md:1-10](file://docs/specs/wanderchain/search-page.md#L1-L10)
-- [spec.md:1-122](file://openspec/specs/wanderchain-search/spec.md#L1-L122)
+- [spec.md:1-161](file://openspec/specs/wanderchain-search/spec.md#L1-L161)
 
 ## 核心组件与职责
 | 组件 | 路径 | 职责 |
 |---|---|---|
 | 搜索结果页 | `frontend/app/search/page.tsx` | 解析查询参数、调用检索纯函数、渲染三态、复用站点头尾、导出元信息 |
 | 检索纯函数 | `frontend/lib/search/query.ts` | 扫描原始数据、过滤发布态、匹配字段、构造分组与条目 |
+| 景点服务端取数 | `frontend/lib/attractions/server.ts` | 从后端API获取景点列表，支持最多50条结果 |
 | 页面样式 | `frontend/app/search/search.module.css` | 定义容器、分组卡片、组头、条目、回链与 720px 断点 |
 | 页面测试 | `frontend/app/search/page.test.tsx` | 验证引导态、空态、分组顺序、锚点链接、唯一 h1、零 fetch |
 | 检索测试 | `frontend/lib/search/query.test.ts` | 验证截断内容可见、草稿不可见、城市中文名匹配、slug 不匹配、分组顺序与总数一致 |
 | E2E测试 | `docs/e2e/search-page.spec.ts` | 验证完整用户流程，包括锚点落地稳定性 |
-| E2E辅助函数 | `docs/e2e/support/helpers.ts` | 提供锚点定位验证、视口检测等通用工具 |
 
 **章节来源**
-- [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
-- [query.ts:1-170](file://frontend/lib/search/query.ts#L1-L170)
+- [page.tsx:1-120](file://frontend/app/search/page.tsx#L1-L120)
+- [query.ts:1-183](file://frontend/lib/search/query.ts#L1-L183)
+- [server.ts:1-34](file://frontend/lib/attractions/server.ts#L1-L34)
 - [search.module.css:1-127](file://frontend/app/search/search.module.css#L1-L127)
-- [page.test.tsx:1-142](file://frontend/app/search/page.test.tsx#L1-L142)
-- [query.test.ts:1-145](file://frontend/lib/search/query.test.ts#L1-L145)
-- [search-page.spec.ts:1-236](file://docs/e2e/search-page.spec.ts#L1-L236)
-- [helpers.ts:1-337](file://docs/e2e/support/helpers.ts#L1-L337)
+- [page.test.tsx:1-214](file://frontend/app/search/page.test.tsx#L1-L214)
+- [query.test.ts:1-235](file://frontend/lib/search/query.test.ts#L1-L235)
+- [search-page.spec.ts:1-263](file://docs/e2e/search-page.spec.ts#L1-L263)
 
 ## 架构总览
-搜索页面采用服务端渲染的 React Server Component，打开页面时不发起任何网络请求；查询参数由 Next.js 传入，页面先归一化出单值 `q`，再交给纯函数 `searchContent` 计算结果，最后根据 `query` 与 `total` 推导三态。
+搜索页面采用服务端渲染的 React Server Component，打开页面时不发起任何网络请求；查询参数由 Next.js 传入，页面先归一化出单值 `q`，再根据是否有关键词决定是否调用后端获取景点数据，最后交给纯函数 `searchContent` 计算结果，并根据 `query` 与 `total` 推导三态。
 
 ```mermaid
 sequenceDiagram
 participant Browser as "浏览器"
 participant Page as "SearchPage<br/>frontend/app/search/page.tsx"
+participant Server as "listAttractionsForSearch<br/>frontend/lib/attractions/server.ts"
 participant Query as "searchContent<br/>frontend/lib/search/query.ts"
-participant Data as "Mock 原始数组<br/>EDITOR_PICKS / POSTS / ATTRACTIONS"
+participant Data as "Mock 原始数组<br/>EDITOR_PICKS / POSTS"
 Browser->>Page : "GET /search?q=关键词"
 Page->>Page : "await searchParams<br/>firstValue('q')"
-Page->>Query : "searchContent(去空白后的 q)"
+Page->>Server : "rawQuery.trim() !== '' ? listAttractionsForSearch() : []"
+Server->>Server : "fetch 后端API<br/>limit=50, sortBy=hot"
+Server-->>Page : "AttractionSummary[]"
+Page->>Query : "searchContent(去空白后的 q, attractions)"
 Query->>Data : "扫描全部原始数据"
 Query->>Query : "过滤发布态<br/>匹配标题/作者/名称/城市中英文"
 Query-->>Page : "SearchOutcome{query,total,groups}"
@@ -128,14 +135,15 @@ Note over Browser : 点击分组回链 → 跳转到首页对应锚点<br/>目�
 ```
 
 **图表来源**
-- [page.tsx:20-35](file://frontend/app/search/page.tsx#L20-L35)
-- [page.tsx:32-104](file://frontend/app/search/page.tsx#L32-L104)
-- [query.ts:118-169](file://frontend/lib/search/query.ts#L118-L169)
-- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
+- [page.tsx:33-39](file://frontend/app/search/page.tsx#L33-L39)
+- [server.ts:18-34](file://frontend/lib/attractions/server.ts#L18-L34)
+- [query.ts:129-182](file://frontend/lib/search/query.ts#L129-L182)
+- [search-page.spec.ts:91-112](file://docs/e2e/search-page.spec.ts#L91-L112)
 
 **章节来源**
-- [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
-- [query.ts:1-170](file://frontend/lib/search/query.ts#L1-L170)
+- [page.tsx:1-120](file://frontend/app/search/page.tsx#L1-L120)
+- [query.ts:1-183](file://frontend/lib/search/query.ts#L1-L183)
+- [server.ts:1-34](file://frontend/lib/attractions/server.ts#L1-L34)
 
 ## 详细组件分析
 
@@ -144,19 +152,24 @@ Note over Browser : 点击分组回链 → 跳转到首页对应锚点<br/>目�
 
 - 导出 `metadata`，设置页面标题为「Search」并附带描述。
 - 从 `searchParams` 中取第一个 `q` 值，避免数组参数干扰。
+- **景点数据获取**：只有当有关键词时才调用 `listAttractionsForSearch()` 获取后端景点数据，否则返回空数组。
 - 调用 `searchContent` 得到 `SearchOutcome`。
 - 根据是否提问和命中总数渲染三种界面：
   - 引导态：未提问时显示引导文案与回首页链接。
   - 空态：有提问但零命中时显示空态文案与回首页链接。
   - 结果态：显示关键词、总条数、分组列表与每组回链。
-- 每个分组使用 `<section aria-labelledby>`，组名使用 `<h2>`，条目使用 `<li>`，条目本身不是链接。
+- 每个分组使用 `<section aria-labelledby>`，组名使用 `<h2>`，条目使用 `<li>`，条目本身不是链接（景点除外）。
 - 复用 `SiteHeader` 与 `SiteFooter`，保证全页唯一 `h1`。
 
 ```mermaid
 flowchart TD
 Start(["进入 SearchPage"]) --> AwaitParams["await searchParams"]
 AwaitParams --> FirstQ["提取第一个 q 值"]
-FirstQ --> CallSearch["调用 searchContent(q)"]
+FirstQ --> CheckQuery{"rawQuery.trim() === '' ?"}
+CheckQuery --> |是| EmptyAttractions["attractions = []"]
+CheckQuery --> |否| FetchAttractions["await listAttractionsForSearch()"]
+EmptyAttractions --> CallSearch["调用 searchContent(q, [])"]
+FetchAttractions --> CallSearch
 CallSearch --> Outcome{"outcome.query 是否为空？"}
 Outcome --> |是| Guide["渲染引导态"]
 Outcome --> |否| HasTotal{"outcome.total > 0？"}
@@ -170,45 +183,45 @@ AnchorLinks --> End(["完成"])
 ```
 
 **图表来源**
-- [page.tsx:32-104](file://frontend/app/search/page.tsx#L32-L104)
+- [page.tsx:33-119](file://frontend/app/search/page.tsx#L33-L119)
 
 **章节来源**
-- [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
+- [page.tsx:1-120](file://frontend/app/search/page.tsx#L1-L120)
 
 ### 检索纯函数
 `searchContent` 是搜索能力的核心纯函数，职责包括：
 
-- 接收原始关键词，去除首尾空白并转为小写用于匹配。
+- 接收原始关键词和景点数组，去除首尾空白并转为小写用于匹配。
 - 若归一化后为空，直接返回空结果。
 - 分别扫描编辑推荐、帖子、景点三类原始数据。
-- 对帖子和景点只保留 `status === 'published'` 的数据。
+- 对帖子只保留 `status === 'published'` 的数据；景点由调用方传入的后端列表处理。
 - **双语匹配字段**：
   - 编辑推荐：标题、英文标题、摘要、英文摘要、编辑署名、英文编辑署名、城市中英文名。
   - 帖子：标题、英文标题、作者、英文作者、城市中英文名。
-  - 景点：名称、英文名称、城市中英文名。
+  - 景点：名称中文、英文名称、城市中英文名。
 - 城市 slug 不作为匹配依据；`city === 'all'` 不参与匹配，但显示为「All cities」。
 - 按固定顺序组装分组：编辑推荐 → 帖子 → 景点，且只包含有命中的分组。
 - 返回 `SearchOutcome`，其中 `query` 保留原始去空白后的字符串用于回显，`total` 为所有命中条目之和。
 
-**更新** 搜索引擎现已支持中英文双语查询，能够同时匹配字段的中英文版本。
+**更新** 搜索引擎现已支持中英文双语查询，能够同时匹配字段的中英文版本。景点数据由调用方传入，保持函数的纯同步特性。
 
 ```mermaid
 flowchart TD
-Entry(["searchContent(rawQuery)"]) --> Normalize["query = rawQuery.trim().toLowerCase()"]
+Entry(["searchContent(rawQuery, attractions)"]) --> Normalize["query = rawQuery.trim().toLowerCase()"]
 Normalize --> EmptyCheck{"query 是否为空？"}
 EmptyCheck --> |是| ReturnEmpty["返回 {query:'', total:0, groups:[]}"]
 EmptyCheck --> |否| FilterEditor["过滤编辑推荐<br/>title/titleEn/summary/summaryEn/editor/editorEn/cityName/cityNameEn"]
 FilterEditor --> FilterPost["过滤帖子<br/>status=published<br/>title/titleEn/author/authorEn/cityName/cityNameEn"]
-FilterPost --> FilterAttraction["过滤景点<br/>status=published<br/>name/nameEn/cityName/cityNameEn"]
+FilterPost --> FilterAttraction["过滤景点<br/>nameCn/nameEn/cityName/cityNameEn"]
 FilterAttraction --> BuildGroups["按 editor-pick/post/attraction 顺序构建分组"]
 BuildGroups --> ReturnOutcome["返回 {query:rawQuery.trim(), total, groups}"]
 ```
 
 **图表来源**
-- [query.ts:118-169](file://frontend/lib/search/query.ts#L118-L169)
+- [query.ts:129-182](file://frontend/lib/search/query.ts#L129-L182)
 
 **章节来源**
-- [query.ts:1-170](file://frontend/lib/search/query.ts#L1-L170)
+- [query.ts:1-183](file://frontend/lib/search/query.ts#L1-L183)
 
 ### 数据结构与类型
 检索层定义了稳定的数据契约，便于页面与测试共同理解结果形态：
@@ -216,18 +229,19 @@ BuildGroups --> ReturnOutcome["返回 {query:rawQuery.trim(), total, groups}"]
 | 类型 | 关键字段 | 含义 |
 |---|---|---|
 | `SearchKind` | `'editor-pick' \| 'post' \| 'attraction'` | 搜索结果分组类型 |
-| `SearchHit` | `id`、`title`、`city`、`cityLabel`、`meta` | 单个命中条目 |
+| `SearchHit` | `key`、`title`、`city`、`cityLabel`、`meta`、`href?` | 单个命中条目，景点带详情页链接 |
 | `SearchGroup` | `kind`、`heading`、`count`、`items`、`anchorHref`、`anchorLabel` | 一个分组及其回链 |
 | `SearchOutcome` | `query`、`total`、`groups` | 一次检索的最终结果 |
 
 ```mermaid
 classDiagram
 class SearchHit {
-+number id
++string key
 +string title
-+CitySlug city
++string city
 +string cityLabel
 +string meta
++string href?
 }
 class SearchGroup {
 +SearchKind kind
@@ -247,10 +261,37 @@ SearchGroup "1" --> "*" SearchHit : "包含"
 ```
 
 **图表来源**
-- [query.ts:11-39](file://frontend/lib/search/query.ts#L11-L39)
+- [query.ts:15-46](file://frontend/lib/search/query.ts#L15-L46)
 
 **章节来源**
-- [query.ts:11-39](file://frontend/lib/search/query.ts#L11-L39)
+- [query.ts:15-46](file://frontend/lib/search/query.ts#L15-L46)
+
+### 景点服务端取数
+**新增** 景点数据通过 `listAttractionsForSearch()` 函数从后端API获取，具有以下特性：
+
+- 使用绝对地址直连后端（因为 Server Component 中没有页面 origin）
+- 限制最多获取 50 条热门景点（`sortBy='hot', limit=50`）
+- 失败时返回空数组，确保搜索页不因景点服务不可用而崩溃
+- 返回的景点数据转换为 `AttractionSummary` 类型供搜索逻辑使用
+
+```mermaid
+flowchart TD
+Call["listAttractionsForSearch()"] --> BuildQuery["构建查询参数<br/>sortBy=hot, limit=50"]
+BuildQuery --> Fetch["fetch 后端API"]
+Fetch --> CheckResponse{"response.ok ?"}
+CheckResponse --> |是| Parse["解析 JSON 并转换数据"]
+CheckResponse --> |否| ReturnEmpty["返回空数组 []"]
+Parse --> Transform["toAttractionSummary() 转换"]
+Transform --> ReturnData["返回 AttractionSummary[]"]
+ReturnEmpty --> End(["完成"])
+ReturnData --> End
+```
+
+**图表来源**
+- [server.ts:18-34](file://frontend/lib/attractions/server.ts#L18-L34)
+
+**章节来源**
+- [server.ts:1-34](file://frontend/lib/attractions/server.ts#L1-L34)
 
 ### 分组配置与英文常量标准化
 **更新** 分组配置通过 `GROUP_META` 常量进行集中管理，确保所有分组标题和回链文本都使用统一的英文常量：
@@ -264,7 +305,7 @@ SearchGroup "1" --> "*" SearchHit : "包含"
 这种设计消除了之前可能存在的中文分类名称与英文显示标签之间的歧义，确保整个搜索界面使用一致的英文标签。所有分组的显示文本都来自这些预定义的英文常量，避免了硬编码字符串分散在各个文件中导致的不一致问题。
 
 **章节来源**
-- [query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
+- [query.ts:48-67](file://frontend/lib/search/query.ts#L48-L67)
 
 ### 页面样式与响应式
 页面样式遵循 desktop-first 策略，主要约定如下：
@@ -296,39 +337,6 @@ Compact --> HeadColumn["组头改为上下两行"]
 **章节来源**
 - [search.module.css:1-127](file://frontend/app/search/search.module.css#L1-L127)
 
-### 锚点落地稳定性机制
-**新增** 搜索页面的分组回链需要确保跳转到首页后，目标区块能够准确定位在吸顶头部下沿附近。这一机制通过以下组件协作实现：
-
-#### 锚点定位验证
-E2E测试使用 `expectAnchorLanded` 函数验证锚点定位准确性：
-
-- 计算目标区块顶部与吸顶头部下沿的距离
-- 将该距离按视口高度归一化为百分比
-- 要求偏差小于 10% 视口高度
-- 对于文档末尾的区块，允许停在滚动最大值处
-
-#### 实现原理
-```mermaid
-flowchart TD
-ClickLink["用户点击分组回链"] --> Navigate["导航到首页带锚点URL"]
-Navigate --> FindSection["查找目标区块"]
-FindSection --> CalculateOffset["计算区块顶部与头部下沿偏移"]
-CalculateOffset --> Normalize["按视口高度归一化"]
-Normalize --> CheckThreshold{"偏移 < 10% 视口高？"}
-CheckThreshold --> |是| Success["锚点定位成功"]
-CheckThreshold --> |否| AtEnd{"是否在文档末尾？"}
-AtEnd --> |是| Success
-AtEnd --> |否| Fail["锚点定位失败"]
-```
-
-**图表来源**
-- [helpers.ts:42-71](file://docs/e2e/support/helpers.ts#L42-L71)
-- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
-
-**章节来源**
-- [helpers.ts:38-71](file://docs/e2e/support/helpers.ts#L38-L71)
-- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
-
 ### 测试覆盖要点
 页面测试与检索测试共同保障搜索行为：
 
@@ -338,9 +346,11 @@ AtEnd --> |否| Fail["锚点定位失败"]
   - 关键词回显去空白。
   - 零命中渲染空态。
   - 每组回链指向首页对应区块。
-  - 结果条目不是链接。
+  - 结果条目不是链接（景点除外）。
   - 唯一 `h1`、含页头页脚、零 `fetch`。
   - 英文关键词的结果页不含中文字符。
+  - **景点数据获取**：只有有关键词时才调用后端API。
+  - **景点降级处理**：景点服务不可达时，其他分组照常显示。
 - 检索测试验证：
   - 能看到被首页上限截断的帖子与景点。
   - 草稿与已删除内容不出现在结果中。
@@ -352,20 +362,22 @@ AtEnd --> |否| Fail["锚点定位失败"]
   - 分组顺序固定、组内保持数据源顺序。
   - 命中条数与总数一致，每组带回首页锚点。
   - 输出文案全为英文。
+  - **景点条目链接**：景点条目带详情页链接，其他类型不带链接。
 
-**更新** 测试用例现已涵盖双语匹配场景，确保中英文查询都能正确工作，并验证了分组标题和回链文本的英文一致性。E2E测试还验证了锚点落地稳定性，确保从搜索页跳转后目标区块能准确定位。
+**更新** 测试用例现已涵盖景点整合的所有场景，包括景点数据获取、降级处理和链接行为。
 
 **章节来源**
-- [page.test.tsx:38-141](file://frontend/app/search/page.test.tsx#L38-L141)
-- [query.test.ts:24-144](file://frontend/lib/search/query.test.ts#L24-L144)
-- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
+- [page.test.tsx:85-214](file://frontend/app/search/page.test.tsx#L85-L214)
+- [query.test.ts:70-235](file://frontend/lib/search/query.test.ts#L70-L235)
+- [search-page.spec.ts:38-204](file://docs/e2e/search-page.spec.ts#L38-L204)
 
 ## 依赖关系分析
-搜索页面与检索纯函数之间存在清晰单向依赖：页面负责 UI 与参数处理，检索纯函数负责数据过滤与分组构造。页面不直接读取首页仓储，以避免首页条数上限影响搜索结果。
+搜索页面与检索纯函数之间存在清晰单向依赖：页面负责 UI 与参数处理，检索纯函数负责数据过滤与分组构造。页面不直接读取首页仓储，以避免首页条数上限影响搜索结果。景点数据通过独立的服务端函数获取。
 
 ```mermaid
 graph LR
 Page["frontend/app/search/page.tsx"] --> Query["frontend/lib/search/query.ts"]
+Page --> Server["frontend/lib/attractions/server.ts"]
 Query --> MockData["@/lib/home/mock-data.ts"]
 Query --> Cities["@/lib/home/cities.ts"]
 Query --> Format["@/lib/home/format.ts"]
@@ -373,37 +385,39 @@ Page --> Styles["frontend/app/search/search.module.css"]
 PageTest["frontend/app/search/page.test.tsx"] --> Page
 QueryTest["frontend/lib/search/query.test.ts"] --> Query
 E2ETest["docs/e2e/search-page.spec.ts"] --> Page
-Helpers["docs/e2e/support/helpers.ts"] --> E2ETest
 ```
 
 **图表来源**
-- [page.tsx:1-7](file://frontend/app/search/page.tsx#L1-L7)
-- [query.ts:1-4](file://frontend/lib/search/query.ts#L1-L4)
+- [page.tsx:1-8](file://frontend/app/search/page.tsx#L1-L8)
+- [query.ts:1-5](file://frontend/lib/search/query.ts#L1-L5)
+- [server.ts:1-4](file://frontend/lib/attractions/server.ts#L1-L4)
 - [page.test.tsx:1-6](file://frontend/app/search/page.test.tsx#L1-L6)
 - [query.test.ts:1-3](file://frontend/lib/search/query.test.ts#L1-L3)
-- [search-page.spec.ts:1-8](file://docs/e2e/search-page.spec.ts#L1-L8)
-- [helpers.ts:1-10](file://docs/e2e/support/helpers.ts#L1-L10)
+- [search-page.spec.ts:1-9](file://docs/e2e/search-page.spec.ts#L1-L9)
 
 **章节来源**
-- [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
-- [query.ts:1-170](file://frontend/lib/search/query.ts#L1-L170)
+- [page.tsx:1-120](file://frontend/app/search/page.tsx#L1-L120)
+- [query.ts:1-183](file://frontend/lib/search/query.ts#L1-L183)
+- [server.ts:1-34](file://frontend/lib/attractions/server.ts#L1-L34)
 
 ## 性能与渲染特性
 - 搜索页为 Server Component，首次访问在服务端完成检索与渲染。
-- 打开页面期间不发起任何 `fetch` 或 XHR 请求。
+- 打开页面期间不发起任何 `fetch` 或 XHR 请求（景点数据除外）。
 - 不使用客户端状态钩子，三态由服务端计算结果推导。
 - 检索直接扫描原始数组，避免首页仓储的 `*_LIMIT` 截断带来的漏检。
 - 结果条目为纯文本卡片，不加载图片，减少不必要的资源请求。
 - **双语匹配优化**：虽然支持中英文查询，但显示层统一使用英文字段值，确保界面语言一致性。
 - **常量优化**：分组标题和回链文本使用预定义的英文常量，避免了运行时字符串拼接的性能开销。
-- **锚点定位优化**：通过标准化的锚点ID和E2E测试确保跳转体验的一致性。
+- **景点数据优化**：只有有关键词时才获取景点数据，避免空查询时的不必要请求。
+- **降级处理**：景点服务不可达时不影响其他内容的搜索。
 
 这些特性使搜索页在无客户端脚本环境下仍可正常展示结果，同时保证首屏可访问性与稳定性。
 
 **章节来源**
-- [page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
-- [query.ts:6-9](file://frontend/lib/search/query.ts#L6-L9)
-- [page.test.tsx:124-134](file://frontend/app/search/page.test.tsx#L124-L134)
+- [page.tsx:1-120](file://frontend/app/search/page.tsx#L1-L120)
+- [query.ts:6-13](file://frontend/lib/search/query.ts#L6-L13)
+- [server.ts:6-17](file://frontend/lib/attractions/server.ts#L6-L17)
+- [page.test.tsx:192-206](file://frontend/app/search/page.test.tsx#L192-L206)
 
 ## 验收清单与断点规范
 搜索页面的人读契约明确列出了结构与交互验收项，部分工程与无障碍项仍待完善：
@@ -421,7 +435,10 @@ Helpers["docs/e2e/support/helpers.ts"] --> E2ETest
   - **英文显示**：结果标题、城市标与元信息均为英文。
   - **分组标题标准化**：所有分组标题使用预定义的英文常量，确保界面一致性。
   - **回链文本标准化**：所有回链文案使用预定义的英文常量，避免歧义。
-  - **锚点落地稳定性**：从搜索页点击回链后，目标区块准确定位在吸顶头部下沿附近（偏差 < 10% 视口高）。
+  - **景点结果整合**：景点结果与编辑推荐、帖子并列显示。
+  - **景点数据源**：景点数据来自后端API，最多50条。
+  - **景点条目链接**：景点条目可点击跳转到详情页。
+  - **景点降级处理**：景点服务不可达时其他分组照常显示。
 - 待完善项：
   - 键盘 Tab 顺序与焦点环。
   - 首页区块确实存在对应 `id`。
@@ -433,13 +450,12 @@ Helpers["docs/e2e/support/helpers.ts"] --> E2ETest
 
 断点规范以 `frontend/app/search/search.module.css` 为准，当前实现包含 720px 断点，闸门脚本会校验规格文档与 CSS 断点的一致性。
 
-**更新** 验收清单现已包含双语查询、英文显示、分组标题和回链文本标准化，以及锚点落地稳定性的验证项。
+**更新** 验收清单现已包含景点整合的所有相关验证项。
 
 **章节来源**
-- [search-page.md:156-193](file://docs/specs/wanderchain/search-page.md#L156-L193)
-- [search-page.md:211-221](file://docs/specs/wanderchain/search-page.md#L211-L221)
+- [search-page.md:179-221](file://docs/specs/wanderchain/search-page.md#L179-L221)
 - [search.module.css:117-126](file://frontend/app/search/search.module.css#L117-L126)
-- [search-page.spec.ts:85-107](file://docs/e2e/search-page.spec.ts#L85-L107)
+- [search-page.spec.ts:38-204](file://docs/e2e/search-page.spec.ts#L38-L204)
 
 ## 故障排查指南
 | 现象 | 可能原因 | 排查建议 |
@@ -456,20 +472,22 @@ Helpers["docs/e2e/support/helpers.ts"] --> E2ETest
 | **结果显示中文** | 显示层使用了错误的字段 | 确认 `toEditorHit`、`toPostHit`、`toAttractionHit` 使用英文字段 |
 | **分组标题不一致** | 修改了 GROUP_META 配置 | 检查所有分组标题是否使用预定义的英文常量 |
 | **回链文案异常** | 回链文本未使用标准常量 | 确认所有回链文案来自 GROUP_META 中的预定义字符串 |
-| **锚点定位不准确** | 首页区块ID缺失或吸顶头部样式异常 | 检查首页区块的 `id` 属性和 `header` 元素的定位样式 |
-| **E2E测试锚点失败** | 目标区块不在视口内或偏移过大 | 使用 `expectAnchorLanded` 函数验证，确保偏移 < 10% 视口高 |
+| **景点结果缺失** | 后端API调用失败或超时 | 检查 `listAttractionsForSearch()` 的实现和后端服务状态 |
+| **景点数据过多** | 后端返回超过50条记录 | 确认后端API的limit参数设置为50 |
+| **景点链接无效** | publicId格式不正确 | 检查景点数据的publicId字段是否符合预期格式 |
+| **景点服务不可达** | 后端服务宕机或网络问题 | 确认景点服务正常运行，页面应降级显示其他分组 |
 
-**更新** 故障排查指南新增了双语查询相关的常见问题和解决方案，以及分组标题和回链文本标准化的相关问题，还包括锚点定位相关的故障排查。
+**更新** 故障排查指南新增了景点整合相关的常见问题和解决方案。
 
 **章节来源**
-- [query.ts:118-169](file://frontend/lib/search/query.ts#L118-L169)
-- [query.test.ts:24-144](file://frontend/lib/search/query.test.ts#L24-L144)
-- [search.module.css:117-126](file://frontend/app/search/search.module.css#L117-L126)
-- [helpers.ts:42-71](file://docs/e2e/support/helpers.ts#L42-L71)
+- [query.ts:129-182](file://frontend/lib/search/query.ts#L129-L182)
+- [server.ts:18-34](file://frontend/lib/attractions/server.ts#L18-L34)
+- [query.test.ts:88-100](file://frontend/lib/search/query.test.ts#L88-L100)
+- [page.test.tsx:126-134](file://frontend/app/search/page.test.tsx#L126-L134)
 
 ## 结论
 WanderChain 搜索页面以清晰的模块边界、稳定的数据契约与服务端渲染策略，实现了从首页搜索框到全站内容的直达检索。它不依赖客户端状态与网络请求，通过纯函数完成全量过滤与分组，确保被首页上限截断的内容重新可达，同时在无关键词与零命中场景提供明确的引导与空态。
 
-**更新** 随着双语匹配逻辑的引入、GROUP_META 配置的标准化以及锚点落地稳定性机制的增强，搜索引擎现在能够同时处理中文和英文查询，匹配标题、摘要、作者和名称字段的中英文版本。所有分组标题和回链文本都使用统一的英文常量，消除了中文分类名称与英文显示标签之间的歧义，确保界面语言的一致性和可维护性。更重要的是，从搜索页跳转到首页后，目标区块能够准确定位在吸顶头部下沿附近（偏差小于视口高度的10%），提供了稳定可靠的导航体验。
+**更新** 随着景点结果的完全整合、双语匹配逻辑的引入、GROUP_META 配置的标准化以及后端数据源的集成，搜索引擎现在能够同时处理中文和英文查询，匹配标题、摘要、作者和名称字段的中英文版本。景点结果与编辑推荐、帖子并列显示，提供完整的站内搜索体验。所有分组标题和回链文本都使用统一的英文常量，消除了中文分类名称与英文显示标签之间的歧义，确保界面语言的一致性和可维护性。更重要的是，景点数据通过可靠的后端API获取，具备完善的降级处理机制，确保搜索功能的稳定性和可用性。
 
 随着主规格已从开发时的 delta 迁移至生产就绪规格 `openspec/specs/wanderchain-search/spec.md`，该功能现已具备完整的生产环境支持。后续改进应优先补齐无障碍交互、极端窄屏体验与构建闸门验收，使规格文档与实际实现保持一致。

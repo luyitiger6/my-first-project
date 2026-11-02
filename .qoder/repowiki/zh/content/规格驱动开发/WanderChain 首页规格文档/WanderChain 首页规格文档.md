@@ -1,3 +1,5 @@
+基于我对代码的分析，我现在了解了主要的变更内容。让我更新 WanderChain 首页规格文档：
+
 # WanderChain 首页规格文档
 
 <cite>
@@ -43,15 +45,24 @@
 - [frontend/components/posts/post-card-stats.module.css](file://frontend/components/posts/post-card-stats.module.css)
 - [frontend/components/posts/sort-tabs.tsx](file://frontend/components/posts/sort-tabs.tsx)
 - [frontend/app/posts/posts-content.tsx](file://frontend/app/posts/posts-content.tsx)
+- [frontend/lib/attractions/attractions-api.ts](file://frontend/lib/attractions/attractions-api.ts)
+- [frontend/lib/attractions/types.ts](file://frontend/lib/attractions/types.ts)
+- [frontend/lib/home/format.ts](file://frontend/lib/home/format.ts)
+- [frontend/components/attractions/attraction-card.tsx](file://frontend/components/attractions/attraction-card.tsx)
+- [frontend/components/attractions/attraction-card.module.css](file://frontend/components/attractions/attraction-card.module.css)
+- [backend/src/main/java/com/luyi/myfirst/web/attraction/AttractionController.java](file://backend/src/main/java/com/luyi/myfirst/web/attraction/AttractionController.java)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/MeController.java](file://backend/src/main/java/com/luyi/myfirst/web/auth/MeController.java)
+- [frontend/lib/auth/auth-api.ts](file://frontend/lib/auth/auth-api.ts)
+- [frontend/components/auth/account-menu.tsx](file://frontend/components/auth/account-menu.tsx)
 </cite>
 
 ## 更新摘要
 **所做更改**
-- **HotPosts 组件增强**：集成 PostCardStats 组件实现图标化互动统计展示，包含点赞、评论、收藏计数
-- **新增导航链接**：在热门帖子区块头部添加"View all posts"链接，指向 `/posts?sortBy=hottest`
-- **PostCardStats 组件引入**：新增可复用的互动统计组件，使用 SVG 图标和无障碍支持
-- **样式系统扩展**：新增 post-card-stats.module.css 样式文件和 hot-posts.module.css 响应式适配
-- **测试覆盖增强**：新增图标化统计行和导航链接的测试用例，确保功能完整性
+- **架构重大转变**：从基于 mock 的数据处理转向真实后端集成，热门景点区块现在使用 GET /api/attractions 获取数据
+- **认证服务委托**：前端将认证状态管理委托给后端 /api/auth/me 端点，移除了前端-only 的认证状态管理
+- **移除角色徽章功能**：删除了前端角色徽章渲染功能，因为后端没有角色模型
+- **API 层重构**：新增 attractionsApi 层替代 Mock 数据，实现真实后端接口对接
+- **响应式优化增强**：优化热门景点区块的响应式设计，支持 5列→3列→2列→1列的网格布局
 
 ## 目录
 1. [引言](#引言)
@@ -65,7 +76,7 @@
 9. [结论](#结论)
 
 ## 引言
-本规格文档聚焦 WanderChain 首页能力，围绕"城市旅行指南"的入口、导航、内容与交互契约进行说明。当前实现以 Next.js 前端为主，后端接口尚未接入；所有数据通过 Mock 仓储提供，确保 UI 与业务逻辑可在零网络请求下独立开发与验收。
+本规格文档聚焦 WanderChain 首页能力，围绕"城市旅行指南"的入口、导航、内容与交互契约进行说明。当前实现以 Next.js 前端为主，已完成从 mock 数据到真实后端集成的重大架构转变；热门景点区块通过 attractionsApi 调用 GET /api/attractions 获取真实数据，认证状态通过 /api/auth/me 端点委托给后端服务管理。
 
 该仓库采用"规格 + 护栏 + 技能"三层工作区模式：`openspec/` 定义意图与主规格，`harness/` 用闸门链保证构建、迁移与一致性，`.agents/skills/` 固化 AI 编码方法。WanderChain 首页属于 `wanderchain-homepage` 能力，其子单元契约位于 `docs/specs/wanderchain/`。
 
@@ -80,6 +91,7 @@ WanderChain 首页由一个页面级路由和多个可复用区块组成：
 - **搜索页面（新增）**：独立的 `/search` 页面，处理关键词检索、结果分组和三态显示。
 - 区块组件：功能导航、城市切换、编辑推荐、热门帖子、热门景点分别位于 `components/home/*`。
 - **互动统计组件（新增）**：`PostCardStats` 组件提供统一的图标化互动统计展示，被 HotPosts 和其他帖子相关组件复用。
+- **景点 API 层（新增）**：`attractionsApi` 提供真实的后端接口调用，包括热门景点列表、详情获取等功能。
 - 共享 Hook：`useSectionData` 统一封装加载、就绪、错误三态。
 - **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭、遮罩点击关闭，以及完整的键盘导航支持。
 - **响应式图片优化**：自定义 image loader、srcset 生成、sizes 属性计算，针对封面图进行性能优化。
@@ -99,6 +111,7 @@ FeatureNav --> AiAssistant["AI 助手面板<br/>ai-assistant.tsx"]
 EditorPicks --> UseSection["区块数据钩子<br/>use-section-data.ts"]
 HotPosts --> UseSection
 HotPosts --> PostCardStats["互动统计组件<br/>post-card-stats.tsx"]
+HotAttractions --> AttractionsAPI["景点 API 层<br/>attractions-api.ts"]
 HotAttractions --> UseSection
 AiAssistant --> FocusTrap["焦点陷阱<br/>Tab/Shift+Tab 循环"]
 AiAssistant --> ScrollLock["滚动锁定<br/>body.style.overflow"]
@@ -113,20 +126,22 @@ AttractionsPage["景点占位页<br/>attractions/page.tsx"] --> Placeholder
 Placeholder --> SiteHeader
 Placeholder --> SiteFooter
 HotPosts --> ViewAllLink["View all posts 链接<br/>/posts?sortBy=hottest"]
+AttractionsAPI --> Backend["后端 API 服务<br/>GET /api/attractions"]
 ```
 
 **图表来源**
-- [frontend/app/page.tsx:1-71](file://frontend/app/page.tsx#L1-L71)
+- [frontend/app/page.tsx:1-74](file://frontend/app/page.tsx#L1-L74)
 - [frontend/components/home/hero.tsx:1-76](file://frontend/components/home/hero.tsx#L1-L76)
 - [frontend/components/home/feature-nav.tsx:1-116](file://frontend/components/home/feature-nav.tsx#L1-L116)
 - [frontend/components/home/editor-picks.tsx:1-75](file://frontend/components/home/editor-picks.tsx#L1-L75)
 - [frontend/components/home/hot-posts.tsx:1-75](file://frontend/components/home/hot-posts.tsx#L1-L75)
-- [frontend/components/home/hot-attractions.tsx:1-71](file://frontend/components/home/hot-attractions.tsx#L1-L71)
+- [frontend/components/home/hot-attractions.tsx:1-94](file://frontend/components/home/hot-attractions.tsx#L1-L94)
 - [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/app/search/page.tsx:1-113](file://frontend/app/search/page.tsx#L1-L113)
 - [frontend/app/community/page.tsx:1-18](file://frontend/app/community/page.tsx#L1-L18)
 - [frontend/app/attractions/page.tsx:1-18](file://frontend/app/attractions/page.tsx#L1-L18)
 - [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
+- [frontend/lib/attractions/attractions-api.ts:1-127](file://frontend/lib/attractions/attractions-api.ts#L1-L127)
 
 ## 核心组件
 - **Hero 首屏组件（已重构）**：全新的自包含 Server Component，不再接收任何 props。包含背景大图、深色遮罩、品牌眉标、主标题、导语、原生搜索表单和文字入口行。城市规模提示动态派生自城市白名单。
@@ -136,8 +151,9 @@ HotPosts --> ViewAllLink["View all posts 链接<br/>/posts?sortBy=hottest"]
 - 功能导航：包含旅游社区、景点攻略两个链接卡片，以及 AI 助手按钮；后两者分别跳转到占位页或唤起同一面板。
 - **AI 助手模态框**：Provider 管理面板开关、焦点恢复、Esc 关闭与遮罩点击关闭；触发器支持头部与悬浮两种形态。**新增完整无障碍支持**：焦点陷阱（Tab/Shift+Tab 循环）、背景滚动锁定、键盘导航支持。
 - 城市切换：根据 URL `?city=` 渲染选中项，点击时替换查询参数，保持其他查询键不变。
-- 内容区块：编辑推荐、热门帖子、热门景点均通过 `mockRepository` 获取数据，并按各自排序与过滤规则展示。
+- 内容区块：编辑推荐、热门帖子、热门景点均通过各自的数据源获取数据，并按各自排序与过滤规则展示。
 - **PostCardStats 互动统计组件（新增）**：可复用的组件，使用 SVG 图标展示点赞、评论、收藏计数，提供无障碍支持和格式化数字显示。
+- **景点 API 层（新增）**：`attractionsApi` 提供完整的景点数据访问接口，包括热门景点列表、详情获取等，支持错误处理和取消请求。
 - **响应式图片优化系统**：自定义 next/image loader 将宽度档位直接写入 Unsplash CDN 参数，结合 srcset 和 sizes 属性实现智能图片加载。
 - **增强的占位页系统**：社区和景点占位页现在使用统一的 `PlaceholderPage` 组件，包含完整的站点框架元素。
 
@@ -148,12 +164,13 @@ HotPosts --> ViewAllLink["View all posts 链接<br/>/posts?sortBy=hottest"]
 - [frontend/components/home/ai-assistant.tsx:56-177](file://frontend/components/home/ai-assistant.tsx#L56-L177)
 - [frontend/components/home/editor-picks.tsx:12-75](file://frontend/components/home/editor-picks.tsx#L12-L75)
 - [frontend/components/home/hot-posts.tsx:11-75](file://frontend/components/home/hot-posts.tsx#L11-L75)
-- [frontend/components/home/hot-attractions.tsx:13-71](file://frontend/components/home/hot-attractions.tsx#L13-L71)
+- [frontend/components/home/hot-attractions.tsx:15-94](file://frontend/components/home/hot-attractions.tsx#L15-L94)
 - [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
+- [frontend/lib/attractions/attractions-api.ts:115-127](file://frontend/lib/attractions/attractions-api.ts#L115-L127)
 - [frontend/components/site/placeholder.tsx:13-35](file://frontend/components/site/placeholder.tsx#L13-L35)
 
 ## 架构总览
-WanderChain 首页采用"页面装配 + 区块消费 + Mock 仓储"的分层结构。当前阶段不依赖真实后端，所有数据契约以类型与 Mock 数据固定，后续替换为真实 API 时，组件与测试无需重写。
+WanderChain 首页采用"页面装配 + 区块消费 + API 层"的分层结构。当前阶段已完成从 mock 数据到真实后端集成的重大架构转变，所有数据契约以类型与 API 接口固定，确保前后端数据一致性。
 
 ```mermaid
 graph TB
@@ -179,6 +196,17 @@ subgraph "互动统计层"
 PostCardStats["PostCardStats 组件<br/>post-card-stats.tsx"]
 StatsStyles["统计样式<br/>post-card-stats.module.css"]
 end
+subgraph "景点数据层"
+AttractionsAPI["Attractions API<br/>attractions-api.ts"]
+Types["景点类型<br/>types.ts"]
+Backend["后端 API 服务<br/>GET /api/attractions"]
+end
+subgraph "认证服务层"
+AuthAPI["认证 API<br/>auth-api.ts"]
+AuthProvider["认证 Provider<br/>auth-provider.tsx"]
+AccountMenu["账户菜单<br/>account-menu.tsx"]
+BackendAuth["后端认证服务<br/>GET /api/auth/me"]
+end
 subgraph "占位页框架"
 Placeholder["占位符组件 placeholder.tsx"]
 SiteHeader["站点头部 site-header.tsx"]
@@ -186,11 +214,9 @@ SiteFooter["站点底部 site-footer.tsx"]
 end
 subgraph "数据层"
 Hook["use-section-data.ts"]
-Repo["Mock 仓储 repository.ts契约"]
 Query["查询引擎 query.ts"]
 Cities["城市数据 cities.ts"]
 Types["类型定义 types.ts"]
-MockData["模拟数据 mock-data.ts"]
 end
 subgraph "图片优化层"
 Loader["自定义 image loader<br/>image-loader.ts"]
@@ -210,8 +236,9 @@ SearchPage --> Query
 Picks --> Hook
 Posts --> Hook
 Posts --> PostCardStats
+Attractions --> AttractionsAPI
 Attractions --> Hook
-Hook --> Repo
+Hook --> Cities
 Picks --> Loader
 Attractions --> Loader
 Loader --> Config
@@ -219,15 +246,16 @@ Config --> CDN
 Picks --> Cities
 Posts --> Cities
 Attractions --> Cities
-Repo --> Types
-Repo --> MockData
 Query --> Types
-Query --> MockData
 CommunityPage --> Placeholder
 AttractionsPage --> Placeholder
 Placeholder --> SiteHeader
 Placeholder --> SiteFooter
 PostCardStats --> StatsStyles
+AttractionsAPI --> Backend
+AuthAPI --> AuthProvider
+AuthProvider --> AccountMenu
+AccountMenu --> BackendAuth
 ```
 
 **图表来源**
@@ -237,12 +265,15 @@ PostCardStats --> StatsStyles
 - [frontend/components/home/feature-nav.tsx:71-116](file://frontend/components/home/feature-nav.tsx#L71-L116)
 - [frontend/components/home/editor-picks.tsx:12-75](file://frontend/components/home/editor-picks.tsx#L12-L75)
 - [frontend/components/home/hot-posts.tsx:11-75](file://frontend/components/home/hot-posts.tsx#L11-L75)
-- [frontend/components/home/hot-attractions.tsx:13-71](file://frontend/components/home/hot-attractions.tsx#L13-L71)
+- [frontend/components/home/hot-attractions.tsx:15-94](file://frontend/components/home/hot-attractions.tsx#L15-L94)
 - [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/app/search/page.tsx:32-113](file://frontend/app/search/page.tsx#L32-L113)
 - [frontend/app/community/page.tsx:9-17](file://frontend/app/community/page.tsx#L9-L17)
 - [frontend/app/attractions/page.tsx:9-17](file://frontend/app/attractions/page.tsx#L9-L17)
 - [frontend/components/site/placeholder.tsx:13-35](file://frontend/components/site/placeholder.tsx#L13-L35)
+- [frontend/lib/attractions/attractions-api.ts:115-127](file://frontend/lib/attractions/attractions-api.ts#L115-L127)
+- [frontend/lib/auth/auth-api.ts:169-175](file://frontend/lib/auth/auth-api.ts#L169-L175)
+- [frontend/components/auth/account-menu.tsx:7-31](file://frontend/components/auth/account-menu.tsx#L7-L31)
 
 ## 详细组件分析
 
@@ -438,6 +469,108 @@ Display --> Styles["应用样式<br/>stats, item, value 类名"]
 - [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/components/posts/post-card-stats.module.css:1-19](file://frontend/components/posts/post-card-stats.module.css#L1-L19)
 
+### 热门景点区块（重大更新）
+热门景点区块已完成从 Mock 数据到真实后端集成的重大架构转变，现在使用真实的 attractionsApi 获取数据，实现了完整的景点卡片展示系统。
+
+**核心变更：**
+- **API 集成**：使用 `attractionsApi.listHotAttractions()` 替代 Mock 数据，调用 GET /api/attractions 获取真实后端数据
+- **卡片组件**：实现 `HotAttractionCard` 组件，支持整卡点击、封面图显示、评分展示
+- **数据格式化**：集成 `formatCount` 函数实现浏览数的千分位格式化显示
+- **响应式设计**：支持 5列→3列→2列→1列的网格布局，适配不同屏幕尺寸
+- **状态管理**：完善的加载、错误、空态状态处理
+
+**卡片特性：**
+- **整卡可点击**：整个卡片区域都可点击跳转到详情页
+- **封面图优化**：支持缺失封面时的占位符显示，带无障碍标签
+- **评分显示**：支持 null 评分显示为"Not rated yet"，非 null 显示为"Rating X.X"
+- **元信息展示**：城市名称 + 评分组合显示，浏览量单独一行高亮显示
+
+```mermaid
+flowchart TD
+Start["HotAttractions(city)"] --> Fetch["attractionsApi.listHotAttractions({ city })"]
+Fetch --> API["GET /api/attractions?city={city}&sortBy=hot&limit=5"]
+API --> Backend["后端 AttractionController"]
+Backend --> StateCheck{"检查数据状态"}
+StateCheck --> |loading| Loading["显示 SectionLoading<br/>Gathering attraction data…"]
+StateCheck --> |error| Error["显示 SectionError<br/>Popular attractions could not load"]
+StateCheck --> |ready & empty| Empty["显示 EmptyState<br/>Browse attractions in {city}"]
+StateCheck --> |ready & items| RenderGrid["渲染网格布局"]
+RenderGrid --> MapCards["映射为 HotAttractionCard"]
+MapCards --> CardFeatures["每张卡片：封面图 + 名称 + 元信息 + 浏览量"]
+CardFeatures --> Complete["完成渲染"]
+```
+
+**图表来源**
+- [frontend/components/home/hot-attractions.tsx:15-94](file://frontend/components/home/hot-attractions.tsx#L15-L94)
+- [backend/src/main/java/com/luyi/myfirst/web/attraction/AttractionController.java:45-55](file://backend/src/main/java/com/luyi/myfirst/web/attraction/AttractionController.java#L45-L55)
+
+**章节来源**
+- [frontend/components/home/hot-attractions.tsx:1-94](file://frontend/components/home/hot-attractions.tsx#L1-L94)
+- [frontend/components/home/hot-attractions.module.css:1-90](file://frontend/components/home/hot-attractions.module.css#L1-L90)
+- [backend/src/main/java/com/luyi/myfirst/web/attraction/AttractionController.java:1-104](file://backend/src/main/java/com/luyi/myfirst/web/attraction/AttractionController.java#L1-L104)
+
+### 景点 API 层（新增）
+景点 API 层提供了完整的后端接口访问能力，包括错误处理、请求取消、数据转换等功能。
+
+**核心功能：**
+- **错误处理**：区分网络错误、API 错误和业务错误，提供友好的错误消息
+- **请求管理**：支持 AbortSignal 取消请求，避免内存泄漏
+- **数据转换**：将后端 DTO 转换为前端类型，处理字段映射和默认值
+- **查询构建**：统一的查询参数构建，支持城市、排序、集合等过滤条件
+
+**主要接口：**
+- `listAttractions()`: 通用景点列表查询
+- `listHotAttractions()`: 热门景点列表查询（首页使用）
+- `detail()`: 景点详情获取
+
+```mermaid
+flowchart TD
+Client["前端组件调用"] --> AttractionsAPI["attractionsApi"]
+AttractionsAPI --> Request["HTTP 请求构建"]
+Request --> Backend["后端 API 服务<br/>GET /api/attractions"]
+Backend --> Response["JSON 响应"]
+Response --> Transform["toAttractionSummary/toAttractionDetail"]
+Transform --> Client
+```
+
+**图表来源**
+- [frontend/lib/attractions/attractions-api.ts:56-127](file://frontend/lib/attractions/attractions-api.ts#L56-L127)
+
+**章节来源**
+- [frontend/lib/attractions/attractions-api.ts:1-127](file://frontend/lib/attractions/attractions-api.ts#L1-L127)
+- [frontend/lib/attractions/types.ts:1-78](file://frontend/lib/attractions/types.ts#L1-L78)
+
+### 认证服务委托（新增）
+认证功能已从前端状态管理完全委托给后端服务，通过 `/api/auth/me` 端点获取当前用户信息。
+
+**核心变更：**
+- **后端委托**：所有认证状态管理现在由后端 `/api/auth/me` 端点处理
+- **移除前端状态**：不再在前端维护认证状态，而是通过 API 调用获取
+- **简化 UI**：移除了角色徽章显示功能，因为后端没有角色模型
+- **统一数据源**：用户信息显示直接使用后端返回的 `displayName` 字段
+
+**认证流程：**
+```mermaid
+flowchart TD
+AppStart["应用启动"] --> AuthProvider["AuthProvider 初始化"]
+AuthProvider --> MeEndpoint["调用 GET /api/auth/me"]
+MeEndpoint --> CheckAuth{"检查认证状态"}
+CheckAuth --> |未认证| GuestState["访客状态"]
+CheckAuth --> |已认证| UserState["用户状态"]
+UserState --> AccountMenu["显示账户菜单<br/>displayName + 登出按钮"]
+GuestState --> LoginLink["显示登录链接"]
+```
+
+**图表来源**
+- [frontend/lib/auth/auth-api.ts:169-175](file://frontend/lib/auth/auth-api.ts#L169-L175)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/MeController.java:26-35](file://backend/src/main/java/com/luyi/myfirst/web/auth/MeController.java#L26-L35)
+- [frontend/components/auth/account-menu.tsx:7-31](file://frontend/components/auth/account-menu.tsx#L7-L31)
+
+**章节来源**
+- [frontend/lib/auth/auth-api.ts:1-184](file://frontend/lib/auth/auth-api.ts#L1-L184)
+- [backend/src/main/java/com/luyi/myfirst/web/auth/MeController.java:1-37](file://backend/src/main/java/com/luyi/myfirst/web/auth/MeController.java#L1-L37)
+- [frontend/components/auth/account-menu.tsx:1-32](file://frontend/components/auth/account-menu.tsx#L1-L32)
+
 ### 响应式图片优化系统（已更新）
 WanderChain 首页实现了完整的响应式图片优化系统，专门针对编辑推荐和热门景点区块的封面图进行性能优化。该系统基于 next/image 组件，通过自定义 loader 和精确的 sizes 属性计算，实现智能图片加载。
 
@@ -484,13 +617,13 @@ end
 **图表来源**
 - [frontend/lib/image-loader.ts:1-20](file://frontend/lib/image-loader.ts#L1-L20)
 - [frontend/components/home/editor-picks.tsx:49-58](file://frontend/components/home/editor-picks.tsx#L49-L58)
-- [frontend/components/home/hot-attractions.tsx:46-55](file://frontend/components/home/hot-attractions.tsx#L46-L55)
+- [frontend/components/home/hot-attractions.tsx:72-72](file://frontend/components/home/hot-attractions.tsx#L72-L72)
 
 **章节来源**
 - [frontend/lib/image-loader.ts:1-20](file://frontend/lib/image-loader.ts#L1-L20)
 - [frontend/next.config.ts:1-14](file://frontend/next.config.ts#L1-L14)
 - [frontend/components/home/editor-picks.tsx:49-58](file://frontend/components/home/editor-picks.tsx#L49-L58)
-- [frontend/components/home/hot-attractions.tsx:46-55](file://frontend/components/home/hot-attractions.tsx#L46-L55)
+- [frontend/components/home/hot-attractions.tsx:72-72](file://frontend/components/home/hot-attractions.tsx#L72-L72)
 
 ### 区块数据加载三态
 所有数据区块共用 `useSectionData`，将异步数据源包装为 loading、error、ready 三种状态。组件只关心最终渲染结果，从而在 Mock 与真实 API 之间平滑切换。
@@ -519,7 +652,7 @@ flowchart TD
 Start["EditorPicks(city)"] --> Fetch["mockRepository.listEditorPicks({ city })"]
 Fetch --> Sort["按 sort_order 升序，并列按 id 升序"]
 Sort --> Filter["过滤非当前城市与非 all 的条目"]
-Filter --> Empty{"是否有数据？"}
+Empty{"是否有数据？"}
 Empty --> |否| ShowEmpty["显示空态文案<br/>No editor's picks in {city} yet. Try another city."]
 Empty --> |是| RenderCards["渲染封面、标题、城市、编辑署名、摘要"]
 RenderCards --> ImageOpt["应用响应式图片优化"]
@@ -547,7 +680,7 @@ Sizes --> Loader["调用自定义 image loader"]
 ```mermaid
 flowchart TD
 Start["HotPosts(city)"] --> Fetch["mockRepository.listHotPosts({ city })"]
-Fetch --> FilterPublished["过滤 ContentStatus=published"]
+FilterPublished["过滤 ContentStatus=published"]
 FilterPublished --> Sort["评论数降序 → 浏览数降序 → 发布时间降序"]
 Sort --> Limit["截断至 Top 10"]
 Limit --> RenderList["渲染帖子列表"]
@@ -561,42 +694,6 @@ AddLink --> Complete["完成渲染"]
 
 **章节来源**
 - [frontend/components/home/hot-posts.tsx:1-75](file://frontend/components/home/hot-posts.tsx#L1-L75)
-
-### 热门景点区块（已更新）
-热门景点按浏览量与发布时间排序，展示封面、名称、城市与评分、浏览数。空态与错误态沿用通用区块状态。**已集成响应式图片优化**，使用精确的 sizes 属性和自定义 image loader 实现最佳加载性能。
-
-**更新** 响应式设计已从移动优先策略调整为桌面优先策略：
-- 桌面端：5列网格布局
-- 平板端（≤1080px）：3列网格布局  
-- 移动端（≤720px）：2列网格布局
-- **超小屏幕（≤480px）**：1列网格布局（新增）
-
-**更新** 所有用户界面文本已本地化为英文，包括区块标题、描述、加载状态、错误消息和空态提示。数据字段使用英文版本（`nameEn`）。
-
-**评分系统更新**：景点评分现已统一为 0–5 分制，替代了之前的 10 分制。评分显示格式保持不变（`Rating {item.rating.toFixed(1)}`），但数值范围已调整以确保符合产品规范。
-
-**新增单列断点**：在 480px 视口下，热门景点区块现在使用单列布局，确保在超小屏幕设备上获得最佳的阅读体验。
-
-```mermaid
-flowchart TD
-Start["HotAttractions(city)"] --> Fetch["mockRepository.listHotAttractions({ city })"]
-Fetch --> Sort["按浏览数与发布时间排序"]
-Sort --> Render["渲染封面、名称、城市、评分、浏览数"]
-Render --> ImageOpt["应用响应式图片优化"]
-ImageOpt --> Sizes["计算 sizes 属性"]
-Sizes --> Loader["调用自定义 image loader"]
-Render --> RatingDisplay["显示 0-5 分制评分<br/>Rating X.X"]
-Render --> ResponsiveGrid["响应式网格布局<br/>5列 → 3列 → 2列 → 1列"]
-```
-
-**图表来源**
-- [frontend/components/home/hot-attractions.tsx:13-71](file://frontend/components/home/hot-attractions.tsx#L13-L71)
-- [frontend/components/home/hot-attractions.tsx:46-55](file://frontend/components/home/hot-attractions.tsx#L46-L55)
-- [frontend/components/home/hot-attractions.module.css:54-70](file://frontend/components/home/hot-attractions.module.css#L54-L70)
-
-**章节来源**
-- [frontend/components/home/hot-attractions.tsx:1-71](file://frontend/components/home/hot-attractions.tsx#L1-L71)
-- [frontend/components/home/hot-attractions.module.css:1-71](file://frontend/components/home/hot-attractions.module.css#L1-L71)
 
 ### 双语数据层架构（新增）
 WanderChain 首页采用了创新的双语数据层架构，为未来的多语言扩展奠定了坚实基础。
@@ -662,12 +759,12 @@ GroupMeta --> SearchResults["搜索结果展示"]
 **图表来源**
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 - [frontend/lib/search/query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
-- [frontend/components/home/hot-attractions.tsx:58-60](file://frontend/components/home/hot-attractions.tsx#L58-L60)
+- [frontend/components/home/hot-attractions.tsx:59-60](file://frontend/components/home/hot-attractions.tsx#L59-L60)
 
 **章节来源**
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 - [frontend/lib/search/query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
-- [frontend/components/home/hot-attractions.tsx:58-60](file://frontend/components/home/hot-attractions.tsx#L58-L60)
+- [frontend/components/home/hot-attractions.tsx:59-60](file://frontend/components/home/hot-attractions.tsx#L59-L60)
 
 ### 占位页站点框架增强（新增）
 社区和景点占位页现在使用统一的 `PlaceholderPage` 组件，提供一致的站点框架体验。每个占位页都包含完整的站点头部、页脚和 main-content 区域，确保用户在任何入口都能获得一致的导航体验。
@@ -759,9 +856,11 @@ WanderChain 首页的依赖关系遵循"页面装配 → 区块消费 → 数据
 - 页面依赖：城市解析、区块组件、站点头尾。
 - **Hero 依赖（已重构）**：数据契约常量（CITIES），无外部状态，新增背景图片依赖。
 - **搜索页面依赖（新增）**：查询引擎 `searchContent()`，站点框架组件。
-- 区块依赖：`useSectionData`、`mockRepository`、城市名称格式化。
+- 区块依赖：`useSectionData`、各自的数据源、城市名称格式化。
 - **AI 助手依赖**：Provider 上下文，被功能导航与站点头部触发。**新增无障碍依赖**：焦点管理、键盘事件监听、滚动控制。
 - **PostCardStats 依赖（新增）**：`formatCount` 工具函数，`post-card-stats.module.css` 样式文件。
+- **景点 API 依赖（新增）**：`attractionsApi` 提供真实后端接口，`types.ts` 定义数据结构。
+- **认证服务依赖（新增）**：`auth-api.ts` 提供认证服务委托，`account-menu.tsx` 显示用户信息。
 - **图片优化依赖**：next/image 组件、自定义 image loader、Next.js 配置。
 - **双语数据依赖**：`cities.ts` 提供中英文数据映射，所有区块组件依赖 `cityNameEn()` 函数。
 - **评分系统依赖**：`types.ts` 定义评分字段类型，`mock-data.ts` 提供标准化的 0–5 分制数据，`query.ts` 使用标准化的搜索标签。
@@ -799,30 +898,39 @@ Placeholder["占位页框架"] --> SiteHeader
 Placeholder --> SiteFooter
 CommunityPage["社区占位页"] --> Placeholder
 AttractionsPage["景点占位页"] --> Placeholder
+AttractionsAPI["景点 API 层"] --> U8
+AuthService["认证服务委托"] --> AccountMenu
+AccountMenu --> BackendAuth["后端认证服务"]
 ```
 
 **图表来源**
 - [frontend/lib/home/cities.ts:12-96](file://frontend/lib/home/cities.ts#L12-L96)
 - [frontend/components/home/editor-picks.tsx:5-5](file://frontend/components/home/editor-picks.tsx#L5-L5)
 - [frontend/components/home/hot-posts.tsx:3-3](file://frontend/components/home/hot-posts.tsx#L3-L3)
-- [frontend/components/home/hot-attractions.tsx:5-5](file://frontend/components/home/hot-attractions.tsx#L5-L5)
+- [frontend/components/home/hot-attractions.tsx:6-12](file://frontend/components/home/hot-attractions.tsx#L6-L12)
 - [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/lib/home/types.ts:41-51](file://frontend/lib/home/types.ts#L41-L51)
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 - [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
+- [frontend/lib/attractions/attractions-api.ts:115-127](file://frontend/lib/attractions/attractions-api.ts#L115-L127)
+- [frontend/lib/auth/auth-api.ts:169-175](file://frontend/lib/auth/auth-api.ts#L169-L175)
+- [frontend/components/auth/account-menu.tsx:7-31](file://frontend/components/auth/account-menu.tsx#L7-L31)
 
 **章节来源**
 - [frontend/lib/home/cities.ts:12-96](file://frontend/lib/home/cities.ts#L12-L96)
 - [frontend/components/home/editor-picks.tsx:5-5](file://frontend/components/home/editor-picks.tsx#L5-L5)
 - [frontend/components/home/hot-posts.tsx:3-3](file://frontend/components/home/hot-posts.tsx#L3-L3)
-- [frontend/components/home/hot-attractions.tsx:5-5](file://frontend/components/home/hot-attractions.tsx#L5-L5)
+- [frontend/components/home/hot-attractions.tsx:6-12](file://frontend/components/home/hot-attractions.tsx#L6-L12)
 - [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/lib/home/types.ts:41-51](file://frontend/lib/home/types.ts#L41-L51)
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 - [frontend/components/site/placeholder.tsx:1-36](file://frontend/components/site/placeholder.tsx#L1-L36)
+- [frontend/lib/attractions/attractions-api.ts:115-127](file://frontend/lib/attractions/attractions-api.ts#L115-L127)
+- [frontend/lib/auth/auth-api.ts:169-175](file://frontend/lib/auth/auth-api.ts#L169-L175)
+- [frontend/components/auth/account-menu.tsx:7-31](file://frontend/components/auth/account-menu.tsx#L7-L31)
 
 ## 性能与可维护性
-- **零网络请求**：当前所有区块通过 Mock 仓储提供数据，避免首屏阻塞与跨域问题；真实 API 接入时只需替换数据源。
+- **真实 API 集成**：热门景点区块已切换到真实后端 API，提供更好的性能和数据准确性；其他区块仍可使用 Mock 数据进行开发。
 - **Hero 组件优化（已重构）**：独立的 Hero 组件减少页面组件复杂度，支持静态渲染和无客户端依赖。新的背景图片系统通过 `priority` 和自定义 loader 优化首屏加载性能。
 - **搜索功能优化（新增）**：纯函数查询引擎避免客户端状态，Server Component 渲染确保首屏可见性。
 - **三态加载**：`useSectionData` 统一管理 loading/error/ready，减少重复请求与竞态条件。
@@ -832,6 +940,12 @@ AttractionsPage["景点占位页"] --> Placeholder
   - 内存高效的组件设计，无状态管理开销
   - 样式隔离，避免 CSS 冲突
   - 无障碍友好的语义化 HTML 结构
+- **热门景点区块优化（重大更新）**：
+  - 使用真实 API 获取数据，避免 Mock 数据的局限性
+  - 优化的响应式图片加载，支持多种屏幕尺寸
+  - 完善的错误处理和状态管理
+  - 整卡点击提升用户体验
+  - 浏览数格式化显示提升可读性
 - **响应式图片优化（已更新）**：
   - 自定义 image loader 直接将宽度参数传递给 Unsplash CDN，避免经过 Next.js 的 `/_next/image` 端点
   - 精确的 sizes 属性计算确保浏览器选择最优图片尺寸
@@ -839,6 +953,16 @@ AttractionsPage["景点占位页"] --> Placeholder
   - CSS aspect-ratio 和 object-fit 确保图片在不同屏幕尺寸下的显示效果
   - **热门景点区块**：优化的桌面优先响应式策略提供更好的大屏幕上体验，新增 480px 单列断点确保超小屏幕体验
 - **可替换数据层**：类型与 `ListResult<T>` 契约使 Mock 与真实 API 可互换，组件与测试无需改动。
+- **景点 API 层优化（新增）**：
+  - 统一的错误处理机制，区分网络错误、API 错误和业务错误
+  - 请求取消支持，避免内存泄漏
+  - 类型安全的 API 调用，编译时检查数据类型
+  - 可扩展的查询构建器，支持多种过滤条件
+- **认证服务委托优化（新增）**：
+  - 后端集中管理认证状态，避免前端状态同步问题
+  - 简化的前端逻辑，减少状态管理复杂度
+  - 统一的错误处理，提升用户体验
+  - 移除了不必要的角色徽章显示，简化 UI 逻辑
 - **无障碍性能优化**：AI 助手模态框使用运行期查询而非缓存的可聚焦元素列表，避免内存泄漏和性能问题。
 - **双语数据层优化**：
   - 中英文数据分离，避免运行时翻译开销
@@ -861,6 +985,7 @@ AttractionsPage["景点占位页"] --> Placeholder
   - 热门景点响应式行为测试覆盖 1080px/720px/480px 断点
   - 双语界面 alt 文本测试确保国际化一致性
   - **新增 PostCardStats 组件测试**：验证图标化统计显示、无障碍标签、数字格式化等功能
+  - **新增热门景点 API 测试**：验证卡片交互、图片加载、状态管理等功能
 
 ## 故障排查指南
 - **Hero 组件问题（已重构）**：
@@ -892,6 +1017,19 @@ AttractionsPage["景点占位页"] --> Placeholder
   - 链接地址错误：确认 `href` 属性值为 `/posts?sortBy=hottest`
   - 导航失败：检查 `/posts` 页面是否存在且支持 `sortBy=hottest` 参数
   - 样式异常：检查 `.viewAll` 类名是否正确应用
+- **热门景点区块问题（重大更新）**：
+  - API 调用失败：检查 `attractionsApi.listHotAttractions()` 是否正确调用，确认后端服务可用
+  - 网络连接问题：检查 GET /api/attractions 端点是否正常响应，确认后端服务可达
+  - 卡片显示异常：确认 `HotAttractionCard` 组件正确渲染，检查封面图、评分、浏览量等字段
+  - 响应式布局问题：确认 CSS 媒体查询断点（1080px/720px/480px）正确应用
+  - 图片加载问题：检查 `sizes` 属性是否正确设置，确认自定义 image loader 配置
+  - 状态显示异常：确认加载、错误、空态状态正确切换
+  - **数据格式化问题**：检查 `formatCount` 函数是否正确格式化浏览数
+- **认证服务问题（新增）**：
+  - 认证状态异常：检查 GET /api/auth/me 端点是否正常响应，确认后端认证服务可用
+  - 用户信息显示问题：确认后端返回的 displayName 字段正确显示
+  - 登出功能异常：检查登出请求是否正确发送到后端
+  - **角色徽章消失**：确认这是预期行为，后端没有角色模型，前端不应显示角色徽章
 - **图片优化问题（已更新）**：
   - 图片未优化：确认 next.config.ts 中已配置自定义 loader；检查 image-loader.ts 是否正确导出。
   - 图片尺寸不正确：检查 sizes 属性是否与 CSS 网格布局匹配；确认 width/height 属性设置合理。
@@ -899,6 +1037,11 @@ AttractionsPage["景点占位页"] --> Placeholder
   - **单列断点问题**：确认 480px 断点的单列布局是否正确生效；检查 CSS 媒体查询语法。
   - CDN 请求失败：检查图片 URL 是否为有效的 https URL；确认 Unsplash CDN 可访问。
   - 性能问题：检查是否正确使用 loading="lazy" 和 decoding="async"；确认 sizes 属性计算准确。
+- **景点 API 层问题（新增）**：
+  - 网络连接错误：检查 `AttractionsNetworkError` 是否正确抛出，确认后端服务可达
+  - API 响应错误：检查 `AttractionsApiError` 的错误码和消息是否正确处理
+  - 数据转换问题：确认 `toAttractionSummary` 函数正确映射字段，处理 null 值
+  - 请求取消问题：检查 AbortSignal 是否正确传递和清理
 - **双语数据层问题（新增）**：
   - 城市名称显示异常：检查 `cityNameEn()` 函数是否正确返回英文城市名
   - 数据字段缺失：确认所有 `CityOption` 对象都包含 `nameEn` 和 `taglineEn` 字段
@@ -921,8 +1064,8 @@ AttractionsPage["景点占位页"] --> Placeholder
   - 无障碍功能测试：确认焦点陷阱、键盘导航等无障碍功能的测试覆盖
 - 面板无法关闭：确认遮罩点击、关闭按钮与 Esc 事件监听未被阻止；检查焦点归还逻辑。
 - 城市切换无效：确认 URL 查询参数格式为 `?city=slug`，且 `parseCity` 能识别该 slug。
-- 区块为空：检查 Mock 数据是否包含对应城市的条目；确认编辑器精选与帖子的状态过滤逻辑。
-- 网络请求异常：当前实现不应发起任何请求；若出现 fetch/XHR，优先检查是否误接真实 API 或未正确替换 `mockRepository`。
+- 区块为空：检查数据源是否返回对应城市的条目；确认编辑器精选与帖子的状态过滤逻辑。
+- 网络请求异常：当前热门景点区块会发起真实网络请求；若出现 fetch/XHR，这是正常行为，优先检查后端服务状态。
 
 **章节来源**
 - [frontend/components/home/hero.tsx:14-76](file://frontend/components/home/hero.tsx#L14-L76)
@@ -930,15 +1073,23 @@ AttractionsPage["景点占位页"] --> Placeholder
 - [frontend/components/home/ai-assistant.tsx:56-177](file://frontend/components/home/ai-assistant.tsx#L56-L177)
 - [frontend/components/posts/post-card-stats.tsx:1-83](file://frontend/components/posts/post-card-stats.tsx#L1-L83)
 - [frontend/components/home/hot-posts.tsx:31-35](file://frontend/components/home/hot-posts.tsx#L31-L35)
+- [frontend/components/home/hot-attractions.tsx:15-94](file://frontend/components/home/hot-attractions.tsx#L15-L94)
+- [frontend/lib/attractions/attractions-api.ts:16-40](file://frontend/lib/attractions/attractions-api.ts#L16-L40)
 - [frontend/lib/home/cities.ts:88-96](file://frontend/lib/home/cities.ts#L88-L96)
 - [frontend/lib/home/mock-data.ts:256-357](file://frontend/lib/home/mock-data.ts#L256-L357)
 - [frontend/lib/search/query.ts:41-60](file://frontend/lib/search/query.ts#L41-L60)
 - [frontend/components/site/placeholder.tsx:13-35](file://frontend/components/site/placeholder.tsx#L13-L35)
+- [frontend/lib/auth/auth-api.ts:169-175](file://frontend/lib/auth/auth-api.ts#L169-L175)
+- [frontend/components/auth/account-menu.tsx:7-31](file://frontend/components/auth/account-menu.tsx#L7-L31)
 
 ## 结论
-WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**Hero 首屏组件的完全重构**带来了全新的视觉体验和搜索功能，从接受 props 的组件转变为自包含的服务器组件，移除了统计数据面板，新增了背景图片和原生搜索框。**新增的搜索页面**提供了完整的站内检索能力，支持三态显示和结果分组。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**更新的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。**特别地，热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略**，使用1080px/720px/480px断点提供更好的桌面端体验和超小屏幕支持。
+WanderChain 首页在当前阶段以清晰的契约与真实 API 为基础，实现了城市筛选、功能导航、AI 助手入口与三类内容区块。**Hero 首屏组件的完全重构**带来了全新的视觉体验和搜索功能，从接受 props 的组件转变为自包含的服务器组件，移除了统计数据面板，新增了背景图片和原生搜索框。**新增的搜索页面**提供了完整的站内检索能力，支持三态显示和结果分组。**增强的 AI 助手模态框无障碍功能**提供了完整的焦点陷阱、背景滚动锁定和键盘导航支持，确保了良好的用户体验和无障碍访问。**更新的响应式图片优化系统**通过自定义 image loader、精确的 sizes 属性计算和 Unsplash CDN 集成，显著提升了封面图的加载性能和用户体验。**特别地，热门景点区块的响应式设计已从移动优先策略调整为桌面优先策略**，使用1080px/720px/480px断点提供更好的桌面端体验和超小屏幕支持。
 
-**重大更新** 本次变更实施了全面的英语优先本地化战略，将所有用户可见文本从中文转换为英文，同时建立了强大的双语数据层架构。这一架构不仅满足了当前的国际化需求，更为未来的多语言扩展奠定了坚实基础。所有组件的用户界面文本都已本地化，包括 Hero 首屏、功能导航、AI 助手、编辑推荐、热门帖子和热门景点。数据层采用中英文分离的设计，中文作为内容资产保留，英文用于界面展示，通过 TypeScript 类型确保数据完整性。
+**重大架构转变** 本次变更实施了从 mock 数据到真实后端集成的重大架构转变。热门景点区块现在通过 attractionsApi 调用 GET /api/attractions 获取真实后端数据，认证功能完全委托给后端的 /api/auth/me 端点管理。这一转变提升了系统的可靠性、可维护性和性能表现。
+
+**认证服务委托** 认证功能已从前端状态管理完全转移到后端服务，通过 /api/auth/me 端点获取当前用户信息。这消除了前端状态同步问题，简化了前端逻辑，并移除了不必要的角色徽章显示功能。
+
+**景点 API 层引入** 新增了专门的景点 API 层，提供统一的后端接口访问能力，包括错误处理、请求取消、数据转换等功能。这为后续景点相关功能的扩展奠定了坚实的基础。
 
 **PostCardStats 组件引入** 本次变更引入了全新的 PostCardStats 组件，为热门帖子区块提供了图标化的互动统计展示。该组件使用 SVG 图标和语义化 HTML 结构，提供一致的视觉体验和无障碍支持，展示了点赞、评论、收藏三种互动类型的计数。
 
@@ -952,6 +1103,6 @@ WanderChain 首页在当前阶段以清晰的契约与 Mock 数据为基础，�
 
 **规格覆盖率审计** 全面的规格覆盖率审计显示前端 wanderchain 模块达到 79.5% 的覆盖率，其中严格覆盖率 47.2%，宽松覆盖率 64.8%。AI 助手测试从 S1-S9 扩展至 S1-S17，热门景点区块的响应式断点从移动优先调整为桌面优先策略，双语界面的 alt 文本规范得到修正。
 
-架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。双语数据层的引入进一步增强了系统的可扩展性和可维护性。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。随着 `redesign-home-hero-with-search` 变更的归档，所有规格引用现已指向生产就绪的主规格文件 `openspec/specs/wanderchain-homepage/spec.md`，确保了文档与代码实现的完全同步。
+架构上坚持"UI 与数据解耦、Mock 与真实 API 可替换"，并通过三态加载、无障碍设计和图片优化提升可维护性与可用性。随着从 mock 数据到真实后端集成的重大架构转变，系统现在提供了更可靠的数据源和更简洁的前端逻辑。后续接入真实后端时，应优先替换 `mockRepository`，并保持类型与响应形状不变，以确保最小改动成本与最大回归安全性。随着 `redesign-home-hero-with-search` 变更的归档，所有规格引用现已指向生产就绪的主规格文件 `openspec/specs/wanderchain-homepage/spec.md`，确保了文档与代码实现的完全同步。
 
-**更新** 随着英语优先本地化、PostCardStats 组件引入、导航功能增强、评分系统标准化、占位页框架增强、测试覆盖率提升和规格覆盖率审计的完成，WanderChain 首页现在为全球用户提供一致的英文体验和标准化的评分显示，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。数据完整性验证机制确保了 Mock 数据和未来真实数据源都遵循统一的 0–5 评分约束，为系统的长期可维护性提供了保障。新增的单列断点和增强的站点框架进一步提升了用户体验的一致性和可访问性。全面的规格覆盖率审计为代码质量提供了量化评估基准，79.5% 的前端覆盖率表明系统在功能完整性和测试覆盖方面已达到较高水平。
+**更新** 随着从 mock 数据到真实后端集成的重大架构转变、认证服务委托、景点 API 层引入、PostCardStats 组件引入、导航功能增强、评分系统标准化、占位页框架增强、测试覆盖率提升和规格覆盖率审计的完成，WanderChain 首页现在提供了更加可靠和可维护的架构。热门景点区块通过真实后端 API 获取数据，认证功能完全委托给后端服务，移除了不必要的角色徽章显示，同时保留了中文内容管理能力，为未来的多语言支持预留了充足的扩展空间。数据完整性验证机制确保了 Mock 数据和未来真实数据源都遵循统一的 0–5 评分约束，为系统的长期可维护性提供了保障。新增的单列断点和增强的站点框架进一步提升了用户体验的一致性和可访问性。全面的规格覆盖率审计为代码质量提供了量化评估基准，79.5% 的前端覆盖率表明系统在功能完整性和测试覆盖方面已达到较高水平。

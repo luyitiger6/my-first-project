@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-10-31T07:16:13Z"
+exported_at: "2026-11-01T17:47:47Z"
 modules:
     "":
-        dir_name: AI 编码工程装配根（Git Submodule + OpenSpec + PowerShell Harness）
-        title: AI 编码工程装配根（Git Submodule + OpenSpec + PowerShell Harness）
+        dir_name: wanderchain AI 编码工程装配点（根工作区）
+        title: wanderchain AI 编码工程装配点（根工作区）
         scope:
             - README.md
             - AGENTS.md
@@ -42,8 +42,8 @@ modules:
         related_to:
             - path: backend
     harness:
-        dir_name: CI 总闸门编排（PowerShell Harness）
-        title: CI 总闸门编排（PowerShell Harness）
+        dir_name: CI 闸门编排器 (Harness)
+        title: CI 闸门编排器 (Harness)
         scope:
             - harness/
         source_files: []
@@ -51,8 +51,8 @@ modules:
         depends_on: []
         related_to: []
     openspec:
-        dir_name: OpenSpec 结构化变更与能力契约管理
-        title: OpenSpec 结构化变更与能力契约管理
+        dir_name: OpenSpec 结构化变更与能力契约
+        title: OpenSpec 结构化变更与能力契约
         scope:
             - openspec/
         source_files: []
