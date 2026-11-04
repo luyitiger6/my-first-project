@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-03
+# 本次只新增构建与部署工件，不改任何 API 契约、页面行为与数据模型。
+# 部署方式属于一次性演示交付，不纳入长期能力规格，故跳过 specs。
+skip_specs: true

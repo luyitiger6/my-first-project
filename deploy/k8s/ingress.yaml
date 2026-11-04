@@ -1,0 +1,33 @@
+# 唯一对外入口：整个域名落给前端，后端只在集群内可见。
+#
+# 为什么不按路径把 /api 分流给后端：
+# 前端 app/api/[...path]/route.ts 不是普通转发，它逐段 encodeURIComponent、把多条 Set-Cookie
+# 逐条回传（getSetCookie()，get() 合并会让属性错位）、透传 cache-control / etag / retry-after。
+# 绕过它，集群链路就与本地开发链路变成两套，出问题无法对照。
+#
+# 为什么跨域不配在这里：
+# 浏览器只与这个单一源通信，前端到后端是服务端调用，链路上没有跨域。
+# 真正的白名单在后端 wanderchain.auth.allowed-origins，已由后端 Deployment 的
+# WANDERCHAIN_AUTH_ALLOWEDORIGINS_0 注入本域名。在 Ingress 再配一份 CORS 只会制造第二个真源。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wanderchain
+  labels:
+    app: wanderchain
+  annotations:
+    # 控制器默认请求体上限 1m，封面图上限 5MB 会在入口直接 413，走不到前端。
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: wanderchain.dev.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wanderchain-frontend
+                port:
+                  number: 3000

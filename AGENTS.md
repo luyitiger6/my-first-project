@@ -79,6 +79,9 @@ ai-workspace/
 ├── .gitmodules                两个子模块的 URL（使用者可替换；工作区改名不碰）
 ├── backend/  [submodule]      独立仓库：Spring Boot 3.5.5 / Java 17，wanderchain 账户认证、帖子与景点读接口（Maven 项目根）
 │   ├── pom.xml                Maven 构建文件（web / JPA / MySQL / Redis / BCrypt / jjwt）
+│   ├── Dockerfile             运行镜像：Alpine + headless JRE，非 root；编译在宿主机完成
+│   ├── docker-compose.yml     单容器形态：8989 直出，经 host.docker.internal 连宿主机 MySQL / Redis
+│   ├── k8s/deployment.yaml    演示用 Secret + Deployment（1 副本）+ Service（ClusterIP 8989）
 │   └── src/
 │       ├── main/java/com/luyi/myfirst/
 │       │   ├── Application.java
@@ -108,6 +111,8 @@ ai-workspace/
 ├── frontend/ [submodule]      独立仓库：Next.js 16 App Router + React 19 + TypeScript（npm 项目根）
 │   ├── package.json           前端脚本（dev/build/start/test）与依赖
 │   ├── Dockerfile             多阶段镜像（deps → builder → runner，非 root 运行）
+│   ├── Dockerfile.k8s         受限网络下的运行镜像：Alpine nodejs + COPY 宿主机构建的 standalone 产物
+│   ├── k8s/deployment.yaml    演示用 Deployment（1 副本）+ Service（ClusterIP 3000），BACKEND_URL 指向集群内后端
 │   ├── app/
 │   │   ├── layout.tsx          根布局（语言、标题、全局样式、AuthProvider）
 │   │   ├── page.tsx            首页（城市筛选 + 五个区块）
@@ -144,6 +149,8 @@ ai-workspace/
 │   ├── seed-demo-data.ps1      一次性造数：景点与景点评论各千条；`-Cleanup` 按 `01BULK` / `01COMM` 前缀精确回滚
 │   ├── seed-posts-accounts.ps1 帖子与账号种子
 │   └── e2e-run.mjs             Playwright 运行器
+├── deploy/                    集群入口清单（工作区自有）
+│   └── k8s/ingress.yaml        单域名 `wanderchain.dev.local` 全部导向前端；后端不建 Ingress
 ├── openspec/                  【工件层】
 │   ├── config.yaml              OpenSpec 配置（schema: spec-driven）
 │   ├── specs/                   当前真相：已归档能力的需求描述
