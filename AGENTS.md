@@ -188,7 +188,8 @@ ai-workspace/
 │       ├── 08-spec-doc-breakpoints.ps1 单元文档声明的断点与实际 CSS 媒体查询一致
 │       ├── 09-redis-check.ps1    缓存闸门：6606 既有 Redis 可达、凭据正确、db 3 可选中
 │       ├── 10-contract-check.ps1 契约闸门：后端 record 与前端契约的「字段名 + 类型」双向比对，扫描范围可配置
-│       └── 11-conventions-check.ps1 约定闸门：约定文档自洽性 + 后端分层依赖方向单向
+│       ├── 11-conventions-check.ps1 约定闸门：约定文档自洽性 + 后端分层依赖方向单向
+│       └── 12-skills-sync-check.ps1 技能闸门：自研技能真源与三处副本逐字节一致（排除 openspec-*）
 ├── scaffold/                  【工作区改名】
 │   └── rename.mjs              分发后第一步执行：替换工作区展示名与 slug
 ├── .agents/skills/            【行为层】自研技能编写真源（source of truth），同目录也存放 openspec init 生成的 openspec-* 技能
@@ -199,7 +200,7 @@ ai-workspace/
                                  修订顺序固定为「先改 .agents/skills/ 真源 → 再同步三处副本」，禁止直接改副本。
 ```
 
-<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-schema-check 07-doc-consistency 08-spec-doc-breakpoints 09-redis-check 10-contract-check 11-conventions-check -->
+<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-schema-check 07-doc-consistency 08-spec-doc-breakpoints 09-redis-check 10-contract-check 11-conventions-check 12-skills-sync-check -->
 
 上面这行标记是**闸门清单的机器可读副本**：新增或删除闸门时同步更新，`07-doc-consistency.ps1` 会把它与 `harness/checks/*.ps1` 的实际文件比对，不一致直接退出码 1。
 
@@ -224,6 +225,7 @@ ai-workspace/
 | 只查缓存 | `powershell -File harness\checks\09-redis-check.ps1`（默认连 `127.0.0.1:6606` 的 db 3） |
 | 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 的字段名与类型双向比对；当前受管 auth / posts / attractions / media，清单见脚本顶部 `$contractPairs`） |
 | 只查约定 | `powershell -File harness\checks\11-conventions-check.ps1`（约定文档四个固定小节与真源路径、依赖描述与两侧清单一致、后端分层依赖方向） |
+| 只查技能同步 | `powershell -File harness\checks\12-skills-sync-check.ps1`（`.agents/skills` 非 `openspec-*` 目录 vs 三处副本，逐文件 SHA256） |
 | 写新模块前 | 读 `docs/conventions/README.md`——约定入口与索引，后端/前端/样式三份正文从这里进入 |
 | 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
 | 预检 Redis | `Test-NetConnection 127.0.0.1 -Port 6606`（或 `docker ps --filter publish=6606`） |
