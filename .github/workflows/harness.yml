@@ -84,4 +84,20 @@ jobs:
 
       - name: Run harness gates
         # ubuntu runner 预装 PowerShell 7；run-all.ps1 会按 PSEdition 用 pwsh 拉起各道闸门
-        run: pwsh -NoProfile -File harness/run-all.ps1
+        shell: pwsh
+        run: |
+          # 退出码仍是唯一判定。先完整落盘再回放：管道里的 Tee-Object 会在某些情况下
+          # 影响 $LASTEXITCODE 的可读时机，重定向不会。
+          $log = Join-Path $env:RUNNER_TEMP 'harness.log'
+          & pwsh -NoProfile -File harness/run-all.ps1 *> $log
+          $code = $LASTEXITCODE
+          if ($null -eq $code) { $code = 1 }
+          Get-Content -LiteralPath $log
+          if ($code -ne 0) {
+            # 失败原因额外写进 annotation，不下载日志也能看到是哪道闸门红的
+            "::error::harness gates failed with exit code $code"
+            Get-Content -LiteralPath $log -Tail 25 |
+              Where-Object { $_.Trim() } |
+              ForEach-Object { '::error::' + ($_ -replace '%', '%25') }
+          }
+          exit $code
