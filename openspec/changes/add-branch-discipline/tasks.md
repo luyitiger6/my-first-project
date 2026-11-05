@@ -13,5 +13,5 @@
 
 - [x] 2.1 `openspec validate add-branch-discipline --strict` 退出码 0。
 - [x] 2.2 `powershell -File harness\checks\07-doc-consistency.ps1` 与 `11-conventions-check.ps1` 退出码 0。
-- [ ] 2.3 分支 `feat/branch-discipline-20261106` 推送后 CI 全绿。
+- [x] 2.3 分支 `feat/branch-discipline-20261106` 推送后 CI 全绿（run 42108591660，conclusion=success，耗时 3 分 10 秒）。
 - [ ] 2.4 交用户审阅，通过后合并 `main`；分支按规则保留。
