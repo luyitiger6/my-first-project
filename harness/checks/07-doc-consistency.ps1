@@ -23,7 +23,7 @@ function Add-Problem {
 
 # ---- 1. 闸门清单标记 vs harness/checks 实际文件 ----
 $agentsDoc = Join-Path $projectRoot 'AGENTS.md'
-$actualChecks = @(Get-ChildItem (Join-Path $projectRoot 'harness\checks') -Filter '*.ps1' -File |
+$actualChecks = @(Get-ChildItem (Join-Path $projectRoot 'harness/checks') -Filter '*.ps1' -File |
     ForEach-Object { $_.BaseName })
 
 if (-not (Test-Path -LiteralPath $agentsDoc)) {

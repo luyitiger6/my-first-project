@@ -1,0 +1,87 @@
+# 唯一判定：harness/run-all.ps1 的退出码。
+# 这里不写任何软通过开关、不吞错、不跳过测试——闸门说红就是红。
+#
+# 选 ubuntu-latest 而不是 windows-latest：GitHub 的托管 Windows runner 不支持
+# Linux 容器，services 里的 mysql / redis 起不来；而 02 / 06 / 09 三道闸门
+# 要求 127.0.0.1:8806 与 127.0.0.1:6606 上有真实实例（AGENTS.md §9：不存在内存兜底）。
+name: harness
+
+on:
+  push:
+  pull_request:
+
+# 同一 PR / 分支只保留最新一次：旧提交的失败不应该盖住新提交的结果
+concurrency:
+  group: harness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # 临时实例：job 结束即销毁。凭据只在本次运行内有效，不入库、不读 secrets，
+    # 因此 fork 提交的 pull_request 也能跑（不需要仓库配置任何 secret）。
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+          MYSQL_ROOT_HOST: '%'
+          # 02-test 先于 06-schema-check 执行，此时表还没建，但库必须已存在：
+          # jdbc url 没有 createDatabaseIfNotExist，库缺失会直接启动失败。
+          MYSQL_DATABASE: wanderchain
+        ports:
+          - 8806:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pci-root-password"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 30s
+      redis:
+        image: redis:7
+        # 不设 requirepass：02-test 与 09-redis-check 都把空密码当作合法部署
+        ports:
+          - 6606:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # 06 / 09 读 SCHEMA_DB_PASSWORD；02 读 WANDERCHAIN_DB_PASSWORD。
+      # 同一个临时口令同时满足两套闸门的入口约定。
+      SCHEMA_DB_PASSWORD: ci-root-password
+      WANDERCHAIN_DB_PASSWORD: ci-root-password
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          # 00 闸门要求子模块 HEAD 与父仓库 gitlink 一致
+          submodules: recursive
+          # 闸门只读，不回写仓库；凭据不留在 .git/config 里
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Run harness gates
+        # ubuntu runner 预装 PowerShell 7；run-all.ps1 会按 PSEdition 用 pwsh 拉起各道闸门
+        run: pwsh -NoProfile -File harness/run-all.ps1

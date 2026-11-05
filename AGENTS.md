@@ -77,6 +77,8 @@ ai-workspace/
 ├── AGENTS.md                  ← 你正在读的文件
 ├── README.md                  人看的快速上手
 ├── .gitmodules                两个子模块的 URL（使用者可替换；工作区改名不碰）
+├── .github/workflows/         CI 入口：push 与 pull_request 都跑同一套总闸门
+│   └── harness.yml            ubuntu-latest + 临时 MySQL 8 / Redis 7 services + `pwsh -File harness/run-all.ps1`；退出码是唯一判定
 ├── backend/  [submodule]      独立仓库：Spring Boot 3.5.5 / Java 17，wanderchain 账户认证、帖子与景点读接口（Maven 项目根）
 │   ├── pom.xml                Maven 构建文件（web / JPA / MySQL / Redis / BCrypt / jjwt）
 │   ├── Dockerfile             运行镜像：Alpine + headless JRE，非 root；编译在宿主机完成

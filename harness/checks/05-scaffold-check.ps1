@@ -22,7 +22,7 @@ $copyExcludedDirs = @(
 
 # 扫描额外排除：改名工具自身（按契约必然包含旧 token），与 URL 含 token 但不在改名范围内的文件
 $scanExcludedDirs = $copyExcludedDirs + @('scaffold')
-$excludedFiles = @('.gitmodules', 'harness\checks\05-scaffold-check.ps1')
+$excludedFiles = @('.gitmodules', 'harness/checks/05-scaffold-check.ps1')
 
 function Copy-Tree {
     param($src, $dst)
@@ -47,7 +47,7 @@ try {
     Write-Host 'Running: 05-scaffold-check (工作区改名演练)' -ForegroundColor DarkGray
     Copy-Tree $projectRoot $tempRoot
 
-    $renameScript = Join-Path $tempRoot 'scaffold\rename.mjs'
+    $renameScript = Join-Path $tempRoot 'scaffold/rename.mjs'
     if (-not (Test-Path -LiteralPath $renameScript)) {
         Fail '副本中缺少 scaffold/rename.mjs'
     }
@@ -70,7 +70,8 @@ try {
     $hashBefore = (Get-FileHash -LiteralPath $gitmodules -Algorithm SHA256).Hash
 
     # ---- 在副本中执行工作区改名演练 ----
-    & node.exe $renameScript --name scaffold-demo --display 'Scaffold Demo'
+    # 可执行名用 node 而不是 node.exe：Windows 靠 PATHEXT 解析，Linux 只有 node
+    & node $renameScript --name scaffold-demo --display 'Scaffold Demo'
     if ($LASTEXITCODE -ne 0) {
         Fail '改名脚本执行失败（退出码非 0）'
     }
@@ -83,9 +84,10 @@ try {
     # ---- 副本内残留扫描 ----
     $pattern = ([regex]::Escape($oldDisplay)) + '|' + ([regex]::Escape($oldSlug))
     $hits = Get-ChildItem -Path $tempRoot -Recurse -File -Force | Where-Object {
-        $rel = $_.FullName.Substring($tempRoot.Length).TrimStart('\', '/')
+        # 统一成 / 再比较：两侧目录分隔符不同，排除规则必须与平台无关
+        $rel = $_.FullName.Substring($tempRoot.Length).TrimStart('\', '/') -replace '\\', '/'
         foreach ($prefix in $scanExcludedDirs) {
-            if ($rel.StartsWith($prefix + '\', [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
+            if ($rel.StartsWith($prefix + '/', [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
         }
         foreach ($file in $excludedFiles) {
             if ($rel.Equals($file, [System.StringComparison]::OrdinalIgnoreCase)) { return $false }

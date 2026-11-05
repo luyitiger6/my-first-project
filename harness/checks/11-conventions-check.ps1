@@ -24,10 +24,10 @@ function Add-Problem {
     [void]$problems.Add($Message)
 }
 
-$docsDir   = Join-Path $projectRoot 'docs\conventions'
+$docsDir   = Join-Path $projectRoot 'docs/conventions'
 $indexPath = Join-Path $docsDir 'README.md'
 $agentsDoc = Join-Path $projectRoot 'AGENTS.md'
-$checksDir = Join-Path $projectRoot 'harness\checks'
+$checksDir = Join-Path $projectRoot 'harness/checks'
 $indexRef  = 'docs/conventions/README.md'
 
 function Get-SectionText {
@@ -49,7 +49,8 @@ function Get-BacktickTokens {
 # 两处都试，两处都没有才算登记了不存在的文件。
 function Test-DocPath {
     param([string]$Token)
-    $relative = $Token -replace '/', '\'
+    # 文档里的路径统一按 / 书写，按当前平台的分隔符归一后再探测
+    $relative = if ([IO.Path]::DirectorySeparatorChar -eq '/') { $Token -replace '\\', '/' } else { $Token -replace '/', '\' }
     foreach ($base in @($projectRoot, $docsDir)) {
         if (Test-Path -LiteralPath (Join-Path $base $relative)) { return $true }
     }
@@ -58,7 +59,7 @@ function Test-DocPath {
 
 # ---- 依赖清单：frontend/package.json 的两个依赖段 + backend/pom.xml 的 <dependency> 块 ----
 $frontendDeps = @()
-$pkgPath = Join-Path $projectRoot 'frontend\package.json'
+$pkgPath = Join-Path $projectRoot 'frontend/package.json'
 if (Test-Path -LiteralPath $pkgPath) {
     $pkg = Get-Content -LiteralPath $pkgPath -Raw -Encoding UTF8 | ConvertFrom-Json
     foreach ($bucket in @('dependencies', 'devDependencies')) {
@@ -70,7 +71,7 @@ if (Test-Path -LiteralPath $pkgPath) {
 }
 
 $backendDeps = @()
-$pomPath = Join-Path $projectRoot 'backend\pom.xml'
+$pomPath = Join-Path $projectRoot 'backend/pom.xml'
 if (Test-Path -LiteralPath $pomPath) {
     $pom = Get-Content -LiteralPath $pomPath -Raw -Encoding UTF8
     $backendDeps = @([regex]::Matches($pom, '(?s)<dependency>\s*<groupId>[^<]*</groupId>\s*<artifactId>([^<]+)</artifactId>') |
@@ -181,7 +182,7 @@ else {
 }
 
 # ---- 7. 后端分层依赖方向 ----
-$javaRoot = Join-Path $projectRoot 'backend\src\main\java\com\luyi\myfirst'
+$javaRoot = Join-Path $projectRoot 'backend/src/main/java/com/luyi/myfirst'
 $layerRules = @(
     @{ Layer = 'dao';     Forbidden = @('web') },
     @{ Layer = 'service'; Forbidden = @('web') },

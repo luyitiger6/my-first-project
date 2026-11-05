@@ -11,7 +11,7 @@
 $projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $projectRoot
 
-$srcDir = Join-Path $projectRoot 'backend\src'
+$srcDir = Join-Path $projectRoot 'backend/src'
 if (-not (Test-Path $srcDir)) {
     Write-Host "src directory not found: $srcDir" -ForegroundColor Red
     exit 1
@@ -31,7 +31,7 @@ if (-not (Test-Path $frontendDir)) {
 
 $frontendSources = @(Get-ChildItem $frontendDir -Recurse -File |
     Where-Object { $_.Extension -eq '.ts' -or $_.Extension -eq '.tsx' } |
-    Where-Object { $_.FullName -notmatch '\\(node_modules|\.next|dist)\\' })
+    Where-Object { $_.FullName -notmatch '[\\/](node_modules|\.next|dist)[\\/]' })
 if ($frontendSources.Count -eq 0) {
     Write-Host 'No frontend sources found - nothing to guard' -ForegroundColor Red
     exit 1
@@ -40,7 +40,7 @@ if ($frontendSources.Count -eq 0) {
 $violations = New-Object System.Collections.ArrayList
 
 foreach ($file in $sources) {
-    $rel = $file.FullName.Replace($projectRoot + '\', '')
+    $rel = $file.FullName.Substring($projectRoot.Length + 1)
     $lines = [IO.File]::ReadAllLines($file.FullName)
 
     for ($i = 0; $i -lt $lines.Length; $i++) {
@@ -60,7 +60,7 @@ foreach ($file in $sources) {
 }
 
 foreach ($file in $frontendSources) {
-    $rel = $file.FullName.Replace($projectRoot + '\', '')
+    $rel = $file.FullName.Substring($projectRoot.Length + 1)
     $lines = [IO.File]::ReadAllLines($file.FullName)
 
     for ($i = 0; $i -lt $lines.Length; $i++) {

@@ -12,7 +12,8 @@ $root = $ContractRoot
 if (-not $root) { $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
 
 function Resolve-RepoPath([string]$rel) {
-    return Join-Path $root ($rel -replace '/', '\')
+    # 清单里的相对路径统一写成 /；Join-Path 在 Windows 与 Linux 上都接受正斜杠
+    return Join-Path $root $rel
 }
 
 # ===== 受管契约清单（追加新模块只需在此加一对，比对逻辑对每个 pair 独立执行）=====

@@ -2,7 +2,7 @@
 .SYNOPSIS
     Harness 总闸门：子模块 -> 编译 -> 测试 -> 静态红线 -> 前端 -> 改名 -> 建表 -> 文档 -> 断点 -> 缓存 -> 契约，任一失败立即返回非 0。
 
-    执行顺序按 checks/ 文件名排序（共十一道，以 harness/checks/*.ps1 的实际文件为准）：
+    执行顺序按 checks/ 文件名排序（共十二道，以 harness/checks/*.ps1 的实际文件为准）：
       00-submodule-check       子模块已初始化且与父仓库 gitlink 一致
       01-compile               后端编译
       02-test                  后端测试 + 容器装配
@@ -14,6 +14,7 @@
       08-spec-doc-breakpoints  单元文档声明的断点与实际 CSS 媒体查询一致
       09-redis-check           既有 127.0.0.1:6606 Redis 可达、凭据正确、db 3 可选中
       10-contract-check        前后端认证契约的接口名与字段名双向比对
+      11-conventions-check     约定文档自洽性与后端分层依赖方向
 
 .DESCRIPTION
     这套脚本存在的唯一目的是「拥有否决权」。
@@ -30,6 +31,21 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# 子进程宿主按当前 PowerShell 版本选择：Windows PowerShell 5.1 只有 powershell.exe，
+# PowerShell 7（含 Linux runner 上的 pwsh）用 pwsh。-ExecutionPolicy 只有 Windows 支持，
+# 非 Windows 传了会直接报错，所以按平台拼参数。
+$hostArgs = @('-NoProfile', '-File')
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+    $hostExe = 'powershell.exe'
+    $hostArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File')
+}
+else {
+    $hostExe = 'pwsh'
+    if ($IsWindows) {
+        $hostArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File')
+    }
+}
 
 $harnessDir = $PSScriptRoot
 $projectRoot = Split-Path -Parent $harnessDir
@@ -51,7 +67,8 @@ foreach ($check in $checks) {
 
     $sw = [Diagnostics.Stopwatch]::StartNew()
     # 用独立进程执行，确保每个检查的退出码互不污染
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $check.FullName
+    $invokeArgs = $hostArgs + $check.FullName
+    & $hostExe @invokeArgs
     $code = $LASTEXITCODE
     $sw.Stop()
 
