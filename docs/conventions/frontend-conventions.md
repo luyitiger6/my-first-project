@@ -92,7 +92,7 @@ lib/<域>/<域>-api.ts       端点函数：发请求、解析响应、把失败
 
 ## 真源声明
 
-- `AGENTS.md` — 三层分工、六条硬规则、闸门约定
+- `AGENTS.md` — 三层分工、七条硬规则、闸门约定
 - `docs/conventions/backend-conventions.md` — 后端 DTO 与响应格式，本文件的前端契约镜像它
 - `openspec/specs/` — 各能力的可验收行为（含错误码与响应字段白名单）
 

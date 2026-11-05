@@ -93,7 +93,7 @@ frontend/components/<域>/*.module.css    组件独占样式
 
 ## 真源声明
 
-- `AGENTS.md` — 三层分工、六条硬规则、闸门约定
+- `AGENTS.md` — 三层分工、七条硬规则、闸门约定
 - `docs/conventions/frontend-conventions.md` — 组件三件套与目录归属，`.module.css` 的落点由它决定
 - `openspec/specs/` — 各能力的可验收行为，含首页各区块的可见内容要求
 

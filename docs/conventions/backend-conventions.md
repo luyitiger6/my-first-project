@@ -199,7 +199,7 @@ public interface AuthResponseBody { }
 
 ## 真源声明
 
-- `AGENTS.md` — 三层分工、六条硬规则、闸门约定
+- `AGENTS.md` — 三层分工、七条硬规则、闸门约定
 - `docs/db-design-spec.md` — 数据库命名、主键策略、公共字段与数据类型（§2–§4）
 - `openspec/specs/` — 各能力的可验收行为，含错误码固定集合与响应字段白名单
 
