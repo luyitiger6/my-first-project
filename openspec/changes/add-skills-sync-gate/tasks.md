@@ -12,4 +12,4 @@
 - [x] 2.3 `powershell -File harness\checks\07-doc-consistency.ps1` 退出码 0（标记与 13 个闸门文件一致）。
 - [x] 2.4 `powershell -File harness\checks\11-conventions-check.ps1` 退出码 0。
 - [x] 2.5 `openspec validate add-skills-sync-gate --strict` 退出码 0。
-- [ ] 2.6 推送 `feat/skills-sync-gate-20261106` 后 CI 全绿。
+- [x] 2.6 推送 `feat/skills-sync-gate-20261106` 后 CI 全绿（run 42112741660，conclusion=success）。
