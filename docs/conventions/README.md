@@ -58,6 +58,7 @@
 - `11-conventions-check.ps1` — 本目录的索引一致性与四个固定小节、依赖描述与两侧清单一致、后端分层依赖方向
 - `12-skills-sync-check.ps1` — 自研技能真源与三处适配副本逐字节一致
 - `13-spec-evidence-check.ps1` — `openspec/specs/` 每条 Scenario 在 `docs/spec-evidence.json` 中的覆盖登记齐全、引用路径真实存在
+- `14-change-scope-check.ps1` — 在飞 change 的能力数 ≤ 2、任务数 ≤ 30、Scenario 数 ≤ 60，超限须有未到期的 `scope-exception.md`
 - `07-doc-consistency.ps1` — `AGENTS.md` 的闸门清单标记与实际闸门文件双向一致
 - `03-static-guard.ps1` — 禁止 `TODO` / `System.out` / `@Disabled` / `it.skip`
 
