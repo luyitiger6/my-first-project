@@ -16,4 +16,4 @@
 - [x] 3.2 负向验证 A：临时新增一条未登记 Scenario → exit 1 并列出标题；还原后复绿。
 - [x] 3.3 负向验证 B：把某条引用改为不存在的路径 → exit 1 并列出该引用；还原后复绿。
 - [x] 3.4 `07` / `11` / `12` 闸门与 `openspec validate add-spec-evidence-ledger --strict` 均退出码 0。
-- [ ] 3.5 推送 `feat/spec-evidence-ledger-20261106` 后 CI 全绿。
+- [x] 3.5 推送 `feat/spec-evidence-ledger-20261106` 后 CI 全绿（run 42154215667，commit 41f0b52，conclusion=success）。
