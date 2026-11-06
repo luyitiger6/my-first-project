@@ -19,11 +19,11 @@
 
 ### New Capabilities
 
-- `agent-skills`: 自研技能以 `.agents/skills/` 为唯一真源，三处适配层副本必须逐字节一致，由闸门以退出码守护。
+<!-- 无：本次不新建能力，一致性约束落在既有 `skill-distribution` 上。 -->
 
 ### Modified Capabilities
 
-<!-- 无：现有能力的行为不变，本次只新增一道守护技能分发的闸门。 -->
+- `skill-distribution`: 把「同名技能跨适配层内容一致」从文档声明升级为由 `12-skills-sync-check` 以退出码守护，并明确 `openspec-*` 生成技能不纳入逐字节比对。
 
 ## Impact
 

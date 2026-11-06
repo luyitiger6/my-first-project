@@ -13,3 +13,9 @@
 - [x] 2.4 `powershell -File harness\checks\11-conventions-check.ps1` 退出码 0。
 - [x] 2.5 `openspec validate add-skills-sync-gate --strict` 退出码 0。
 - [x] 2.6 推送 `feat/skills-sync-gate-20261106` 后 CI 全绿（run 42112741660，conclusion=success）。
+
+## 3. 归档前规格落点修正
+
+- [x] 3.1 修正 delta 落点：原 `specs/agent-skills/spec.md` 改为 `specs/skill-distribution/spec.md`，用 MODIFIED 承接既有「同名技能跨适配层内容一致」（补「由闸门判定」），并 ADDED「一致性由闸门以退出码判定」「生成技能不纳入逐字节比对」两条要求——避免归档后与既有主规格出现「所有同名副本一致」与「`openspec-*` 排除」的口径冲突。
+- [x] 3.2 `proposal.md` 能力归类改为 Modified Capabilities；`design.md` 补决策 5 记录改挂理由。
+- [x] 3.3 `openspec validate add-skills-sync-gate --strict` 退出码 0，且 `07` / `11` / `12` 三道闸门复跑仍为 0。
