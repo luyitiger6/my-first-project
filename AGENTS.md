@@ -162,7 +162,8 @@ ai-workspace/
 │   ├── specs/wanderchain/      首页、搜索页与景点列表 / 详情的单元文档（断点由 08 号闸门比对实现）
 │   ├── e2e/                    Playwright 端到端用例与报告（工作区根运行）
 │   ├── db-design-spec.md       数据库设计规范（命名、主键、公共字段）
-│   └── spec-coverage-audit.md  spec 覆盖审计
+│   ├── spec-coverage-audit.md  spec 覆盖审计
+│   └── spec-evidence.json      Scenario 证据账本：19 个能力的证据来源与逐条覆盖分类，由 13 号闸门比对
 ├── scripts/                   按需手动执行的辅助脚本（不进闸门）
 │   ├── seed-demo-data.ps1      一次性造数：景点与景点评论各千条；`-Cleanup` 按 `01BULK` / `01COMM` 前缀精确回滚
 │   ├── seed-posts-accounts.ps1 帖子与账号种子
@@ -189,7 +190,8 @@ ai-workspace/
 │       ├── 09-redis-check.ps1    缓存闸门：6606 既有 Redis 可达、凭据正确、db 3 可选中
 │       ├── 10-contract-check.ps1 契约闸门：后端 record 与前端契约的「字段名 + 类型」双向比对，扫描范围可配置
 │       ├── 11-conventions-check.ps1 约定闸门：约定文档自洽性 + 后端分层依赖方向单向
-│       └── 12-skills-sync-check.ps1 技能闸门：自研技能真源与三处副本逐字节一致（排除 openspec-*）
+│       ├── 12-skills-sync-check.ps1 技能闸门：自研技能真源与三处副本逐字节一致（排除 openspec-*）
+│       └── 13-spec-evidence-check.ps1 证据闸门：每条 Scenario 三类登记齐全、引用真实、欠账三字段完整
 ├── scaffold/                  【工作区改名】
 │   └── rename.mjs              分发后第一步执行：替换工作区展示名与 slug
 ├── .agents/skills/            【行为层】自研技能编写真源（source of truth），同目录也存放 openspec init 生成的 openspec-* 技能
@@ -200,7 +202,7 @@ ai-workspace/
                                  修订顺序固定为「先改 .agents/skills/ 真源 → 再同步三处副本」，禁止直接改副本。
 ```
 
-<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-schema-check 07-doc-consistency 08-spec-doc-breakpoints 09-redis-check 10-contract-check 11-conventions-check 12-skills-sync-check -->
+<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-schema-check 07-doc-consistency 08-spec-doc-breakpoints 09-redis-check 10-contract-check 11-conventions-check 12-skills-sync-check 13-spec-evidence-check -->
 
 上面这行标记是**闸门清单的机器可读副本**：新增或删除闸门时同步更新，`07-doc-consistency.ps1` 会把它与 `harness/checks/*.ps1` 的实际文件比对，不一致直接退出码 1。
 
@@ -226,6 +228,7 @@ ai-workspace/
 | 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 的字段名与类型双向比对；当前受管 auth / posts / attractions / media，清单见脚本顶部 `$contractPairs`） |
 | 只查约定 | `powershell -File harness\checks\11-conventions-check.ps1`（约定文档四个固定小节与真源路径、依赖描述与两侧清单一致、后端分层依赖方向） |
 | 只查技能同步 | `powershell -File harness\checks\12-skills-sync-check.ps1`（`.agents/skills` 非 `openspec-*` 目录 vs 三处副本，逐文件 SHA256） |
+| 只查证据账本 | `powershell -File harness\checks\13-spec-evidence-check.ps1`（`openspec/specs/` 每条 Scenario 必须在 `docs/spec-evidence.json` 落入 verified / deferred / historicallyCovered 之一，引用路径须真实存在） |
 | 写新模块前 | 读 `docs/conventions/README.md`——约定入口与索引，后端/前端/样式三份正文从这里进入 |
 | 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
 | 预检 Redis | `Test-NetConnection 127.0.0.1 -Port 6606`（或 `docker ps --filter publish=6606`） |
@@ -269,6 +272,7 @@ ai-workspace/
 - `attraction_comments` 本期**只有表**：列与约束逐项对齐 `post_comments`（只把归属列换成 `attraction_id` 并指向 `attractions.id`），没有实体、仓储、端点，也没有前端页面。它只是让「景点评论」这个能力有落点，不构成可用功能。
 - 静态红线目前四条：Java 的 TODO 占位、`System.out`、`@Disabled`，以及前端的 TODO 占位与跳过写法；由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
 - `10-contract-check` 覆盖**已登记契约面**（受管清单由脚本顶部的 `$contractPairs` 配置，当前 auth / posts / attractions / media 四组）：后端 `web/*/dto/*.java` 与 `common/web/ErrorResponse.java` 对前端 `lib/contracts/*.ts`，追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。
+- `13-spec-evidence-check` 只保证**登记齐全、引用真实、字段完整**，不证明行为正确：它不执行任何测试、不联网、不读运行结果，`docs/spec-evidence.json` 里一条 `verified` 的含金量取决于它指向的那份证据本身。`historicallyCovered` 是**显式欠账计数**而非证据，当前 536 条历史 Scenario 全部落在这一档；要么补上可核验证据转 `verified`，要么在 `deferred` 里写明 `reason` / `registeredOn` / `unlock`。它对新增 Scenario 是**棘轮**：规格新增一条而账本未登记即判红，集合相等才算通过。
 - 封面图存在**本地磁盘**，不引入对象存储：落盘目录由 `wanderchain.media.root` 给出（缺省 `./media`，相对后端进程工作目录，已入 `backend/.gitignore`，**不纳入版本库**），对外地址前缀由 `wanderchain.media.public-base-url` 给出（缺省指向前端同源代理 `http://localhost:3000/api/media`）。地址里烘焙了主机名：**换域名或换端口后历史封面地址会失效**，需要迁移已上传文件或改写 `posts.cover_image`。
 - 媒体回收只覆盖**删帖**：删除帖子后其托管封面文件一并删除，但**编辑帖子换封面会留下孤儿文件**（本次已知缺口，留给后续定时清理）。上传无配额与频次限制，唯一门槛是登录 + 单文件 5 MB。
 - `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。
