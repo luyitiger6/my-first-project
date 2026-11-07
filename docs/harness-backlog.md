@@ -88,7 +88,8 @@
 - **不为闸门增加「分级 / 标签」体系**：`run-all.ps1` 的扁平顺序 + 文件名编号已经够用。
 - **不把闸门拆成并行执行**：除了早停语义，更硬的原因是资源共享——`06-schema-check.ps1` 第 174 行对 `wanderchain` 与 `ai_chat_gate` 执行 `DROP DATABASE ... CREATE DATABASE`，与 02 号的测试库是同一个；01 与 02 争同一个 `backend/target/`；04 的 `npm ci` 与 05 的工作区整目录复制争 `node_modules`。并行会让闸门互相制造假红，比慢更糟。
 - **CI 里提速走 job 级，不走闸门级**：把 02 与 04 拆成两个 job，各自 `services:` 起独立 MySQL / Redis——GitHub 的 job 跑在不同 runner 上、互不共享网络，这一步省不掉；代价是 checkout 与装依赖各来一遍。实测基线见 §1——02 占 101.6 s、04 占 40.8 s、其余合计 22 s，总 165 s；离 §5 的 5 分钟触发线还差一半，因此暂不拆。真要拆也只值得拆这两道，其余 13 道加起来才 22 s，拆了反而多付启动成本。
-- **本地多 agent 并行按命名空间隔离，不按容器隔离**：一个 MySQL 容器按 schema 切（`wanderchain_a` / `_b` / ...），一个 Redis 容器按 db 编号切（项目现用 db 3，并行时各占一号，默认 16 个够用），中间件再多也走这个路子——RabbitMQ 按 vhost、Kafka 按 topic 前缀、MinIO 按 bucket。按「中间件数 × 并发数」起容器，会把本地测试环境撑得比生产还贵。两点前提：`application.yml` 的 jdbc url 与 06 号的 `$authDb` 现在写死 `wanderchain`，库名要先可配；Redis 的 db 隔离拦不住 `FLUSHALL`，跨库误清仍靠纪律（AGENTS.md §9 已写明）。
+- **并行边界：前端可并行，后端串行**：前端三个功能各落独立目录（`components/posts/` / `components/attractions/` / `app/search/`），dev server 单进程服务全部页面，vitest 按文件并行且不依赖真实后端，所以开发与测试都能并行；公共面只有 `package.json`、`layout.tsx`、`globals.css`、`lib/contracts/` 几处，开工前划分即可。后端不行：`schema.sql` 是单文件装所有表、`accounts` 被全部外键依赖、`mvn test` 连真库且共享夹具与唯一索引、`target/` 每轮争用——写代码勉强能并行，但验证环节必然撞，所以整体按串行处理。
+- **万一将来真要多实例，隔离粒度在库不在表**：MySQL 按 schema、Redis 按 db 编号（现用 db 3）、RabbitMQ 按 vhost、Kafka 按 topic 前缀、MinIO 按 bucket；容器数应恒为 1，不要按「中间件数 × 并发数」扩容器。两点前提：`application.yml` 与 06 号的 `$authDb` 现在写死 `wanderchain`；Redis 的 db 隔离拦不住 `FLUSHALL`。本条只是备查，不代表当前需要并行。
 
 ---
 
