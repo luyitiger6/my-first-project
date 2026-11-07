@@ -164,7 +164,8 @@ ai-workspace/
 │   ├── db-design-spec.md       数据库设计规范（命名、主键、公共字段）
 │   ├── spec-coverage-audit.md  spec 覆盖审计
 │   ├── spec-evidence.json      Scenario 证据账本：各能力的证据来源与逐条覆盖分类，由 13 号闸门比对
-│   └── loop-engineering-audit.md  LOOP 工程现状审计：已实现能力、缺口与补强触发条件
+│   ├── loop-engineering-audit.md  LOOP 工程现状审计：已实现能力、缺口与补强触发条件
+│   └── harness-backlog.md      护栏维护待办：闸门分类基线、四项待优化与新增闸门的判定原则
 ├── scripts/                   按需手动执行的辅助脚本（不进闸门）
 │   ├── seed-demo-data.ps1      一次性造数：景点与景点评论各千条；`-Cleanup` 按 `01BULK` / `01COMM` 前缀精确回滚
 │   ├── seed-posts-accounts.ps1 帖子与账号种子
