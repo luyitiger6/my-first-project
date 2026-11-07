@@ -25,6 +25,8 @@
 
 `backend/` 与 `frontend/` 不属于这三层，它们是被编排的两个独立仓库：工作区只用 gitlink 锁定它们的提交，不跟踪其文件内容。
 
+角色之间是**流水线上的局部对等协商**：工件沿 propose → apply → verify → archive 流动，每个节点由多个专业视角同时审视同一份工件；协商不收敛时升级到人类裁决。并行的是视角，不是任务。
+
 ## 3. 七条硬规则
 
 1. **先规格后代码**：任何超过「改个拼写」的改动，必须先在 `openspec/changes/<change-id>/` 里有 proposal 与 tasks。没有 change 的编码视为越权。
