@@ -49,6 +49,7 @@
 | `test-agent` | `specs/` 的 Scenario（即验收标准） + contracts | 测试约定 |
 | `experience-agent` | 交互规格 + 实现代码 | styling / frontend conventions |
 | `spec-reviewer` | proposal + design + tasks + `specs/` | — |
+| `review-merge` | 规格审查 / 体验审查 / 测试三份报告 + `specs/` 的 Scenario | `AGENTS.md` §3 / §4 |
 
 **共享面 = 工件面**：agent 之间不共享会话上下文，没落盘的结论等于没发生。交互规格落在 change 的 `design.md`（`## 交互规格` 一节），归档时随 change 进 archive，不另开载体。
 
@@ -114,6 +115,8 @@ verify 阶段发现的问题，按「哪一环出错就反馈给哪一环」处�
 | 功能本身不该做 | 上线后发现方向错了 | 人类 | 撤 change |
 
 **不群发**：一发现问题就同时告知产品、实现、测试，结果是谁都觉得是别人的锅，谁也不动。反馈路径的价值在于「只给能修改出问题那一环的人」——责任跟决定权绑在一起。
+
+三份审查报告先由 `review-merge` 合并去重，再进入上表：它输出「阻塞 / 可后置 / 冲突」三栏，冲突项原样并列、不自行裁决。这一步补的是**扇入**——test / experience / spec-reviewer 三个角色并发出报告，若无人合并，矛盾就留给了人类。
 
 子模块未初始化时，00 闸门会让验收在编译之前失败——这是设计行为，不是环境故障。
 
