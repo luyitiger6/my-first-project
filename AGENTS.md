@@ -36,6 +36,21 @@
 - **交界处的共识要落成可验证的机制，否则会随人走**：前后端这一条已经由 10 号契约闸门兜住——后端 record 与 `frontend/lib/contracts/*.ts` 双向比对字段名与类型，谁单方面改谁红；产品与交互目前只靠角色文件里「不替对方决定」的软约束，是这套里最薄的一环。
 - **卡在计算是健康的，卡在决策才是损失**：编译测试在跑说明系统满负荷；等人拍板时机器空转、产出物不增长，那段时间是纯损失。所以优化方向是压决策成本，不是压并发——提问带默认倾向（「我打算这么做，不对就说停」），把回答从「思考」降到「确认」；能自己定的不问（判断标准：错了是否要重写规格），必须问的批量问，不拆成多次往返。
 
+### 角色输入
+
+每个角色的输入 = **上游产出物 + 项目约定**，不读全量：
+
+| 角色 | 上游产出物（必读） | 项目约定 |
+|---|---|---|
+| `product-manager` | 用户需求 + `openspec/specs/` 已有真相 | `AGENTS.md` |
+| `interaction-agent` | `proposal.md` 的用户故事与验收标准 | conventions |
+| 实现（前端 / 后端） | `specs/` + `design.md` + 交互规格 | conventions + contracts |
+| `test-agent` | `specs/` 的 Scenario（即验收标准） + contracts | 测试约定 |
+| `experience-agent` | 交互规格 + 实现代码 | styling / frontend conventions |
+| `spec-reviewer` | proposal + design + tasks + `specs/` | — |
+
+**共享面 = 工件面**：agent 之间不共享会话上下文，没落盘的结论等于没发生。交互规格落在 change 的 `design.md`（`## 交互规格` 一节），归档时随 change 进 archive，不另开载体。
+
 ## 3. 七条硬规则
 
 1. **先规格后代码**：任何超过「改个拼写」的改动，必须先在 `openspec/changes/<change-id>/` 里有 proposal 与 tasks。没有 change 的编码视为越权。
