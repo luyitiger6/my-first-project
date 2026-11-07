@@ -87,7 +87,8 @@
 - **不引入「闸门预算」或「数量上限」**：当前 15 道没有造成任何实际负担，预设上限属于 §9 禁止的「预先设想」。
 - **不为闸门增加「分级 / 标签」体系**：`run-all.ps1` 的扁平顺序 + 文件名编号已经够用。
 - **不把闸门拆成并行执行**：除了早停语义，更硬的原因是资源共享——`06-schema-check.ps1` 第 174 行对 `wanderchain` 与 `ai_chat_gate` 执行 `DROP DATABASE ... CREATE DATABASE`，与 02 号的测试库是同一个；01 与 02 争同一个 `backend/target/`；04 的 `npm ci` 与 05 的工作区整目录复制争 `node_modules`。并行会让闸门互相制造假红，比慢更糟。
-- **并行提速走 job 级，不走闸门级**：把 02 与 04 拆成两个 job，各自 `services:` 起独立 MySQL / Redis，容器级隔离、零资源共享；代价是 checkout 与装依赖各来一遍。动手前先用 `run-all.ps1` 的耗时统计确认瓶颈确实在这两道。
+- **CI 里提速走 job 级，不走闸门级**：把 02 与 04 拆成两个 job，各自 `services:` 起独立 MySQL / Redis——GitHub 的 job 跑在不同 runner 上、互不共享网络，这一步省不掉；代价是 checkout 与装依赖各来一遍。动手前先用 `run-all.ps1` 的耗时统计确认瓶颈确实在这两道。
+- **本地多 agent 并行不需要多容器**：一个 MySQL 容器里建 `wanderchain_a` / `_b` / `_c` 即可，DDL、唯一索引、测试夹具都在库内隔离，外键也不会跨库。前提是把库名改成可配——`application.yml` 的 jdbc url 与 06 号的 `$authDb` 目前都写死 `wanderchain`。
 
 ---
 
