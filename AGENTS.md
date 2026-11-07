@@ -263,7 +263,8 @@ ai-workspace/
 │       ├── 11-conventions-check.ps1 约定闸门：约定文档自洽性 + 后端分层依赖方向单向
 │       ├── 12-skills-sync-check.ps1 技能闸门：自研技能真源与三处副本逐字节一致（排除 openspec-*）
 │       ├── 13-spec-evidence-check.ps1 证据闸门：每条 Scenario 三类登记齐全、引用真实、欠账三字段完整
-│       └── 14-change-scope-check.ps1 粒度闸门：在飞 change 能力≤2 / tasks≤30 / scenarios≤60，超限须到期例外
+│       ├── 14-change-scope-check.ps1 粒度闸门：在飞 change 能力≤2 / tasks≤30 / scenarios≤60，超限须到期例外
+│       └── 15-test-weakening-check.ps1 测试弱化闸门：三个仓库各自比较测试用例数与断言数，任一下降即失败
 ├── scaffold/                  【工作区改名】
 │   └── rename.mjs              分发后第一步执行：替换工作区展示名与 slug
 ├── .agents/skills/            【行为层】自研技能编写真源（source of truth），同目录也存放 openspec init 生成的 openspec-* 技能
@@ -274,7 +275,7 @@ ai-workspace/
                                  修订顺序固定为「先改 .agents/skills/ 真源 → 再同步三处副本」，禁止直接改副本。
 ```
 
-<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-schema-check 07-doc-consistency 08-spec-doc-breakpoints 09-redis-check 10-contract-check 11-conventions-check 12-skills-sync-check 13-spec-evidence-check 14-change-scope-check -->
+<!-- harness-checks: 00-submodule-check 01-compile 02-test 03-static-guard 04-frontend 05-scaffold-check 06-schema-check 07-doc-consistency 08-spec-doc-breakpoints 09-redis-check 10-contract-check 11-conventions-check 12-skills-sync-check 13-spec-evidence-check 14-change-scope-check 15-test-weakening-check -->
 
 上面这行标记是**闸门清单的机器可读副本**：新增或删除闸门时同步更新，`07-doc-consistency.ps1` 会把它与 `harness/checks/*.ps1` 的实际文件比对，不一致直接退出码 1。
 
@@ -302,6 +303,7 @@ ai-workspace/
 | 只查技能同步 | `powershell -File harness\checks\12-skills-sync-check.ps1`（`.agents/skills` 非 `openspec-*` 目录 vs 三处副本，逐文件 SHA256） |
 | 只查证据账本 | `powershell -File harness\checks\13-spec-evidence-check.ps1`（`openspec/specs/` 每条 Scenario 必须在 `docs/spec-evidence.json` 落入 verified / deferred / historicallyCovered 之一，引用路径须真实存在） |
 | 只查 change 粒度 | `powershell -File harness\checks\14-change-scope-check.ps1`（在飞 change 能力 ≤ 2 / tasks ≤ 30 / scenarios ≤ 60；超限须有未到期的 `scope-exception.md`） |
+| 只查测试弱化 | `powershell -File harness\checks\15-test-weakening-check.ps1`（主工作区 / backend / frontend 各自比较本次提交前后的用例数与断言数，任一下降即失败） |
 | 写新模块前 | 读 `docs/conventions/README.md`——约定入口与索引，后端/前端/样式三份正文从这里进入 |
 | 预检 MySQL | `Test-NetConnection 127.0.0.1 -Port 8806`（或 `docker ps --filter publish=8806`） |
 | 预检 Redis | `Test-NetConnection 127.0.0.1 -Port 6606`（或 `docker ps --filter publish=6606`） |
@@ -347,6 +349,7 @@ ai-workspace/
 - `10-contract-check` 覆盖**已登记契约面**（受管清单由脚本顶部的 `$contractPairs` 配置，当前 auth / posts / attractions / media 四组）：后端 `web/*/dto/*.java` 与 `common/web/ErrorResponse.java` 对前端 `lib/contracts/*.ts`，追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。在飞 change 的 `design.md` 若含「## 契约」表，闸门会把它作为第三方一起比：表格少写、多写、类型不符都判红；但**表格本身写错它验不了**——两侧照着错，闸门照样绿，所以契约表只能靠 ② 的人类放行。
 - `13-spec-evidence-check` 只保证**登记齐全、引用真实、字段完整**，不证明行为正确：它不执行任何测试、不联网、不读运行结果，`docs/spec-evidence.json` 里一条 `verified` 的含金量取决于它指向的那份证据本身。`historicallyCovered` 是**显式欠账计数**而非证据，当前 536 条历史 Scenario 全部落在这一档；新归档能力按逐条证据登记，`verified` 随之增长。要么补上可核验证据转 `verified`，要么在 `deferred` 里写明 `reason` / `registeredOn` / `unlock`。它对新增 Scenario 是**棘轮**：规格新增一条而账本未登记即判红，集合相等才算通过。
 - `14-change-scope-check` 只管在飞 change **一次装多少**，不判断内容好坏：能力 ≤ 2、任务 ≤ 30、Scenario ≤ 60，超限必须提供 `scope-exception.md` 且 `Reason` / `RegisteredOn` / `Expires` 三字段完整、`Expires` 未到期。例外是**到期失效的欠账**而非永久豁免。`openspec/changes/archive/` 下的历史 change 不追溯——历史上 `add-wanderchain-auth`（54 任务 / 88 场景）与 `add-wanderchain-post-interactions-frontend`（5 能力 / 38 任务 / 91 场景）按此口径都属超标，但它们已归档，不改写。阈值写死在脚本顶部，调整它需要一次真实的代码审阅，不存在改配置放行的后门。
+- `15-test-weakening-check` 必须分别进**三个仓库**比较：`backend/` 与 `frontend/` 是子模块，主工作区的 diff 只看得到 gitlink，看不到子模块内部的任何文件变化。它只查「测试被改弱」（用例数或断言数下降），查不出「改业务代码去适配写错的测试」——那是意图问题，机械检查看不见，只能靠 Stage 1 的 spec 对账。基线优先取 `origin/main` 的 merge-base，取不到时退回 `HEAD^`，因此子模块的改动**跨多个提交时只查最后一个**；merge commit 直接放行。
 - 封面图存在**本地磁盘**，不引入对象存储：落盘目录由 `wanderchain.media.root` 给出（缺省 `./media`，相对后端进程工作目录，已入 `backend/.gitignore`，**不纳入版本库**），对外地址前缀由 `wanderchain.media.public-base-url` 给出（缺省指向前端同源代理 `http://localhost:3000/api/media`）。地址里烘焙了主机名：**换域名或换端口后历史封面地址会失效**，需要迁移已上传文件或改写 `posts.cover_image`。
 - 媒体回收只覆盖**删帖**：删除帖子后其托管封面文件一并删除，但**编辑帖子换封面会留下孤儿文件**（本次已知缺口，留给后续定时清理）。上传无配额与频次限制，唯一门槛是登录 + 单文件 5 MB。
 - `openspec/specs/` 只收录**已归档**能力的规格；在飞变更的 delta 位于 `openspec/changes/<change-id>/specs/`。某能力在 `specs/` 中缺席只说明它尚未归档，不能据此推断仓库状态——真相随归档持续累积，本条描述不随归档数量改变。

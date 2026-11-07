@@ -7,7 +7,10 @@
 name: harness
 
 on:
+  # push 只盯 main：PR 分支的提交由 pull_request 事件负责，
+  # 两个事件都监听会让同一个 commit 跑两遍。
   push:
+    branches: [main]
   pull_request:
 
 # 同一 PR / 分支只保留最新一次：旧提交的失败不应该盖住新提交的结果
