@@ -1,7 +1,8 @@
 ﻿# 闸门 10：前后端契约一致性（字段名 + 类型，双向静态比对；扫描范围可配置）
 # 纯文本静态解析，不需要数据库、Redis 或服务启动。
 # - 后端：record 组件的「名字 + 类型」；前端：interface 字段的「名字 + 类型」与同文件 type 别名。
-# - 双向比字段名；共有字段按 Java↔TS 映射表归一后比类型；映射表外或归一失败一律 fail-closed。
+# - 双向比字段名；共有字段按 Java→TS 映射表归一后比类型；映射表外或归一失败一律 fail-closed。
+# - 若在飞 change 的 design.md 含「## 契约」表，额外三方比对：契约表 ↔ 后端 record ↔ 前端 interface（契约先行）。
 # 约定：通过 exit 0，不通过 exit 1；无交互。
 [CmdletBinding()]
 param(
@@ -104,6 +105,54 @@ function Normalize-Ts([string]$t, [hashtable]$aliases, [int]$depth = 0, [string[
 
 $failures = @()
 $pairSummaries = @()
+
+# ===== 在飞 change 的「## 契约」表（契约先行：表格是形状声明的唯一真源）=====
+# 只扫 openspec/changes/*/design.md，跳过 archive：归档后契约由两侧代码承载。
+# 表格三列；类型写中性名（string / number / boolean / Array<X> / 另一个 record 名）。
+function Get-DesignContractTable([string]$designPath) {
+    $text = Get-Content $designPath -Raw -Encoding UTF8
+    $m = [regex]::Match($text, '(?ms)^##\s+契约\s*$\r?\n(.*?)(?=^##\s|\z)')
+    if (-not $m.Success) { return $null }
+    $result = [System.Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
+    $inTable = $false
+    foreach ($line in ($m.Groups[1].Value -split "`r?`n")) {
+        if (-not $inTable) {
+            # 分隔行 |---|---| 之后才是数据行，借此跳过表头
+            if ($line -match '^\s*\|[\s:\-\|]+\|\s*$') { $inTable = $true }
+            continue
+        }
+        if ($line -notmatch '^\s*\|(.+)\|\s*$') { $inTable = $false; continue }
+        $cells = @(($matches[1] -split '\|') | ForEach-Object { $_.Trim() })
+        if ($cells.Count -lt 3) { continue }
+        $iface = $cells[0]; $field = $cells[1]; $specType = $cells[2]
+        if ($iface -notmatch '^\w+$') { continue }
+        if ($field -notmatch '^[a-z][A-Za-z0-9]*$') { continue }
+        if (-not $result.Contains($iface)) {
+            $result[$iface] = [System.Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
+        }
+        $result[$iface][$field] = $specType
+    }
+    return $result
+}
+
+$designTables = [System.Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
+$changesDir = Join-Path $root 'openspec/changes'
+if (Test-Path $changesDir) {
+    foreach ($ch in @(Get-ChildItem $changesDir -Directory -ErrorAction SilentlyContinue)) {
+        if ($ch.Name -eq 'archive') { continue }
+        $dp = Join-Path $ch.FullName 'design.md'
+        if (-not (Test-Path $dp)) { continue }
+        $tbl = Get-DesignContractTable $dp
+        if ($null -eq $tbl) { continue }
+        $specFieldTotal = 0
+        foreach ($k in $tbl.Keys) { $specFieldTotal += $tbl[$k].Count }
+        if ($specFieldTotal -eq 0) {
+            $failures += "[$($ch.Name)] design.md 有「## 契约」一节但未解析出任何字段（表格格式应为 | 接口 | 字段 | 类型 |）"
+            continue
+        }
+        $designTables[$ch.Name] = $tbl
+    }
+}
 
 if ($contractPairs.Count -eq 0) {
     Write-Host '契约闸门(10) 失败：受管契约清单为空，没有任何受管对象（防伪）。'
@@ -262,6 +311,54 @@ foreach ($pair in $contractPairs) {
         }
     }
 
+    # ---- 契约表比对（仅当某份在飞 change 的「## 契约」声明了本组涉及的接口）----
+    foreach ($chName in $designTables.Keys) {
+        $tbl = $designTables[$chName]
+        foreach ($iface in $tbl.Keys) {
+            $hasBackend = $backendInterfaces.Contains($iface)
+            $hasFrontend = $frontendInterfaces.Contains($iface)
+            if (-not $hasBackend -and -not $hasFrontend) { continue }
+            $specFields = $tbl[$iface]
+            $beFields = if ($hasBackend) { $backendInterfaces[$iface] } else { $null }
+            $feFields = if ($hasFrontend) { $frontendInterfaces[$iface] } else { $null }
+
+            foreach ($f in $specFields.Keys) {
+                if ($null -ne $beFields -and -not $beFields.Contains($f)) {
+                    $failures += "[$chName] 契约声明 $iface.$f，后端未实现"
+                }
+                if ($null -ne $feFields -and -not $feFields.Contains($f)) {
+                    $failures += "[$chName] 契约声明 $iface.$f，前端未实现"
+                }
+            }
+            if ($null -ne $beFields) {
+                foreach ($f in $beFields.Keys) {
+                    if (-not $specFields.Contains($f)) { $failures += "[$chName] 后端字段 $iface.$f 未在契约表中声明" }
+                }
+            }
+            if ($null -ne $feFields) {
+                foreach ($f in $feFields.Keys) {
+                    if (-not $specFields.Contains($f)) { $failures += "[$chName] 前端字段 $iface.$f 未在契约表中声明" }
+                }
+            }
+
+            foreach ($f in $specFields.Keys) {
+                $specType = $specFields[$f].Trim()
+                if ($null -ne $beFields -and $beFields.Contains($f)) {
+                    $mapped = Map-JavaToTs $beFields[$f] @($backendInterfaces.Keys)
+                    if ($mapped -and $mapped -cne $specType) {
+                        $failures += "[$chName] 类型不一致 $iface.$f：契约表 $specType，后端 $($beFields[$f])→$mapped"
+                    }
+                }
+                if ($null -ne $feFields -and $feFields.Contains($f)) {
+                    $normalized = Normalize-Ts $feFields[$f] $feAliases 0 @($frontendInterfaces.Keys)
+                    if ($normalized -and $normalized -cne $specType) {
+                        $failures += "[$chName] 类型不一致 $iface.$f：契约表 $specType，前端 $($feFields[$f])→$normalized"
+                    }
+                }
+            }
+        }
+    }
+
     $pairSummaries += "[$pairName] 后端 record $($backendInterfaces.Count) 个 / 前端 interface $($frontendInterfaces.Count) 个；后端字段 $backendFieldCount 个 / 前端字段 $frontendFieldCount 个（按接口累计）；类型比对 $typeChecked 个共有字段全部一致（含 @JsonProperty/camelCase/令牌禁现检查）"
 }
 
@@ -272,5 +369,8 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host "契约闸门(10) 通过：受管 $($contractPairs.Count) 组契约，字段名 + 类型双向一致。"
+if ($designTables.Count -gt 0) {
+    Write-Host "  （契约表比对：$($designTables.Keys -join '、') 的「## 契约」已与两侧逐字段比对）"
+}
 foreach ($s in $pairSummaries) { Write-Host "  $s" }
 exit 0

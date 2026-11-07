@@ -20,7 +20,7 @@ frontend/
 │   ├── home/                   首页各区块 + 数据 hook
 │   └── site/                   页头、页脚、占位页
 └── lib/
-    ├── contracts/              前后端字段契约（镜像后端 DTO）
+    ├── contracts/              前后端字段契约（同一份契约在前端侧的落地）
     ├── auth/                  认证端点函数与错误翻译
     ├── home/                  类型、城市白名单、mock 数据、仓储
     └── search/                查询解析
@@ -67,7 +67,7 @@ frontend/
 ## API 封装两层
 
 ```
-lib/contracts/<域>.ts      字段契约：interface，逐字镜像后端 DTO
+lib/contracts/<域>.ts      字段契约：interface，契约定稿后在前端侧的落地
         ^
 lib/<域>/<域>-api.ts       端点函数：发请求、解析响应、把失败翻译成可展示的错误
 ```
@@ -76,13 +76,41 @@ lib/<域>/<域>-api.ts       端点函数：发请求、解析响应、把失败
 - **端点层**只调端点，不含形状声明；错误统一翻译（网络失败、HTTP 失败、业务错误码各有明确分支）。
 - 组件**不直接 `fetch`**。绕过端点层意味着错误处理与 cookie 语义各写一遍。
 
-### 契约镜像顺序
+### 契约顺序：先定契约，两端各自落地
 
-**先改后端 DTO，再到 `lib/contracts/` 镜像，最后更新 `10-contract-check.ps1` 的受管清单。**
+契约**不属于任何一方**。它先落成在本次 change 的 `design.md` 的「## 契约」一节，然后两端各自翻译：
 
-反过来先写前端类型，等于用前端猜测定义后端契约：编译能过、测试能过，联调时才炸，且炸的时候没人知道哪边是对的。
+```
+design.md 的「## 契约」表          ← 形状声明的唯一真源
+     ├─→ 后端 → web/*/dto/*.java  （record 组件）
+     └─→ 前端 → lib/contracts/*.ts（interface 字段）
+                    ↓
+     10-contract-check.ps1 验证两侧一致，且都等于契约表
+```
 
-当前仓库**没有**泛型的统一响应包装（形如 `ApiResponse<T>` 的东西）。端点层各自声明返回类型；若将来引入统一包装，必须先在后端把包装落地，再来镜像——`10-contract-check.ps1` 只能比对存在的东西。
+表格三列，类型写中性名（`string` / `number` / `boolean` / `Array<X>` / 另一个 record 名），不写 Java 也不写 TS：
+
+```markdown
+## 契约
+
+| 接口 | 字段 | 类型 |
+|---|---|---|
+| RegisterRequest | email | string |
+| AccountView | accountId | string |
+| AccountView | createdAt | string |
+```
+
+**为什么不是「后端定、前端镜像」**：那样前端拿不到「应该是什么」，只有「后端现在是什么」。后端改一个字段名，前端只能事后跟。契约定稿后两端同时开工——这是前后端能并行的唯一前提。
+
+**顺序不能反**：先写前端类型再让后端照着写，等于用前端的猜测定义后端契约；先写后端再让前端镜像，等于后端单方面拥有解释权。两种都是串行，只是先后不同。
+
+`lib/contracts/` 因此不是「后端 DTO 的镜像」，而是**同一份契约在前端侧的落地**。
+
+边界要说清：
+
+- **契约表本身没有机械校验**。闸门能验「两侧一致且等于表格」，验不了「表格写得对」——表格错了，两侧照着错，闸门照样绿。所以它必须在 ② 定规格时由人类放行，这是它唯一的把关点。
+- **不涉及接口变化的 change 可以不写**「## 契约」。此时 `lib/contracts/` 沿用已有形状，不得顺手扩张。
+- 当前仓库**没有**泛型的统一响应包装（形如 `ApiResponse<T>` 的东西）。若将来引入，包装本身就是契约的一部分，先写进契约表，再两端落地。
 
 ## 路由分组
 
@@ -93,7 +121,7 @@ lib/<域>/<域>-api.ts       端点函数：发请求、解析响应、把失败
 ## 真源声明
 
 - `AGENTS.md` — 三层分工、七条硬规则、闸门约定
-- `docs/conventions/backend-conventions.md` — 后端 DTO 与响应格式，本文件的前端契约镜像它
+- `docs/conventions/backend-conventions.md` — 后端分层、DTO 与响应格式；接口形状的契约表落在本次 change 的 design.md，两侧各自实现
 - `openspec/specs/` — 各能力的可验收行为（含错误码与响应字段白名单）
 
 ## 依赖现状
@@ -119,7 +147,7 @@ lib/<域>/<域>-api.ts       端点函数：发请求、解析响应、把失败
 
 ## 机械守卫
 
-- `10-contract-check.ps1` — 后端 DTO 与 `lib/contracts/` 的字段名、类型逐字一致
+- `10-contract-check.ps1` — 契约表（`design.md` 的「## 契约」）↔ 后端 DTO ↔ `lib/contracts/` 三方字段名与类型一致
 - `04-frontend.ps1` — `npm ci` → `next build` → `vitest run`，构建与单测都过才算过
 - `03-static-guard.ps1` — 禁止前端 `TODO` 与跳过写法（`it.skip` 等）
 - `11-conventions-check.ps1` — 本文四个固定小节与真源路径的有效性

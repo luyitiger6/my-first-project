@@ -13,7 +13,7 @@
 | 主题 | 位置 | 说明 |
 |---|---|---|
 | 后端分层、DTO、异常、错误码 | `backend-conventions.md` | 包结构与依赖方向、分包粒度与类型归属、Controller 拆分、响应与异常收口、错误码命名空间、分页 |
-| 前端目录、组件、状态、API 封装 | `frontend-conventions.md` | 组件三件套、状态归属三层、契约与端点两层封装 |
+| 前端目录、组件、状态、API 封装 | `frontend-conventions.md` | 组件三件套、状态归属三层、契约先行与端点两层封装 |
 | 样式与视觉 | `styling-conventions.md` | CSS Modules、容器留白、desktop-first 响应式、视觉底线 |
 | 数据库命名、主键、公共字段 | `docs/db-design-spec.md` | **不重述**，直接读 §2–§4 |
 | 各能力的可验收行为 | `openspec/specs/` | 错误码固定集合、响应字段白名单等以 spec 为准 |
@@ -24,7 +24,7 @@
 2. **定数据**：读 `docs/db-design-spec.md` §2–§4，定表名、列名、索引前缀与公共字段。
 3. **定落点**：读 `backend-conventions.md` 确定包位置、分包粒度、类型归属与依赖方向；读 `frontend-conventions.md` 与 `styling-conventions.md` 确定组件与样式位置。
 4. **登记新表**：`harness/checks/06-schema-check.ps1` 只做正向断言，未登记的表会在无人守卫下存在。
-5. **登记契约**：新增前后端契约时先改后端 DTO，再到 `frontend/lib/contracts/` 镜像，最后把这一对加进 `harness/checks/10-contract-check.ps1` 的受管清单。
+5. **定契约**：接口形状先落进本次 change 的 `design.md` 的「## 契约」一节，再由后端 DTO 与 `frontend/lib/contracts/` 各自落地；新增契约面时把这一对加进 `harness/checks/10-contract-check.ps1` 的受管清单。
 6. **收尾**：跑 `harness\run-all.ps1`，只看退出码。
 
 ## 维护规则

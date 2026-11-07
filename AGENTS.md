@@ -33,7 +33,7 @@
 - **串行的可预测性来自「每步产出物有定义」，不来自串行本身**：proposal / specs / design / tasks 四件套齐全才算这一步完成。定义模糊时，串行只会把猜测逐级放大，比并行更慢。
 - **多视角的质量收益来自「视角真的独立」，不来自角色数量**：规格对账看偏离、体验走查看可用、测试看行为，三种输入、三套标准。用同一套标准多加几个人，只是重复劳动。
 - **协商只在信息对等处展开**：功能该不该做只有产品掌握依据，按钮放哪只有交互掌握规范，加不加索引只有后端掌握数据量与执行计划。**交界处才是信息对等的地方**——产品与交互在「功能形态」上对等，前后端在「契约」上对等，验证三方在「合不合格」上对等。全程协商不是慢一点，是把决策交给信息最少的那个角色。
-- **交界处的共识要落成可验证的机制，否则会随人走**：前后端这一条已经由 10 号契约闸门兜住——后端 record 与 `frontend/lib/contracts/*.ts` 双向比对字段名与类型，谁单方面改谁红；产品与交互目前只靠角色文件里「不替对方决定」的软约束，是这套里最薄的一环。
+- **交界处的共识要落成可验证的机制，否则会随人走**：前后端的共识先落成 change 的 `design.md` 里的「## 契约」表，再由 10 号闸门验证「表格 ↔ 后端 record ↔ 前端 contract」三方一致，谁单方面改谁红；产品与交互目前只靠角色文件里「不替对方决定」的软约束，是这套里最薄的一环。
 - **卡在计算是健康的，卡在决策才是损失**：编译测试在跑说明系统满负荷；等人拍板时机器空转、产出物不增长，那段时间是纯损失。所以优化方向是压决策成本，不是压并发——提问带默认倾向（「我打算这么做，不对就说停」），把回答从「思考」降到「确认」；能自己定的不问（判断标准：错了是否要重写规格），必须问的批量问，不拆成多次往返。
 
 ### 角色输入
@@ -233,7 +233,7 @@ ai-workspace/
 │       ├── 07-doc-consistency.ps1 文档闸门清单与技术栈描述是否跟得上仓库现状
 │       ├── 08-spec-doc-breakpoints.ps1 单元文档声明的断点与实际 CSS 媒体查询一致
 │       ├── 09-redis-check.ps1    缓存闸门：6606 既有 Redis 可达、凭据正确、db 3 可选中
-│       ├── 10-contract-check.ps1 契约闸门：后端 record 与前端契约的「字段名 + 类型」双向比对，扫描范围可配置
+│       ├── 10-contract-check.ps1 契约闸门：后端 record 与前端契约双向比对；在飞 change 有「## 契约」时三方比对
 │       ├── 11-conventions-check.ps1 约定闸门：约定文档自洽性 + 后端分层依赖方向单向
 │       ├── 12-skills-sync-check.ps1 技能闸门：自研技能真源与三处副本逐字节一致（排除 openspec-*）
 │       ├── 13-spec-evidence-check.ps1 证据闸门：每条 Scenario 三类登记齐全、引用真实、欠账三字段完整
@@ -271,7 +271,7 @@ ai-workspace/
 | 只查建表 | `powershell -File harness\checks\06-schema-check.ps1`（默认连 `127.0.0.1:8806` 的 `ai_chat_gate` 与 `wanderchain`） |
 | 只查文档断点 | `powershell -File harness\checks\08-spec-doc-breakpoints.ps1` |
 | 只查缓存 | `powershell -File harness\checks\09-redis-check.ps1`（默认连 `127.0.0.1:6606` 的 db 3） |
-| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 的字段名与类型双向比对；当前受管 auth / posts / attractions / media，清单见脚本顶部 `$contractPairs`） |
+| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 双向比对；在飞 change 的 `design.md` 有「## 契约」时额外三方比对；当前受管 auth / posts / attractions / media，清单见脚本顶部 `$contractPairs`） |
 | 只查约定 | `powershell -File harness\checks\11-conventions-check.ps1`（约定文档四个固定小节与真源路径、依赖描述与两侧清单一致、后端分层依赖方向） |
 | 只查技能同步 | `powershell -File harness\checks\12-skills-sync-check.ps1`（`.agents/skills` 非 `openspec-*` 目录 vs 三处副本，逐文件 SHA256） |
 | 只查证据账本 | `powershell -File harness\checks\13-spec-evidence-check.ps1`（`openspec/specs/` 每条 Scenario 必须在 `docs/spec-evidence.json` 落入 verified / deferred / historicallyCovered 之一，引用路径须真实存在） |
@@ -318,7 +318,7 @@ ai-workspace/
 - `127.0.0.1:6606` 的 Redis 是**共享实例**：同一 `wc:` 前缀下还有登录限流、邮箱配额等其他键，实例里也存在与本项目无关的数据。本项目只读写自己构造的键，不执行 `FLUSHDB`、不按前缀清理他人键。
 - `attraction_comments` 本期**只有表**：列与约束逐项对齐 `post_comments`（只把归属列换成 `attraction_id` 并指向 `attractions.id`），没有实体、仓储、端点，也没有前端页面。它只是让「景点评论」这个能力有落点，不构成可用功能。
 - 静态红线目前四条：Java 的 TODO 占位、`System.out`、`@Disabled`，以及前端的 TODO 占位与跳过写法；由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
-- `10-contract-check` 覆盖**已登记契约面**（受管清单由脚本顶部的 `$contractPairs` 配置，当前 auth / posts / attractions / media 四组）：后端 `web/*/dto/*.java` 与 `common/web/ErrorResponse.java` 对前端 `lib/contracts/*.ts`，追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。
+- `10-contract-check` 覆盖**已登记契约面**（受管清单由脚本顶部的 `$contractPairs` 配置，当前 auth / posts / attractions / media 四组）：后端 `web/*/dto/*.java` 与 `common/web/ErrorResponse.java` 对前端 `lib/contracts/*.ts`，追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。在飞 change 的 `design.md` 若含「## 契约」表，闸门会把它作为第三方一起比：表格少写、多写、类型不符都判红；但**表格本身写错它验不了**——两侧照着错，闸门照样绿，所以契约表只能靠 ② 的人类放行。
 - `13-spec-evidence-check` 只保证**登记齐全、引用真实、字段完整**，不证明行为正确：它不执行任何测试、不联网、不读运行结果，`docs/spec-evidence.json` 里一条 `verified` 的含金量取决于它指向的那份证据本身。`historicallyCovered` 是**显式欠账计数**而非证据，当前 536 条历史 Scenario 全部落在这一档；新归档能力按逐条证据登记，`verified` 随之增长。要么补上可核验证据转 `verified`，要么在 `deferred` 里写明 `reason` / `registeredOn` / `unlock`。它对新增 Scenario 是**棘轮**：规格新增一条而账本未登记即判红，集合相等才算通过。
 - `14-change-scope-check` 只管在飞 change **一次装多少**，不判断内容好坏：能力 ≤ 2、任务 ≤ 30、Scenario ≤ 60，超限必须提供 `scope-exception.md` 且 `Reason` / `RegisteredOn` / `Expires` 三字段完整、`Expires` 未到期。例外是**到期失效的欠账**而非永久豁免。`openspec/changes/archive/` 下的历史 change 不追溯——历史上 `add-wanderchain-auth`（54 任务 / 88 场景）与 `add-wanderchain-post-interactions-frontend`（5 能力 / 38 任务 / 91 场景）按此口径都属超标，但它们已归档，不改写。阈值写死在脚本顶部，调整它需要一次真实的代码审阅，不存在改配置放行的后门。
 - 封面图存在**本地磁盘**，不引入对象存储：落盘目录由 `wanderchain.media.root` 给出（缺省 `./media`，相对后端进程工作目录，已入 `backend/.gitignore`，**不纳入版本库**），对外地址前缀由 `wanderchain.media.public-base-url` 给出（缺省指向前端同源代理 `http://localhost:3000/api/media`）。地址里烘焙了主机名：**换域名或换端口后历史封面地址会失效**，需要迁移已上传文件或改写 `posts.cover_image`。
