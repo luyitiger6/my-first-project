@@ -920,6 +920,138 @@
         "改名演练接入 Harness 统一验收 / 闸门演练通过",
         "改名演练接入 Harness 统一验收 / 改名脚本失效"
       ]
+    },
+    "spec-evidence": {
+      "sources": [
+        {
+          "kind": "gate",
+          "ref": "harness/checks/13-spec-evidence-check.ps1"
+        }
+      ],
+      "verified": {
+        "账本与能力集合双向一致 / 能力新增未登记": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/13-spec-evidence-check.ps1"
+          }
+        ],
+        "账本与能力集合双向一致 / 账本残留已删能力": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/13-spec-evidence-check.ps1"
+          }
+        ],
+        "Scenario 必须被显式分类覆盖 / 新 Scenario 未登记": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/13-spec-evidence-check.ps1"
+          }
+        ],
+        "Scenario 必须被显式分类覆盖 / 账本指向已不存在的 Scenario": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/13-spec-evidence-check.ps1"
+          }
+        ],
+        "Scenario 必须被显式分类覆盖 / 重复登记": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/13-spec-evidence-check.ps1"
+          }
+        ],
+        "证据引用必须在仓库中真实存在 / 引用指向不存在的文件": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/13-spec-evidence-check.ps1"
+          }
+        ],
+        "证据引用必须在仓库中真实存在 / 使用未知证据类型": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/13-spec-evidence-check.ps1"
+          }
+        ],
+        "欠账条目必须可追溯、可解锁 / 欠账缺字段": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/13-spec-evidence-check.ps1"
+          }
+        ],
+        "欠账条目必须可追溯、可解锁 / 存在欠账仍可通过": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/13-spec-evidence-check.ps1"
+          }
+        ]
+      },
+      "deferred": {},
+      "historicallyCovered": []
+    },
+    "change-scope": {
+      "sources": [
+        {
+          "kind": "gate",
+          "ref": "harness/checks/14-change-scope-check.ps1"
+        }
+      ],
+      "verified": {
+        "在飞 change 的能力面不超过两个 / 三能力的 change 判红": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/14-change-scope-check.ps1"
+          }
+        ],
+        "在飞 change 的能力面不超过两个 / 两能力的 change 通过": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/14-change-scope-check.ps1"
+          }
+        ],
+        "在飞 change 的能力面不超过两个 / 归档的超大 change 不影响判定": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/14-change-scope-check.ps1"
+          }
+        ],
+        "任务数与 Scenario 数设上限 / 任务数超限判红": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/14-change-scope-check.ps1"
+          }
+        ],
+        "任务数与 Scenario 数设上限 / Scenario 数超限判红": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/14-change-scope-check.ps1"
+          }
+        ],
+        "超限须显式例外并到期失效 / 有效例外放行": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/14-change-scope-check.ps1"
+          }
+        ],
+        "超限须显式例外并到期失效 / 过期例外重新判红": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/14-change-scope-check.ps1"
+          }
+        ],
+        "超限须显式例外并到期失效 / 例外缺字段判红": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/14-change-scope-check.ps1"
+          }
+        ],
+        "闸门不交互且只读取 / 无在飞 change 时通过": [
+          {
+            "kind": "gate",
+            "ref": "harness/checks/14-change-scope-check.ps1"
+          }
+        ]
+      },
+      "deferred": {},
+      "historicallyCovered": []
     }
   }
 }
