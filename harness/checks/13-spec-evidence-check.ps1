@@ -115,7 +115,7 @@ if ($specDirs.Count -eq 0) {
 }
 
 $specNames = @($specDirs | ForEach-Object { $_.Name })
-$ledgerNames = Get-MapKeys -Map $ledger.capabilities
+$ledgerNames = @(Get-MapKeys -Map $ledger.capabilities)
 
 foreach ($name in $specNames) {
     if ($ledgerNames -notcontains $name) { Add-Problem "能力未登记：$name" }
@@ -154,8 +154,10 @@ foreach ($name in $specNames) {
         $totalRefs++
     }
 
-    $verifiedNames = Get-MapKeys -Map $cap.verified
-    $deferredNames = Get-MapKeys -Map $cap.deferred
+    # 函数返回单元素数组时 PowerShell 会展开为标量，必须用 @() 重新包装，
+    # 否则后续的 $a + $b + $c 会退化成字符串拼接，把多个键压成一个。
+    $verifiedNames = @(Get-MapKeys -Map $cap.verified)
+    $deferredNames = @(Get-MapKeys -Map $cap.deferred)
     $historical = @($cap.historicallyCovered | Where-Object { $null -ne $_ })
 
     $classified = @{}
