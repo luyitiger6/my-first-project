@@ -64,12 +64,14 @@ foreach ($t in $targets) {
     }
 
     $parents = @((& git -C $dir rev-list --parents -n 1 HEAD) -split '\s+' | Where-Object { $_ })
+    $mergeBase = $null
     if ($parents.Count -gt 2) {
-        [void]$skipped.Add("$name（merge commit）")
-        continue
+        # merge commit：用第一父做基线，比较的是「这次合并带进来的改动」。
+        # pull_request 事件默认检出的就是 merge commit，跳过它等于放过整个主工作区。
+        $mergeBase = $parents[1]
     }
 
-    $base = $null
+    $base = $mergeBase
     & git -C $dir rev-parse --verify --quiet origin/main 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) {
         $mb = & git -C $dir merge-base HEAD origin/main 2>$null

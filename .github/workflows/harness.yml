@@ -70,6 +70,10 @@ jobs:
           submodules: recursive
           # 闸门只读，不回写仓库；凭据不留在 .git/config 里
           persist-credentials: false
+          # 15 闸门要拿上一个提交做基线。默认 fetch-depth: 1 只取一个 commit，
+          # 主工作区的基线随之消失，闸门会静默跳过 docs/e2e 下的测试文件。
+          # 主仓库不含子模块内容，取全历史成本很低；子模块由 recursive 完整克隆。
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
