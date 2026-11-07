@@ -44,7 +44,8 @@
 |---|---|---|
 | `product-manager` | 用户需求 + `openspec/specs/` 已有真相 | `AGENTS.md` |
 | `interaction-agent` | `proposal.md` 的用户故事与验收标准 | conventions |
-| 实现（前端 / 后端） | `specs/` + `design.md` + 交互规格 | conventions + contracts |
+| `backend-agent` | `specs/` + `design.md` | conventions + 契约闸门清单 |
+| `frontend-agent` | `specs/` + `design.md` + 交互规格 | conventions + contracts |
 | `test-agent` | `specs/` 的 Scenario（即验收标准） + contracts | 测试约定 |
 | `experience-agent` | 交互规格 + 实现代码 | styling / frontend conventions |
 | `spec-reviewer` | proposal + design + tasks + `specs/` | — |
@@ -53,7 +54,7 @@
 
 **角色文件统一放在 AI 工具的全局 agents 目录**（本机为 `%USERPROFILE%\.qoder\agents\`），不纳入本仓库版本控制，项目内不建副本。本文件只约定角色间的输入与责任边界，不复制角色正文；两者冲突时以本文件为准。
 
-实现环节不单独建角色文件：它的规范载体是 `docs/conventions/`（后端与前端两份正文）。实现规范要跟着代码走，所以留在仓库里；角色定义跨项目复用，所以放在全局。
+角色文件讲「怎么干这活」，跨项目复用，放全局；`docs/conventions/` 讲「这个项目具体怎么干」，跟着代码走，留在仓库。角色文件只指向约定、不复制正文——两边表述冲突时以 `docs/conventions/` 为准（它由 11 号闸门机械校验）。
 
 ## 3. 七条硬规则
 
