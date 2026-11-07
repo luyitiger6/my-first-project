@@ -17,4 +17,4 @@
 - [x] 3.3 负向验证 B：同一超限 change 补一份 `Expires` 已过期的 `scope-exception.md` → exit 1 并提示过期；改为未来日期后 exit 0。实测报文：`例外已过期：zz-scope-negative-test -> Expires=2026-01-01`；改为 2026-12-31 后输出 `（例外放行）` 并 exit 0。
 - [x] 3.4 负向验证 C：例外文件缺 `Reason` → exit 1 并指出字段；补齐后复绿。实测报文：`例外缺字段：zz-scope-negative-test -> Reason`。
 - [x] 3.5 `07` / `11` / `12` / `13` 闸门与 `openspec validate add-change-scope-guard --strict` 均退出码 0（07 报 15 个闸门一致；14 报 2 个在飞 change 全部在额内）。
-- [ ] 3.6 推送 `feat/change-scope-guard-20261106` 后 CI 全绿。
+- [x] 3.6 推送 `feat/change-scope-guard-20261106` 后 CI 全绿（workflow run #18，commit 86e70e0，conclusion=success）。
