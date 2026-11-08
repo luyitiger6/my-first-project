@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: openspec
-title: OpenSpec 结构化变更与能力契约
-scope:
-    - openspec/
-source_files: []
-depends_on: []
-related_to: []
