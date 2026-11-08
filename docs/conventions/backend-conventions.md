@@ -197,6 +197,35 @@ public interface AuthResponseBody { }
 
 引入时把这一节改为「现状」，并补一条能拦住「`limit` 超上限未截断」的测试——文档写成什么样都不会自己生效。
 
+## 来源识别与写操作限流
+
+限流的最小单位是**来源**，不是账号，也不是请求里自称的地址。来源键统一由 `SourceKeyResolver`（`web/auth/interceptor/`）产出：登录控制器与写限流拦截器都调它，任何一处自行解析 `X-Forwarded-For` 都算越界——两处各解析一遍，等于给出两套会各自漂移的口径。
+
+### 信任边界
+
+- **先看对端，再看转发头**。对端地址不在 `wanderchain.auth.trusted-proxies` 里，这次请求就是直达的，它自带的 `X-Forwarded-For` 一律不采信；否则伪造一个头就能无限刷新额度。
+- **只取最后一跳**。对端可信时取 `X-Forwarded-For` 的最右一跳：每层代理追加的是它自己看到的对端，只有最右一跳是本项目这层代理写的，左侧各跳完全由调用方控制。
+- **拿不出可信一跳就是 `unknown`**。缺失、为空、超长、解析失败都归入单一未知桶，不退回对端地址、也不放行；最后一跳为空（结尾多一个逗号）不补位取前一跳，那是调用方可写的内容。
+- **只认字面量**。地址先被正则约束成 IP 字符集再交给 `InetAddress`，避免形似域名的值在解析线程里发起 DNS 查询；前导零判非法（部分解析器按八进制读）；IPv4-mapped（`::ffff:1.2.3.4`）归一为 IPv4；IPv6 按 `/64` 聚合——一个用户手里握着整个 `/64`，逐地址计数等于没有限流。
+- **配置写错要启动失败**。`trusted-proxies` 为空列表会让全部请求塌缩成同一个桶，`AuthProperties` 直接拒绝为启动失败；网段解析失败同样抛 `IllegalStateException`。静默丢弃一条写错的网段，现象是「全站共用一份额度」，排查方向会被一个没报错的配置项带偏。本地默认值是回环网段，生产必须整体替换为前端代理所在网段。
+
+### 未知来源是降级，不是绕过
+
+`unknown` 桶有独立额度（`unknown-max`，配置上应小于 `max`）。代理配置异常时，受害面被限制在「拿不出转发头的请求」上：正常用户仍按各自来源计额度，不会因为一批异常请求被整站误伤。
+
+### 写操作限流
+
+- **注册顺序 `OriginGuard(0) → WriteRateLimitInterceptor(5) → AuthInterceptor(10)`**。夹在中间有两条理由：跨站请求先被拒、不消耗额度；未登录的匿名写请求也受限，而不是先撞 401 再无限重试。
+- **只对写方法计数**：`GET` / `HEAD` / `OPTIONS` 不进桶；`/api/auth/**` 整体豁免——登录有自己的失败计数（`wanderchain.auth.login`），两套桶叠加会让登录失败的用户被双重计时。
+- **计数原子**：Lua 把 `INCR` 与首次 `PEXPIRE` 合成一次调用，进程死在两条命令之间时键不会永不过期。
+- **超限的错误形态**：抛 `BizException(RATE_LIMITED)`，由 `GlobalExceptionHandler` 输出 `429` 与 `Retry-After`；秒数取键剩余 TTL 向上取整、最小 1 秒。`Retry-After: 0` 等于让客户端立刻重试，比不返回这个头更糟。
+- **fail-open 的边界只有 `DataAccessException`**：Redis 不可用时放行并记 WARN（告警靠日志，这是已知取舍），其余异常照常抛出。把所有异常都吞成放行，等于让一个空指针变成限流失效。
+- **键族分开**：写限流 `wc:ratelimit:write:{sourceKey}`，登录失败 `wc:login:fail:src:*` / `wc:login:fail:acct:*`，互不重叠。计数键活在共享 Redis，数据库回滚救不了它，测试结束按前缀清理自造计数，避免残留把下一轮打成假红。
+
+### 新增配置项
+
+与 `wanderchain.auth` / `media` / `attraction-cache` 同一处理：配置项在 `application.yml` 逐项写死，代码里不留默认值，缺项启动即失败。理由与上面「配置写错要启动失败」相同——被代码兜底掩盖的配置错误，比缺配置更难发现。
+
 ## 真源声明
 
 - `AGENTS.md` — 三层分工、七条硬规则、闸门约定
@@ -226,7 +255,7 @@ public interface AuthResponseBody { }
 
 - `11-conventions-check.ps1` — 约定索引、四个固定小节、真源与闸门路径、依赖描述的自洽性，以及列出的分层 import 禁止项（`dao`/`service` 不得 import `web`，`common` 不得 import `dao`/`service`/`web`）；不判断业务复杂度、子包深度或聚合收益
 - `10-contract-check.ps1` — 后端 DTO 与前端契约的字段名、类型一致
-- `02-test.ps1` — 行为与容器装配，含出站守卫的「未标记即失败」用例
+- `02-test.ps1` — 行为与容器装配，含出站守卫的「未标记即失败」用例，以及限流的超限 / 读豁免 / `unknown` 独立额度 / fail-open 用例
 - `03-static-guard.ps1` — 禁止 `TODO` / `System.out` / `@Disabled`
 
 人工审阅范围：分包粒度、共享类型归属与聚合收益在对应 change 的设计审阅中判断。闸门通过只证明其实际覆盖的检查通过，不能代替分包合理性判断，也不能当作用户批准某项设计的证据。

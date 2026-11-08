@@ -198,7 +198,7 @@ ai-workspace/
 │       │   ├── common/persistence/  业务实体公共八列基类（MappedSuperclass）
 │       │   ├── common/security/     口令哈希抽象与 BCrypt 实现、强度规则
 │       │   ├── common/web/          统一错误体、全局异常处理、响应基类型
-│       │   ├── config/              wanderchain.auth / media / attraction-cache 配置绑定、MVC 拦截器装配
+│       │   ├── config/              wanderchain.auth / rate-limit.write / media / attraction-cache 配置绑定、MVC 拦截器装配
 │       │   ├── dao/auth/            entity / repository / converter（账户与会话持久化）
 │       │   ├── dao/post/            entity / repository / converter（帖子持久化）
 │       │   ├── dao/attraction/      entity / repository / converter（景点持久化）
@@ -207,7 +207,7 @@ ai-workspace/
 │       │   ├── service/attraction/  景点读接口、impl/ 实现、model/ 载体、support/ 查询白名单与钳制、RankingCache 读缓存
 │       │   ├── service/media/       媒体存取接口、impl/ 本地磁盘实现、model/ 结果载体、support/ 判型与命名规则
 │       │   ├── service/profile/      资料接口、impl/ 实现、model/ 视图与名片、support/ 校验与标签清单
-│       │   ├── web/auth/            REST 控制器，dto/ 请求响应体，interceptor/ 认证拦截与来源校验
+│       │   ├── web/auth/            REST 控制器，dto/ 请求响应体，interceptor/ 来源校验 / 写限流 / 认证拦截
 │       │   ├── web/post/            帖子 REST 控制器与 dto
 │       │   ├── web/attraction/      景点两个公开 GET（列表/榜单与详情）与 dto
 │       │   ├── web/media/           封面上传（受保护）与媒体读取（公开）端点及 dto
@@ -340,6 +340,7 @@ ai-workspace/
 | 景点缓存键族 | `wc:attraction:ranking:{sortBy}:{city\|all}:{limit}` 与 `wc:attraction:collection:{collection}:{city\|all}:{limit}`，TTL 取 `wanderchain.attraction-cache.ttl`（默认 5 分钟）；键只落在 db 3，`wc:` 前缀是共享实例上的唯一隔离层 |
 | 演示造数 | `powershell -File scripts\seed-demo-data.ps1`（景点与景点评论各 1000 条），`-Cleanup` 按 `01BULK` / `01COMM` 前缀回滚；库里没有账号时会建一个**不可登录**的演示账号满足评论外键 |
 | 媒体接口 | `POST /api/media`（`multipart/form-data` 的 `file` 字段）需登录，成功返回 `201` 与 `{url, contentType, size}`；`GET /api/media/{fileName}` 公开读取，带一年 `immutable` 缓存头 |
+| 写操作来源限流 | 所有非 `GET`/`HEAD`/`OPTIONS` 的 `/api/**` 请求按来源计数（键族 `wc:ratelimit:write:{sourceKey}`），超限返回 `429` + `RATE_LIMITED` + `Retry-After`（秒）；`/api/auth/**` 不计数（登录有自己的失败限流）。额度取 `wanderchain.rate-limit.write` 的 `window` / `max` / `unknown-max`，未知来源走独立的小额度；Redis 不可用时放行并记 WARN（fail-open） |
 | 前端开发 | `cd frontend; npm run dev`（访问 `http://localhost:3000`，`/api` 由 Route Handler 代理到 8989） |
 | 前端构建 | `cd frontend; npm run build`（产物含 `.next/standalone`） |
 | 前端测试 | `cd frontend; npm run test` |

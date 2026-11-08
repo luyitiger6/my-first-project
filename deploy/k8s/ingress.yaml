@@ -9,6 +9,13 @@
 # 浏览器只与这个单一源通信，前端到后端是服务端调用，链路上没有跨域。
 # 真正的白名单在后端 wanderchain.auth.allowed-origins，已由后端 Deployment 的
 # WANDERCHAIN_AUTH_ALLOWEDORIGINS_0 注入本域名。在 Ingress 再配一份 CORS 只会制造第二个真源。
+#
+# Ingress 必须设置 X-Forwarded-For（来源识别的前提，不可省略）：
+# 后端按「最后一跳」取客户端地址，而这条链路的最后一跳是前端 Next Route Handler 原样写入的。
+# nginx ingress controller 默认会追加 X-Forwarded-For，所以这里不需要额外配置；
+# 但若用 configuration-snippet / server-snippet 覆盖了 proxy_set_header，或关了 use-forwarded-headers，
+# 最后一跳就会变成 Ingress 自身地址或缺失——所有请求落入「未知来源」桶（20 次/分钟），
+# 表现为正常用户被误伤。联调时先确认转发头存在，再看 429 的来源分布。
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
