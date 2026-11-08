@@ -35,6 +35,7 @@ $pairs = @(
     @{ Doc = 'docs/specs/wanderchain/post-comment-composer.md';        Css = 'frontend/components/posts/comment-composer.module.css' },
     @{ Doc = 'docs/specs/wanderchain/attractions-list.md';             Css = 'frontend/components/attractions/attraction-collections.module.css' },
     @{ Doc = 'docs/specs/wanderchain/attractions-detail.md';           Css = 'frontend/components/attractions/attraction-detail.module.css' }
+    @{ Doc = 'docs/specs/wanderchain/profile.md';             Css = 'frontend/app/me/me.module.css' }
 )
 
 $problems = New-Object System.Collections.ArrayList

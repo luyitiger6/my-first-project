@@ -437,6 +437,39 @@ export function recordPostsRequests(page: Page): RecordedPostsRequest[] {
   return recorded
 }
 
+/** ------------------------------------------------------------------ *
+ * 名片端点的桩
+ * ------------------------------------------------------------------ */
+
+export interface ProfileCardStub {
+  publicId: string
+  displayName: string
+  avatarUrl?: string
+}
+
+/** 按被请求的 publicIds 计算应返回的名片；未返回的标识即「缺失」，UI 呈现 `Author unavailable`。 */
+export type ProfilesStubHandler = (publicIds: string[]) => ProfileCardStub[] | Promise<ProfileCardStub[]>
+
+/**
+ * 把 `GET /api/profiles` 桩掉。
+ *
+ * 与 `stubPostsApi` 同理：断言的是前端对后端的契约——请求打到哪个端点、query 逐字是什么、
+ * 拿到真实 DTO 形状后卡片作者区怎么渲染；后端自身读法由 backend 单元与容器装配测试负责。
+ * 返回固定名片与缺失场景（未返回的 publicId 即「账户已注销 / 名片缺失」）。
+ */
+export async function stubProfilesApi(page: Page, handler: ProfilesStubHandler): Promise<void> {
+  await page.route('**/api/profiles**', async (route: Route) => {
+    const url = new URL(route.request().url())
+    const publicIds = (url.searchParams.get('publicIds') ?? '').split(',').filter(Boolean)
+    const cards = await handler(publicIds)
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ items: cards }),
+    })
+  })
+}
+
 /**
  * 显式证据截图：落到 `docs/e2e/screenshots/<spec>/<name>.png`（该目录在 .gitignore 中）。
  * 与失败自动截图分开命名，避免把「证据」和「故障现场」混在一起。

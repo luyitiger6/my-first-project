@@ -46,6 +46,13 @@ $contractPairs = @(
         BackendFiles    = @()
         Frontend        = 'frontend/lib/contracts/media.ts'
         ForbiddenFields = @()
+    },
+    @{
+        Name            = 'profile'
+        BackendDirs     = @('backend/src/main/java/com/luyi/myfirst/web/profile/dto')
+        BackendFiles    = @()
+        Frontend        = 'frontend/lib/contracts/profile.ts'
+        ForbiddenFields = @()
     }
 )
 
