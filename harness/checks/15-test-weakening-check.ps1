@@ -102,7 +102,9 @@ foreach ($t in $targets) {
         }
 
         $newPath = Join-Path $dir $file
-        if (-not (Test-Path $newPath)) {
+        # -LiteralPath：路径里的 [...] 是 Next.js 动态段命名（如 app/api/[...path]/），
+        # 用通配符语义的 Test-Path 会把它当字符集，把存在的文件误报成已删除。
+        if (-not (Test-Path -LiteralPath $newPath)) {
             [void]$failures.Add("[$name] $file  测试文件被删除")
             continue
         }
