@@ -55,7 +55,7 @@ $expectations[$authDb] = @{
   Indexes     = @(
     'uk_accounts_public_id', 'uk_accounts_active_email',
     'uk_auth_sessions_jti', 'idx_auth_sessions_account', 'idx_auth_sessions_expires',
-    'uk_posts_public_id', 'idx_posts_feed', 'idx_posts_up_vote_count', 'idx_posts_comment_count', 'idx_posts_author',
+    'uk_posts_public_id', 'idx_posts_feed', 'idx_posts_up_vote_count', 'idx_posts_comment_count', 'idx_posts_author', 'idx_posts_author_published',
     'uk_post_comments_public_id', 'idx_post_comments_post', 'idx_post_comments_parent',
     'uk_post_votes_public_id', 'uk_post_votes_active', 'idx_post_votes_post',
     'uk_post_bookmarks_public_id', 'uk_post_bookmarks_active', 'idx_post_bookmarks_post',

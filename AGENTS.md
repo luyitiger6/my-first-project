@@ -243,7 +243,7 @@ ai-workspace/
 │   │   ├── posts/              帖子 HTTP 客户端、视图模型与评论输入校验
 │   │   ├── search/             纯同步检索函数（编辑推荐 / 帖子 / 景点分组）
 │   │   ├── media/              封面图上传客户端（FormData 提交、错误归一化与本地上限镜像）
-│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对；当前覆盖 auth / posts / attractions / media）
+│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对；当前覆盖 auth / posts / attractions / media / profile / user-page）
 │   │   ├── auth/               认证 HTTP 客户端与错误归一化
 │   │   └── backend-url.ts      后端地址的唯一读法（同源代理与服务端取数共用）
 │   ├── vitest.config.ts        测试配置（vitest + jsdom）
@@ -321,7 +321,7 @@ ai-workspace/
 | 只查建表 | `powershell -File harness\checks\06-schema-check.ps1`（默认连 `127.0.0.1:8806` 的 `ai_chat_gate` 与 `wanderchain`） |
 | 只查文档断点 | `powershell -File harness\checks\08-spec-doc-breakpoints.ps1` |
 | 只查缓存 | `powershell -File harness\checks\09-redis-check.ps1`（默认连 `127.0.0.1:6606` 的 db 3） |
-| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 双向比对；在飞 change 的 `design.md` 有「## 契约」时额外三方比对；当前受管 auth / posts / attractions / media，清单见脚本顶部 `$contractPairs`） |
+| 只查契约 | `powershell -File harness\checks\10-contract-check.ps1`（后端 DTO 与 `frontend/lib/contracts/*.ts` 双向比对；在飞 change 的 `design.md` 有「## 契约」时额外三方比对；当前受管 auth / posts / attractions / media / profile / user-page，清单见脚本顶部 `$contractPairs`） |
 | 只查约定 | `powershell -File harness\checks\11-conventions-check.ps1`（约定文档四个固定小节与真源路径、依赖描述与两侧清单一致、后端分层依赖方向） |
 | 只查技能同步 | `powershell -File harness\checks\12-skills-sync-check.ps1`（`.agents/skills` 非 `openspec-*` 目录 vs 三处副本，逐文件 SHA256） |
 | 只查证据账本 | `powershell -File harness\checks\13-spec-evidence-check.ps1`（`openspec/specs/` 每条 Scenario 必须在 `docs/spec-evidence.json` 落入 verified / deferred / historicallyCovered 之一，引用路径须真实存在） |
@@ -371,7 +371,7 @@ ai-workspace/
 - `127.0.0.1:6606` 的 Redis 是**共享实例**：同一 `wc:` 前缀下还有登录限流、邮箱配额等其他键，实例里也存在与本项目无关的数据。本项目只读写自己构造的键，不执行 `FLUSHDB`、不按前缀清理他人键。
 - `attraction_comments` 本期**只有表**：列与约束逐项对齐 `post_comments`（只把归属列换成 `attraction_id` 并指向 `attractions.id`），没有实体、仓储、端点，也没有前端页面。它只是让「景点评论」这个能力有落点，不构成可用功能。
 - 静态红线目前四条：Java 的 TODO 占位、`System.out`、`@Disabled`，以及前端的 TODO 占位与跳过写法；由**真实事故驱动**增补，不预先设想。护栏每多一条，维护成本就多一分。
-- `10-contract-check` 覆盖**已登记契约面**（受管清单由脚本顶部的 `$contractPairs` 配置，当前 auth / posts / attractions / media 四组）：后端 `web/*/dto/*.java` 与 `common/web/ErrorResponse.java` 对前端 `lib/contracts/*.ts`，追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。在飞 change 的 `design.md` 若含「## 契约」表，闸门会把它作为第三方一起比：表格少写、多写、类型不符都判红；但**表格本身写错它验不了**——两侧照着错，闸门照样绿，所以契约表只能靠 ② 的人类放行。
+- `10-contract-check` 覆盖**已登记契约面**（受管清单由脚本顶部的 `$contractPairs` 配置，当前 auth / posts / attractions / media / profile / user-page 六组；同目录多组共用时用可选的 `Interfaces` 白名单把一组限在几个接口上）：后端 `web/*/dto/*.java` 与 `common/web/ErrorResponse.java` 对前端 `lib/contracts/*.ts`，追加新模块只需加一对；首页内容区块的本地 Mock 契约不在它的视野里。它比对两侧的**字段名 + 类型**：类型按内置 Java↔TS 映射表归一后比较，映射表外的类型（嵌套自定义类型、`Map`、通配泛型）一律 fail-closed 判红。它是纯文本解析，不编译、不联网、不依赖 MySQL 与 Redis；解析不出任何形状、受管清单为空时直接失败，不拿「两边都空」当相等。在飞 change 的 `design.md` 若含「## 契约」表，闸门会把它作为第三方一起比：表格少写、多写、类型不符都判红；但**表格本身写错它验不了**——两侧照着错，闸门照样绿，所以契约表只能靠 ② 的人类放行。
 - `13-spec-evidence-check` 只保证**登记齐全、引用真实、字段完整**，不证明行为正确：它不执行任何测试、不联网、不读运行结果，`docs/spec-evidence.json` 里一条 `verified` 的含金量取决于它指向的那份证据本身。`historicallyCovered` 是**显式欠账计数**而非证据，当前 536 条历史 Scenario 全部落在这一档；新归档能力按逐条证据登记，`verified` 随之增长。要么补上可核验证据转 `verified`，要么在 `deferred` 里写明 `reason` / `registeredOn` / `unlock`。它对新增 Scenario 是**棘轮**：规格新增一条而账本未登记即判红，集合相等才算通过。
 - `14-change-scope-check` 只管在飞 change **一次装多少**，不判断内容好坏：能力 ≤ 2、任务 ≤ 30、Scenario ≤ 60，超限必须提供 `scope-exception.md` 且 `Reason` / `RegisteredOn` / `Expires` 三字段完整、`Expires` 未到期。例外是**到期失效的欠账**而非永久豁免。`openspec/changes/archive/` 下的历史 change 不追溯——历史上 `add-wanderchain-auth`（54 任务 / 88 场景）与 `add-wanderchain-post-interactions-frontend`（5 能力 / 38 任务 / 91 场景）按此口径都属超标，但它们已归档，不改写。阈值写死在脚本顶部，调整它需要一次真实的代码审阅，不存在改配置放行的后门。
 - `15-test-weakening-check` 必须分别进**三个仓库**比较：`backend/` 与 `frontend/` 是子模块，主工作区的 diff 只看得到 gitlink，看不到子模块内部的任何文件变化。它只查「测试被改弱」（用例数或断言数下降），查不出「改业务代码去适配写错的测试」——那是意图问题，机械检查看不见，只能靠 Stage 1 的 spec 对账。基线优先取 `origin/main` 的 merge-base，取不到时退回 `HEAD^`，因此子模块的改动**跨多个提交时只查最后一个**；merge commit 直接放行。
