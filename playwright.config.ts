@@ -51,5 +51,10 @@ export default defineConfig({
         timeout: 240_000,
         stdout: 'pipe',
         stderr: 'pipe',
+        // profile 走真接口 + Playwright 桩（`stubProfilesApi`）验证前后端契约；手动开发仍保持 Mock。
+        env: {
+          ...process.env,
+          NEXT_PUBLIC_PROFILE_MOCK: '0',
+        },
       },
 })

@@ -661,7 +661,9 @@
         "真实广场查询与游标适配 / 重试不丢失已有页",
         "真实广场查询与游标适配 / 返回广场重新校准统计",
         "真实广场查询与游标适配 / 首页入口和数据边界保持",
-        "首页入口链接 / 入口存在且可点击"
+        "首页入口链接 / 入口存在且可点击",
+        "真实帖子卡片与详情入口 / 名片加载中不回退为标识",
+        "真实帖子卡片与详情入口 / 名片缺失时降级"
       ]
     },
     "wanderchain-post-interactions": {
@@ -827,6 +829,118 @@
         "帖子入参校验 / 超长正文被拒",
         "帖子入参校验 / 标签去重后保存"
       ]
+    },
+    "wanderchain-profile": {
+      "sources": [
+        { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/support/ProfileRulesTest.java" },
+        { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/ProfileServiceImplTest.java" },
+        { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" },
+        { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/dao/auth/entity/AccountProfileTest.java" },
+        { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/auth/AuthInterceptorTest.java" },
+        { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/MeResponseContractTest.java" },
+        { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/AccountEndpointsTest.java" },
+        { "kind": "test", "ref": "frontend/app/me/me-content.test.tsx" },
+        { "kind": "test", "ref": "frontend/components/auth/account-menu.test.tsx" }
+      ],
+      "verified": {
+        "资料字段口径 / 昵称为空白被拒": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/support/ProfileRulesTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "资料字段口径 / 昵称超长被拒": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/support/ProfileRulesTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "资料字段口径 / 简介超长被拒": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/support/ProfileRulesTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "资料字段口径 / 合法资料保存成功": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "兴趣标签取值边界 / 第六个标签被拒": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/support/ProfileRulesTest.java" }
+        ],
+        "兴趣标签取值边界 / 清单外标签被拒": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/support/ProfileRulesTest.java" }
+        ],
+        "兴趣标签取值边界 / 重复取值去重后保存": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/support/ProfileRulesTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/ProfileServiceImplTest.java" }
+        ],
+        "头像地址不代抓取 / 非法头像地址被拒": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/support/ProfileRulesTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "资料读取的可见性边界 / 未登录读本人资料被拒": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/auth/AuthInterceptorTest.java" }
+        ],
+        "资料读取的可见性边界 / 游客批量读名片只含三个字段": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "资料读取的可见性边界 / 批量超过上限被拒": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/ProfileServiceImplTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "资料读取的可见性边界 / 未知标识被省略": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/ProfileServiceImplTest.java" }
+        ],
+        "更新仅限本人且为部分更新 / 登录用户更新成功": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "更新仅限本人且为部分更新 / 未登录更新被拒且不写入": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "更新仅限本人且为部分更新 / 跨站更新先于认证被拒": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" }
+        ],
+        "更新仅限本人且为部分更新 / 部分更新不覆盖未提交字段": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/ProfileServiceImplTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/dao/auth/entity/AccountProfileTest.java" }
+        ],
+        "昵称与既有显示名同源 / 改名后用户信息返回新昵称": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/AccountEndpointsTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/dao/auth/entity/AccountProfileTest.java" }
+        ],
+        "昵称与既有显示名同源 / 用户信息字段集合不变": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/MeResponseContractTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/AccountEndpointsTest.java" }
+        ],
+        "兴趣标签清单可匿名读取 / 清单可匿名读取": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/auth/AuthInterceptorTest.java" }
+        ],
+        "兴趣标签清单可匿名读取 / 清单内的值可保存": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/ProfileControllerTest.java" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/support/ProfileRulesTest.java" }
+        ],
+        "个人中心的入口与访问边界 / 登录用户一键到达个人中心": [
+          { "kind": "test", "ref": "frontend/components/auth/account-menu.test.tsx" }
+        ],
+        "个人中心的入口与访问边界 / 未登录访问不发起资料请求": [
+          { "kind": "test", "ref": "frontend/app/me/me-content.test.tsx" }
+        ],
+        "个人中心的入口与访问边界 / 保存成功后跳转广场并同步顶栏": [
+          { "kind": "test", "ref": "frontend/app/me/me-content.test.tsx" }
+        ],
+        "个人中心的入口与访问边界 / 保存失败保留输入": [
+          { "kind": "test", "ref": "frontend/app/me/me-content.test.tsx" }
+        ],
+        "头像上传复用既有媒体通道 / 上传成功后回填并预览": [
+          { "kind": "test", "ref": "frontend/app/me/me-content.test.tsx" }
+        ],
+        "头像上传复用既有媒体通道 / 上传失败保留原值": [
+          { "kind": "test", "ref": "frontend/app/me/me-content.test.tsx" }
+        ]
+      },
+      "deferred": {
+        "头像地址不代抓取 / 外链头像不触发服务端外网请求": {
+          "reason": "THEN 为否定式（未发起网络请求），单测难以稳定捕捉；实现由 ProfileRules 仅用 URI 做语法解析、全仓无 HTTP 客户端保证",
+          "registeredOn": "2026-11-08",
+          "unlock": "引入可观测的出站请求拦截器，或在集成测试中断言头像校验期间无出站调用时改为 verified"
+        }
+      },
+      "historicallyCovered": []
     },
     "wanderchain-search": {
       "sources": [

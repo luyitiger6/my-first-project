@@ -43,19 +43,39 @@
 | 角色 | 上游产出物（必读） | 项目约定 |
 |---|---|---|
 | `product-manager` | 用户需求 + `openspec/specs/` 已有真相 | `AGENTS.md` |
-| `interaction-agent` | `proposal.md` 的用户故事与验收标准 | conventions |
+| `interaction-agent` | `proposal.md` + `docs/prd/wanderchain-user-module.md` 的用户故事与验收标准（proposal 里没有这两样） | conventions |
 | `backend-agent` | `specs/` + `design.md` | conventions + 契约闸门清单 |
 | `frontend-agent` | `specs/` + `design.md` + 交互规格 | conventions + contracts |
-| `test-agent` | `specs/` 的 Scenario（即验收标准） + contracts | 测试约定 |
+| `test-agent` | `specs/` 的 Scenario（即验收标准） + contracts；`docs/prd/wanderchain-user-module.md` 为可选参考 | 测试约定 |
 | `experience-agent` | 交互规格 + 实现代码 | styling / frontend conventions |
 | `spec-reviewer` | proposal + design + tasks + `specs/` | — |
 | `review-merge` | 规格审查 / 体验审查 / 测试三份报告 + `specs/` 的 Scenario | `AGENTS.md` §3 / §4 |
 
 **共享面 = 工件面**：agent 之间不共享会话上下文，没落盘的结论等于没发生。交互规格落在 change 的 `design.md`（`## 交互规格` 一节），归档时随 change 进 archive，不另开载体。
 
+**主会话代做某角色的工作时，必须先 Read 该角色的定义文件（`%USERPROFILE%\.qoder\agents\<role>.md`）**——派 subagent 代替不了这一步，因为 subagent 读到的角色正文主会话看不到。
+
 **角色文件统一放在 AI 工具的全局 agents 目录**（本机为 `%USERPROFILE%\.qoder\agents\`），不纳入本仓库版本控制，项目内不建副本。本文件只约定角色间的输入与责任边界，不复制角色正文；两者冲突时以本文件为准。
 
 角色文件讲「怎么干这活」，跨项目复用，放全局；`docs/conventions/` 讲「这个项目具体怎么干」，跟着代码走，留在仓库。角色文件只指向约定、不复制正文——两边表述冲突时以 `docs/conventions/` 为准（它由 11 号闸门机械校验）。
+
+### 文件归属
+
+每个文件只有一个 owner，非 owner 只读；需要修改时只能向 owner 提建议，不自行落笔。归属表如下：
+
+| 文件 | Owner |
+|---|---|
+| `openspec/changes/*/proposal.md`、`tasks.md` | 主会话 |
+| `openspec/changes/*/specs/**` | spec 本身——改它要回到 ② 重新人工放行 |
+| `design.md` 的「## 契约」 | 前后端协商，任一方单方改即红（10 号闸门） |
+| `design.md` 的「## 交互规格」「## 视觉规范」 | `interaction-agent` |
+| `docs/prd/**` | `product-manager` |
+| `docs/specs/**` | 对应实现方（前端页面归 `frontend-agent`，后端归 `backend-agent`） |
+| `docs/conventions/**` | 主会话（11 号闸门机械校验） |
+| `AGENTS.md` | 人类授权的编排改动 |
+| `%USERPROFILE%\.qoder\agents\*.md` | 仅人类；主会话只能提议，得到明确授权后才可代改 |
+
+归属表本身无闸门校验，靠人工逐行核对上列九类均被覆盖。
 
 ## 3. 七条硬规则
 
@@ -186,10 +206,12 @@ ai-workspace/
 │       │   ├── service/post/        帖子接口、impl/ 实现、model/ 视图、support/ 校验与游标
 │       │   ├── service/attraction/  景点读接口、impl/ 实现、model/ 载体、support/ 查询白名单与钳制、RankingCache 读缓存
 │       │   ├── service/media/       媒体存取接口、impl/ 本地磁盘实现、model/ 结果载体、support/ 判型与命名规则
+│       │   ├── service/profile/      资料接口、impl/ 实现、model/ 视图与名片、support/ 校验与标签清单
 │       │   ├── web/auth/            REST 控制器，dto/ 请求响应体，interceptor/ 认证拦截与来源校验
 │       │   ├── web/post/            帖子 REST 控制器与 dto
 │       │   ├── web/attraction/      景点两个公开 GET（列表/榜单与详情）与 dto
-│       │   └── web/media/           封面上传（受保护）与媒体读取（公开）端点及 dto
+│       │   ├── web/media/           封面上传（受保护）与媒体读取（公开）端点及 dto
+│       │   └── web/profile/         资料四个端点（本人读取/本人更新/名片批量/标签清单）与 dto
 │       ├── main/resources/
 │       │   ├── application.yml      数据源、Redis、wanderchain.auth / media / attraction-cache 配置
 │       │   ├── schema.sql           wanderchain 库建表（accounts / auth_sessions / posts / attraction_comments / attractions，含景点种子）
@@ -227,6 +249,7 @@ ai-workspace/
 │   ├── vitest.config.ts        测试配置（vitest + jsdom）
 │   └── vitest.setup.ts         jest-dom 断言扩展
 ├── docs/                      人与 agent 共读的说明文档
+│   ├── prd/                    产品需求文档（用户模块活 PRD，跨多个 change 存续）
 │   ├── conventions/            开发约定唯一入口（`README.md` 索引 + 三份约定正文）
 │   ├── specs/wanderchain/      首页、搜索页与景点列表 / 详情的单元文档（断点由 08 号闸门比对实现）
 │   ├── e2e/                    Playwright 端到端用例与报告（工作区根运行）
@@ -312,6 +335,7 @@ ai-workspace/
 | 工作区改名 | `node scaffold/rename.mjs --name <新 slug> --display "<新展示名>"`（只改 AGENTS.md / README.md，改名后跑一键验收） |
 | 启动服务 | `mvn -f backend/pom.xml spring-boot:run`（监听 `http://localhost:8989`；需先设置 DB / Redis / JWT 环境变量） |
 | 帖子接口 | `GET /api/posts?limit=&cursor=` / `GET /api/posts/{publicId}` 公开；`POST` / `PUT` / `DELETE /api/posts/{publicId}` 需登录 |
+| 资料接口 | `GET /api/profile`（本人资料）与 `PUT /api/profile`（部分更新）需登录；`GET /api/profiles?publicIds=a,b`（批量名片，1–50 个）与 `GET /api/profile/interests`（标签清单）公开 |
 | 景点接口 | `GET /api/attractions?city=&sortBy=&collection=&limit=` / `GET /api/attractions/{publicId}` 公开只读（只返回已发布、未删除、已核实；`limit` 默认 20、上限 50） |
 | 景点缓存键族 | `wc:attraction:ranking:{sortBy}:{city\|all}:{limit}` 与 `wc:attraction:collection:{collection}:{city\|all}:{limit}`，TTL 取 `wanderchain.attraction-cache.ttl`（默认 5 分钟）；键只落在 db 3，`wc:` 前缀是共享实例上的唯一隔离层 |
 | 演示造数 | `powershell -File scripts\seed-demo-data.ps1`（景点与景点评论各 1000 条），`-Cleanup` 按 `01BULK` / `01COMM` 前缀回滚；库里没有账号时会建一个**不可登录**的演示账号满足评论外键 |

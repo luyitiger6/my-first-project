@@ -9,13 +9,14 @@ import {
   saveEvidenceScreenshot,
   stubAuthApi,
   stubPostsApi,
+  stubProfilesApi,
 } from './support/helpers'
 
 /**
  * 帖子广场的浏览器验收。
  *
- * `/api/posts**` 全部由 `stubPostsApi` 桩掉：这里断言的是前端对后端的契约
- * （端点、方法、查询参数、请求体）与拿到真实 DTO 形状后的渲染结果；
+ * `/api/posts**` 全部由 `stubPostsApi` 桩掉、`/api/profiles` 由 `stubProfilesApi` 桩掉：
+ * 这里断言的是前端对后端的契约（端点、方法、查询参数、请求体）与拿到真实 DTO 形状后的渲染结果；
  * 后端读法由 backend 的单元与容器装配测试负责，本文件不依赖 8989、MySQL 与 Redis。
  */
 
@@ -25,6 +26,9 @@ const FEED = '/api/posts'
  * `[0-7][0-9A-HJKMNP-TV-Z]{25}`，含 I/L/O/U 或长度不符会被判成「帖子不存在」。
  */
 const AUTHOR = '01JP0STAVTH0R000000000000A'
+const AUTHOR_NICKNAME = 'Ada Lovelace'
+/** 名片缺失场景的作者标识：合法 ULID 但名片端点不返回它，等价于「账户已注销」。 */
+const MISSING_AUTHOR = '01JP0STAVTH0R000000000000B'
 
 interface PostSummaryBody {
   publicId: string
@@ -75,6 +79,13 @@ function detailBody(
 
 const NOT_STUBBED = { status: 404, body: { code: 'POST_NOT_FOUND', message: 'not stubbed' } }
 
+/** 只给 `AUTHOR` 返回固定名片，其余标识一律省略，等价于真实批量端点的「不存在的标识被省略」。 */
+function profilesFor(publicIds: string[]): { publicId: string; displayName: string; avatarUrl: string }[] {
+  return publicIds
+    .filter((id) => id === AUTHOR)
+    .map((id) => ({ publicId: id, displayName: AUTHOR_NICKNAME, avatarUrl: '' }))
+}
+
 test.describe('帖子广场 · 真实 feed', () => {
   test('三排序 Tab 各自下发后端排序词，limit 固定 20', async ({ page }) => {
     // When 打开 /posts 并依次切换 Latest / Hottest / Most discussed
@@ -110,15 +121,16 @@ test.describe('帖子广场 · 真实 feed', () => {
     expect(feedRequests.every((item) => item.search.get('limit') === '20')).toBe(true)
   })
 
-  test('卡片按真实 DTO 渲染标题、封面、标签、作者、时间与三列统计', async ({ page }, testInfo) => {
-    // When feed 返回一条真实形状的 PostSummaryResponse
-    // Then 卡片逐字段呈现，且详情链接保留当前排序
+  test('卡片按真实 DTO 渲染标题、封面、标签、作者昵称、时间与三列统计', async ({ page }, testInfo) => {
+    // When feed 返回一条真实形状的 PostSummaryResponse，名片端点返回该作者的昵称
+    // Then 卡片逐字段呈现，作者区显示昵称而非 26 位标识，且详情链接保留当前排序
     await stubPostsApi(page, () => ({
       body: {
         items: [summary(1, { title: 'A walk through the old town', tags: ['Walking', 'Food'], upVoteCount: 7, commentCount: 2, bookmarkCount: 3 })],
         nextCursor: null,
       },
     }))
+    await stubProfilesApi(page, profilesFor)
 
     await gotoPath(page, '/posts')
     const card = page.locator('[data-testid="post-card"]').first()
@@ -127,7 +139,9 @@ test.describe('帖子广场 · 真实 feed', () => {
     await expect(card.locator('h3 a')).toHaveAttribute('href', `/posts/${postId(1)}?sortBy=latest`)
     await expect(card.locator('img')).toHaveAttribute('src', INLINE_COVER)
     await expect(card.locator('ul[aria-label="Post tags"] > li')).toHaveText(['Walking', 'Food'])
-    await expect(card.locator('summary')).toHaveText(`Author ID: ${AUTHOR.slice(0, 6)}…${AUTHOR.slice(-4)}`)
+    await expect(card.getByText(AUTHOR_NICKNAME, { exact: true })).toBeVisible()
+    await expect(card).not.toContainText('Author ID')
+    await expect(card).not.toContainText(AUTHOR)
     await expect(card.locator('time')).toHaveAttribute('datetime', '2026-10-11T16:30:00+08:00')
     await expect(card).toContainText('Created Oct 11')
     await expect(card.locator('[aria-label="Post interactions"] > span')).toHaveText(['7', '2', '3'])
@@ -136,6 +150,23 @@ test.describe('帖子广场 · 真实 feed', () => {
     await expect(card.locator('[aria-label="3 bookmarks"]')).toBeVisible()
 
     await saveEvidenceScreenshot(page, testInfo, 'feed-desktop')
+  })
+
+  test('名片缺失时作者区逐字显示 Author unavailable，不出现 26 位标识', async ({ page }) => {
+    // When feed 返回一条作者标识不在名片端点响应里的帖子（等价于账户已注销）
+    // Then 作者区逐字显示 Author unavailable，任何状态下都不渲染 26 位对外标识
+    await stubPostsApi(page, () => ({
+      body: { items: [summary(1, { authorPublicId: MISSING_AUTHOR })], nextCursor: null },
+    }))
+    await stubProfilesApi(page, () => [])
+
+    await gotoPath(page, '/posts')
+    const card = page.locator('[data-testid="post-card"]').first()
+
+    await expect(card.getByText('Author unavailable', { exact: true })).toBeVisible()
+    await expect(card).not.toContainText('Author ID')
+    await expect(page.locator('body')).not.toContainText(MISSING_AUTHOR)
+    await expect(page.locator('body')).not.toContainText(AUTHOR)
   })
 
   test('游标分页按 cursor 继续请求，跨页按 publicId 去重并在到底后收尾', async ({ page }) => {
