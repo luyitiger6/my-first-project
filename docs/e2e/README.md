@@ -5,7 +5,7 @@
 每个 Scenario（或 Scenario 下的 And 分支）对应一个独立 `test()`，测试标题与注释里标注场景编号。
 
 - 测试文件：`docs/e2e/<spec 名>.spec.ts`
-- 共 12 个文件、156 条用例
+- 共 13 个文件、161 条用例
 - 除首页锚点补偿组件（`frontend/components/home/hash-anchor-restorer.tsx`）外，E2E 建设不改动前端生产代码；测试依赖只装在**工作区根** `package.json`
 
 ## 如何运行
@@ -66,9 +66,15 @@ webServer 用 `next dev` 而不是 `next start`：E2E 不在 harness 的十一�
 | `homepage-u8-hot-attractions.spec.ts` | `homepage-u8-hot-attractions.md` | 11 |
 | `search-page.spec.ts` | `search-page.md` | 13 |
 | `homepage-anchors.spec.ts` | `fix-homepage-anchor-landing` 的 `wanderchain-homepage` delta | 5 |
+| `messages.spec.ts` | `messages.md` | 5 |
 
 `homepage-anchors.spec.ts` 覆盖锚点落位稳定性的首页侧场景（直接带锚点访问、用户主动滚动让位、
 无锚点不自动滚动）；回链场景由 `search-page.spec.ts` 的 S5 覆盖。
+
+`messages.spec.ts` 是唯一**不打桩**的用例：私信验收的就是真实状态机（A 发出 → B 未读 →
+进入已读 → SSE 双向推送），因此它要求本机 8989 后端与 3000 前端同时就绪，
+账号取 User 环境变量 `E2E_POSTS_ACCOUNT_{A,B}_{EMAIL,PASSWORD}`（由
+`scripts/seed-posts-accounts.ps1` 维护）。其余用例都只断言前端契约。
 
 ## 诚实排除清单
 

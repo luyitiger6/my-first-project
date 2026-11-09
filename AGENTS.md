@@ -202,19 +202,22 @@ ai-workspace/
 │       │   ├── dao/auth/            entity / repository / converter（账户与会话持久化）
 │       │   ├── dao/post/            entity / repository / converter（帖子持久化）
 │       │   ├── dao/attraction/      entity / repository / converter（景点持久化）
+│       │   ├── dao/dm/              entity / repository（私信会话与消息持久化）
 │       │   ├── service/auth/        接口，impl/ 实现，model/ 载体，support/ 支撑件
 │       │   ├── service/post/        帖子接口、impl/ 实现、model/ 视图、support/ 校验与游标
 │       │   ├── service/attraction/  景点读接口、impl/ 实现、model/ 载体、support/ 查询白名单与钳制、RankingCache 读缓存
 │       │   ├── service/media/       媒体存取接口、impl/ 本地磁盘实现、model/ 结果载体、support/ 判型与命名规则
 │       │   ├── service/profile/      资料接口、impl/ 实现、model/ 视图与名片、support/ 校验与标签清单
+│       │   ├── service/dm/          私信接口、impl/ 实现、model/ 会话与消息视图、support/ 游标与正文校验
 │       │   ├── web/auth/            REST 控制器，dto/ 请求响应体，interceptor/ 来源校验 / 写限流 / 认证拦截
 │       │   ├── web/post/            帖子 REST 控制器与 dto
 │       │   ├── web/attraction/      景点两个公开 GET（列表/榜单与详情）与 dto
 │       │   ├── web/media/           封面上传（受保护）与媒体读取（公开）端点及 dto
-│       │   └── web/profile/         资料四个端点（本人读取/本人更新/名片批量/标签清单）与 dto
+│       │   ├── web/profile/         资料四个端点（本人读取/本人更新/名片批量/标签清单）与 dto
+│       │   └── web/dm/              私信七个端点（会话列表/创建、消息分页/发送、已读、未读数、SSE 推送）与 dto；EventBroker 在事务提交后广播
 │       ├── main/resources/
 │       │   ├── application.yml      数据源、Redis、wanderchain.auth / media / attraction-cache 配置
-│       │   ├── schema.sql           wanderchain 库建表（accounts / auth_sessions / posts / attraction_comments / attractions，含景点种子）
+│       │   ├── schema.sql           wanderchain 库建表（accounts / auth_sessions / posts / attraction_comments / attractions / dm_conversations / dm_messages，含景点种子）
 │       │   └── db/ai-chat/schema.sql  ai_chat_gate 库建表（AI 会话四表）
 │       └── test/java/com/luyi/myfirst/  按被测类所在包放置的单元测试 + 容器装配契约测试
 ├── frontend/ [submodule]      独立仓库：Next.js 16 App Router + React 19 + TypeScript（npm 项目根）
@@ -228,6 +231,7 @@ ai-workspace/
 │   │   ├── login/ register/    登录与两步注册（图形码 → 邮箱码）
 │   │   ├── search/             全站搜索（服务端算三态，景点条目可点）
 │   │   ├── posts/              帖子列表与 `/posts/[publicId]` 详情
+│   │   ├── messages/           会话列表 `/messages` 与聊天页 `/messages/[publicId]`（进入即已读、SSE 推送去重、断线重拉补齐）
 │   │   ├── attractions/        景点列表（三个约束型榜单 + 完整列表）与 `/attractions/[publicId]` 详情
 │   │   ├── community/          板块占位页
 │   │   └── api/[...path]/route.ts  同源 API 代理（运行期 BACKEND_URL）
@@ -236,14 +240,15 @@ ai-workspace/
 │   │   ├── attractions/        景点卡片、三个榜单区块、列表、详情与事实卡
 │   │   ├── posts/              帖子卡片、列表、详情、评论与互动条
 │   │   ├── auth/               认证 Provider、表单与账号菜单（会话只来自 /api/auth/me）
-│   │   └── site/               页头、页脚与占位页
+│   │   └── site/               页头（含消息未读角标）、页脚与占位页
 │   ├── lib/
 │   │   ├── home/               类型契约、城市白名单、Mock 数据与仓储
 │   │   ├── attractions/        景点 HTTP 客户端、视图模型；server.ts 供搜索页服务端取数
 │   │   ├── posts/              帖子 HTTP 客户端、视图模型与评论输入校验
+│   │   ├── dm/                 私信 HTTP 客户端（六个端点 + SSE 订阅）、Mock 开关与正文校验
 │   │   ├── search/             纯同步检索函数（编辑推荐 / 帖子 / 景点分组）
 │   │   ├── media/              封面图上传客户端（FormData 提交、错误归一化与本地上限镜像）
-│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对；当前覆盖 auth / posts / attractions / media）
+│   │   ├── contracts/          后端 DTO 的镜像契约（字段名与类型唯一真源，10 号闸门双向比对；当前覆盖 auth / posts / attractions / media / dm）
 │   │   ├── auth/               认证 HTTP 客户端与错误归一化
 │   │   └── backend-url.ts      后端地址的唯一读法（同源代理与服务端取数共用）
 │   ├── vitest.config.ts        测试配置（vitest + jsdom）
@@ -251,7 +256,7 @@ ai-workspace/
 ├── docs/                      人与 agent 共读的说明文档
 │   ├── prd/                    产品需求文档（用户模块活 PRD，跨多个 change 存续）
 │   ├── conventions/            开发约定唯一入口（`README.md` 索引 + 三份约定正文）
-│   ├── specs/wanderchain/      首页、搜索页与景点列表 / 详情的单元文档（断点由 08 号闸门比对实现）
+│   ├── specs/wanderchain/      首页、搜索、帖子、景点、个人中心与私信的单元文档（20 份，断点由 08 号闸门比对实现）
 │   ├── e2e/                    Playwright 端到端用例与报告（工作区根运行）
 │   ├── db-design-spec.md       数据库设计规范（命名、主键、公共字段）
 │   ├── spec-coverage-audit.md  spec 覆盖审计
@@ -340,6 +345,7 @@ ai-workspace/
 | 景点缓存键族 | `wc:attraction:ranking:{sortBy}:{city\|all}:{limit}` 与 `wc:attraction:collection:{collection}:{city\|all}:{limit}`，TTL 取 `wanderchain.attraction-cache.ttl`（默认 5 分钟）；键只落在 db 3，`wc:` 前缀是共享实例上的唯一隔离层 |
 | 演示造数 | `powershell -File scripts\seed-demo-data.ps1`（景点与景点评论各 1000 条），`-Cleanup` 按 `01BULK` / `01COMM` 前缀回滚；库里没有账号时会建一个**不可登录**的演示账号满足评论外键 |
 | 媒体接口 | `POST /api/media`（`multipart/form-data` 的 `file` 字段）需登录，成功返回 `201` 与 `{url, contentType, size}`；`GET /api/media/{fileName}` 公开读取，带一年 `immutable` 缓存头 |
+| 私信接口 | `GET` / `POST /api/dm/conversations`（会话列表 / 按对方 `publicId` 建立或复用）；`GET` / `POST /api/dm/conversations/{publicId}/messages`（游标分页 / 发送）；`POST .../read`（标记已读）；`GET /api/dm/unread-count`（总未读）；`GET .../stream`（SSE 推送）。全部需登录，非参与者一律 404 |
 | 写操作来源限流 | 所有非 `GET`/`HEAD`/`OPTIONS` 的 `/api/**` 请求按来源计数（键族 `wc:ratelimit:write:{sourceKey}`），超限返回 `429` + `RATE_LIMITED` + `Retry-After`（秒）；`/api/auth/**` 不计数（登录有自己的失败限流）。额度取 `wanderchain.rate-limit.write` 的 `window` / `max` / `unknown-max`，未知来源走独立的小额度；Redis 不可用时放行并记 WARN（fail-open） |
 | 前端开发 | `cd frontend; npm run dev`（访问 `http://localhost:3000`，`/api` 由 Route Handler 代理到 8989） |
 | 前端构建 | `cd frontend; npm run build`（产物含 `.next/standalone`） |

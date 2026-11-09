@@ -1,5 +1,6 @@
 ﻿<#
     闸门 13-spec-evidence-check：Scenario 证据账本
+    因：Scenario 证据散落在单测与 E2E 中，无法保证每条都被显式分类（2026-11-06 提交 41f0b52）
 
     openspec/specs/ 下每条 Scenario 必须在 docs/spec-evidence.json 中落入三类之一：
       verified            -> 有可核验证据（gate / test / e2e / runner）
