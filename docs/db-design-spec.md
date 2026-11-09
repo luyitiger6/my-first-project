@@ -1,16 +1,18 @@
 # 数据库设计规范（AI 会话应用）
 
-> 适用范围：本项目后端（Spring Boot 3.5.5 / Java 17 + JPA + MySQL 8 + Flyway）。
-> 本文是人读的完整规范；`openspec/specs/database-baseline/spec.md` 只保留可验收的行为契约。
-> 本期只落地 `users`、`conversations`、`messages`、`usage_records` 四张表，其余表见 §9.6，由后续迁移引入。
+> 适用范围：`ai_chat_gate` 库（AI 会话能力）。本文是人读的完整规范；`openspec/specs/database-baseline/spec.md` 只保留可验收的行为契约。
+>
+> **wanderchain 库不在本文范围内**：它的表真相是 `backend/src/main/resources/schema.sql`，建表闸门是 `harness/checks/06-schema-check.ps1`。本文提到的 Flyway、V1 迁移与「四张表」只描述 `ai_chat_gate` 的形态。
+>
+> `ai_chat_gate` 当前有 `users`、`conversations`、`messages`、`usage_records` 四张表，其余表见 §9.6。
 
 ## 1. 前提与边界
 
 - **单租户、单库、单实例**：不设 `tenant_id`，不做分库分表、读写分离与跨库事务。
 - **数据库**：MySQL 8.0+，存储引擎 InnoDB，默认字符集 `utf8mb4`，默认排序规则 `utf8mb4_0900_ai_ci`。
 - **时间**：统一存 UTC，列类型用 `DATETIME(3)`，不用 `TIMESTAMP`（避免会话时区隐式转换）。
-- **结构变更**：只允许通过 Flyway 版本化迁移；已应用的迁移不可修改。
-- **运行期边界**：本规范不要求应用启动时连接数据库；数据源与 JPA 接入由后续变更单独引入。
+- **结构变更**：迁移方式不限定——`schema.sql` 初始化、手工 DDL、Flyway 版本化迁移都可以；要求是脚本可执行、可重复执行、闸门能断言结果。这是非生产项目，不强制版本化迁移工具。
+- **运行期边界**：后端启动即装配数据源、JPA 与 Redis 客户端，启动需要 MySQL 与 Redis 可达；这与「迁移方式不限定」是两件独立的事。
 - **ID 边界**：数据库内部用自增 `BIGINT`；对外 API 只暴露 `public_id`（ULID），不暴露自增 ID。
 
 ## 2. 命名与通用约定
@@ -415,20 +417,24 @@ CREATE TABLE usage_records (
 
 后续表同样遵守 §4 的公共字段模板与 §8 的索引规则。
 
-## 10. Flyway 规范
+## 10. 迁移方式
 
-- 迁移目录：`backend/src/main/resources/db/migration/`。
-- 命名：`V<版本>__<描述>.sql`；版本从 1 开始，只增不减；描述用蛇形英文。
-- 已应用的迁移**不可修改**（Flyway 校验 checksum）；修正用新版本迁移。
-- `flyway_schema_history` 与业务表同库，不手工改。
-- 禁用 `clean`（`cleanDisabled=true`）；生产账号不得有 `DROP` 权限。
-- 使用空库首次迁移，不做 `baselineOnMigrate`；历史库迁移另行评估。
+**工具不限定**：`schema.sql` 初始化、手工 DDL、Flyway 等版本化迁移都能用。判定标准是三条——脚本可执行、重复执行幂等、闸门能断言结果。
+
+当前实际形态：
+
+- `ai_chat_gate`：`backend/src/main/resources/db/ai-chat/schema.sql` 初始化；曾经用过的 Flyway 版本化迁移已下线（`backend/pom.xml` 中无 flyway 依赖）。
+- `wanderchain`：`backend/src/main/resources/schema.sql` 初始化，由 `harness/checks/06-schema-check.ps1` 重建 schema 并断言结构。
+
+无论用哪种方式，以下约束仍然成立：
+
 - 结构变更遵循 expand-contract：先加可空列/新表 → 双写/回填 → 切读 → 删旧列/旧表。
 - 大表加列、加索引使用 online DDL 或外部工具，必须在维护窗口评估锁表时间。
-- 数据回填分批提交，禁止一条 SQL 更新全表；回填脚本与结构迁移分开。
-- 生产迁移由发布流水线在应用启动前执行，不依赖 `spring.flyway` 自动运行。
-- CI/本地用 `06-flyway.ps1` 连接 `127.0.0.1:8806` 的既有 MySQL 8 实例，在专用 schema `ai_chat_gate` 上执行迁移并断言结构；不新建/删除容器，不触碰 `green-note` 业务库；迁移失败即整体验收失败。
-- 当前既有实例为 MySQL 8.3；Flyway 11.7.2 官方已测试到 MySQL 8.1，会打印升级警告，但迁移与结构断言已实际通过。
+- 数据回填分批提交，禁止一条 SQL 更新全表；回填脚本与结构脚本分开。
+- 结构脚本提交进仓库，与它断言的结构一起走代码评审。
+- **建表闸门会重建 schema**：`06-schema-check.ps1` 对 `ai_chat_gate` 与 `wanderchain` 执行 `DROP DATABASE ... CREATE DATABASE`，本地既有数据会被清空（见 `docs/harness-backlog.md` §2.8）。联调前先备份。
+
+不用版本化迁移工具时的替代要求：每次结构变更都要同步更新 `06-schema-check.ps1` 的断言清单，否则「表建了但没人验」等于没有护栏。
 
 ## 11. JPA 映射约定
 
@@ -489,36 +495,37 @@ LIMIT ?;
 11. 暴露自增 `id` 给前端或外部系统。
 12. 无索引的外键列与高频查询列。
 
-## 14. 本期落地与后续迁移
+## 14. 表落地现状与后续扩展
 
-**本期（V1）落地：**
+**`ai_chat_gate` 当前落地：**
 
 - `users`
 - `conversations`
 - `messages`
 - `usage_records`
 
-**后续迁移：**
+**`ai_chat_gate` 后续扩展：**
 
 - `attachments`、`prompt_templates`、`feedbacks`、`model_configs`、`audit_logs`
-- 数据源/JPA 接入、Todo 持久化（独立变更）
 - 多租户（如未来需要，先加 `tenant_id` 可空列并回填，再加唯一键与外键）
+
+**`wanderchain` 的表以 `backend/src/main/resources/schema.sql` 为准**，本文不再重复罗列。
 
 **变更流程：**
 
-1. 先改本文档，明确表、列、约束、索引与迁移版本。
-2. 新增 `V<n>__<描述>.sql`，不修改旧迁移。
-3. 更新 `06-flyway.ps1` 的结构断言（新增表/关键约束时）。
+1. 先改对应的结构脚本（`schema.sql` 或迁移文件），明确表、列、约束、索引。
+2. 同步更新 `06-schema-check.ps1` 的结构断言（新增表/关键约束时）。
+3. 本地联调前备份既有数据（闸门会重建 schema）。
 4. 运行 `harness\run-all.ps1`，退出码 0 才算完成。
 
 ## 15. 验收对照
 
 | 规范要求 | 验收方式 |
 |---|---|
-| 迁移可在空库执行 | `06-flyway.ps1` 连接既有 8806 MySQL 8，重建专用 schema 并迁移成功 |
-| 重复执行幂等 | 同一专用 schema 再次迁移，退出码 0 |
-| 四张核心表存在 | `information_schema.tables` 断言 |
+| 结构脚本可在空库执行 | `06-schema-check.ps1` 连接既有 8806 MySQL 8，重建专用 schema 并建表成功 |
+| 重复执行幂等 | 同一专用 schema 再次执行，退出码 0 |
+| 核心表存在 | `information_schema.tables` 断言 |
 | 关键唯一键/索引/CHECK 存在 | `information_schema.statistics` / `table_constraints` 断言 |
-| 迁移失败会红 | 临时错误迁移，闸门退出码非 0 |
+| 结构脚本失败会红 | 临时错误 DDL，闸门退出码非 0 |
 | 不触碰业务库与容器 | `green-note` 表集合不变，执行前后容器列表一致 |
-| 运行期不依赖数据库 | 未启动 MySQL 时 `01-compile`、`02-test`、应用启动均通过 |
+| 后端启动依赖数据库与缓存 | 未启动 MySQL / Redis 时 `02-test` 的容器装配测试报错，这是预期行为 |

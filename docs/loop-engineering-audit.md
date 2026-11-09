@@ -33,7 +33,7 @@
 
 | 信号 | 位置 | 含义 |
 |---|---|---|
-| `run-all.ps1` 退出码 0 | `harness/run-all.ps1` | 15 道闸门全部通过，任一道红即停 |
+| `run-all.ps1` 退出码 0 | `harness/run-all.ps1` | 16 道闸门全部通过，任一道红即停 |
 | 13 号集合相等 | `harness/checks/13-spec-evidence-check.ps1` | 每条 Scenario 都被显式分类，引用路径真实存在 |
 | 14 号无超限 | `harness/checks/14-change-scope-check.ps1` | 在飞 change 粒度合规或持有未到期例外 |
 | 归档完成 | `openspec archive` | change 移入 `archive/`，主规格同步，生命周期终止 |
@@ -170,7 +170,7 @@
 
 | 层 | 回答的问题 | 本项目状态 |
 |---|---|---|
-| harness | 这一轮做对了吗 | 强：15 道闸门、CI 同源、证据棘轮 |
+| harness | 这一轮做对了吗 | 强：16 道闸门、CI 同源、证据棘轮 |
 | LOOP | 循环什么时候停 | 半：只有收敛判据，无预算 / 停滞检测 / 上报 |
 | GRAPH | 多节点怎么编排 | 默认串行单 agent；满足任一进入条件时按需并行 |
 

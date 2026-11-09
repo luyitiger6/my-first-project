@@ -1,5 +1,6 @@
 ﻿<#
     闸门 08-spec-doc-breakpoints：单元文档声明的断点与实际 CSS 一致
+    因：单元文档声明的断点与 CSS 各写一套，肉眼无法核对（2026-10-27 提交 dd6c682）
 
     docs/specs/wanderchain/ 下的单元文档在响应式小节声明断点，实现则在对应的
     .module.css 里用 @media (max-width) 落地。两者曾经完全平行：文档统一写
@@ -37,6 +38,7 @@ $pairs = @(
     @{ Doc = 'docs/specs/wanderchain/attractions-detail.md';           Css = 'frontend/components/attractions/attraction-detail.module.css' }
     @{ Doc = 'docs/specs/wanderchain/profile.md';             Css = 'frontend/app/me/me.module.css' }
     @{ Doc = 'docs/specs/wanderchain/user-page.md';            Css = 'frontend/app/users/[publicId]/user-page.module.css' }
+    @{ Doc = 'docs/specs/wanderchain/messages.md';            Css = 'frontend/app/messages/messages.module.css' }
 )
 
 $problems = New-Object System.Collections.ArrayList

@@ -52,9 +52,11 @@ export default defineConfig({
         stdout: 'pipe',
         stderr: 'pipe',
         // profile 走真接口 + Playwright 桩（`stubProfilesApi`）验证前后端契约；手动开发仍保持 Mock。
+        // 私信 E2E（messages.spec.ts）不打桩，必须真实走 /api/dm。
         env: {
           ...process.env,
           NEXT_PUBLIC_PROFILE_MOCK: '0',
+          NEXT_PUBLIC_DM_MOCK: '0',
         },
       },
 })
