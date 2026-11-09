@@ -154,6 +154,14 @@
 
 **建议最小动作**：写 .ps1 时用 `[IO.File]::WriteAllText($p, $t, [Text.UTF8Encoding]::new($true))` 显式指定编码，不依赖 `Set-Content` / `Out-File` 的默认值；提交前对 `harness/` 扫一次乱码特征（`閳|閿|瀵ら缚|寤鸿|鈥斺`）。**成本**：一条排查命令；若要固化成 16 号编码闸门，也符合 §3「由真实事故驱动」。
 
+### 2.13 三条 E2E 在 main 上既有失败（2026-11-10 user-detail 验收命中）
+
+**现象**：`npm run test:e2e -- docs/e2e/post-feed.spec.ts` 有 2 例失败——「卡片按真实 DTO 渲染…」与「名片缺失时…Author unavailable」；两例的快照里作者区停在骨架（`aria-hidden`），10 秒内昵称与缺失文案都没出现。`docs/e2e/post-interactions.spec.ts` 有 1 例失败——「375px 且 reduced-motion 下…无横向滚动」实测溢出 37px（阈值 ≤ 1）。把 frontend 切到 `main`（`c317afa`）逐条复跑，结果完全一致，与 `feat/user-detail-page` 无关。
+
+**后果**：E2E 子集跑不出「全绿」，Stage 2 的「E2E 全绿」判据当前被这三条既有失败卡住；若不做 main 对照，容易误判为新分支回归。
+
+**建议最小动作**：另开 `fix/` 分支——(a) 查 `/posts` 的作者名片请求为何在桩下不落地（先看 `stubProfilesApi` 的 `**/api/profiles**` 路由与 `AuthorArea` 的 pending 判定）；(b) 定位 post-detail 在 375px 下溢出 37px 的元素（用 `document.scrollingElement.scrollWidth` 对逐元素 `getBoundingClientRect` 差值）。**成本**：两个独立排查。**价值**：把「E2E 全绿」恢复成可判定信号。
+
 ---
 
 ## 3. 新增闸门的判定原则（供未来参考）

@@ -31,7 +31,9 @@
 ## 5. 联调与验收
 
 - [x] 5.1 真实链路自查：广场点击作者名 → 用户页展示四项资料与该用户已发布帖子 → 点进帖子详情 → 返回用户页；另测一个不存在标识直接访问得到「用户不存在」。验证：浏览器实际操作并记录截图路径；仅报告本次链路已调通，不证明其它 Scenario。
-- [ ] 5.2 完整验收（用户需要时集中执行）：`npx openspec validate "add-user-detail-page" --strict` 与 `powershell -File harness\run-all.ps1` 均退出码 0，先由 `spec-reviewer` 逐条对账再跑 E2E。未执行时明确后置，不得报告「完整验收通过」。
+- [x] 5.2 完整验收（用户需要时集中执行）：`npx openspec validate "add-user-detail-page" --strict` 与 `powershell -File harness\run-all.ps1` 均退出码 0，先由 `spec-reviewer` 逐条对账再跑 E2E。未执行时明确后置，不得报告「完整验收通过」。
+  - 2026-11-10 执行结果：`openspec validate` EXIT=0；`spec-reviewer` 对账 19 条 —— 对 17 / 错 0 / 警告 2；`harness\run-all.ps1` 16/16 PASSED（EXIT=0，207s，06 建表闸门跑前已 mysqldump 备份、跑后回灌并核对行数）。
+  - E2E 回归：`post-feed` + `post-interactions` 共 21 例，18 通过 / 3 失败；3 条失败在 `main`（frontend `c317afa`）上逐条复现同样结果（post-feed 作者区 2 例停在骨架、post-interactions 375px 横向溢出 37px），属既有问题，已登记 `docs/harness-backlog.md` 2.13，不随本 change 携带。
 
 ## Workflow follow-up
 
