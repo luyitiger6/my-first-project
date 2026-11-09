@@ -19,6 +19,8 @@ function Resolve-RepoPath([string]$rel) {
 }
 
 # ===== 受管契约清单（追加新模块只需在此加一对，比对逻辑对每个 pair 独立执行）=====
+# Interfaces 为可选白名单：同一前后端契约文件被多组共用时，用它把一组限制在几个接口上；
+# 不写则整份文件参与比对（既有各组维持原口径）。
 $contractPairs = @(
     @{
         Name            = 'auth'
@@ -54,6 +56,15 @@ $contractPairs = @(
         BackendFiles    = @()
         Frontend        = 'frontend/lib/contracts/profile.ts'
         ForbiddenFields = @()
+    },
+    @{
+        # 用户页只新增资料一个响应体；列表复用 posts 组的 PostFeedResponse，不重复受管。
+        Name            = 'user-page'
+        BackendDirs     = @('backend/src/main/java/com/luyi/myfirst/web/profile/dto')
+        BackendFiles    = @()
+        Frontend        = 'frontend/lib/contracts/profile.ts'
+        ForbiddenFields = @()
+        Interfaces      = @('PublicProfileResponse')
     },
     @{
         Name            = 'dm'
@@ -256,6 +267,24 @@ foreach ($pair in $contractPairs) {
                 $failures += "[$pairName] 前端字段 $interfaceName.$name 不是 camelCase"
             }
         }
+    }
+
+    # ---- 可选白名单：一组只受管指定接口时裁剪两侧（裁剪前已确认两侧解析非空）----
+    if ($pair.ContainsKey('Interfaces') -and $pair.Interfaces.Count -gt 0) {
+        $filteredBackend = [System.Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
+        $filteredFrontend = [System.Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
+        foreach ($name in @($pair.Interfaces)) {
+            if ($backendInterfaces.Contains($name)) { $filteredBackend[$name] = $backendInterfaces[$name] }
+            else { $failures += "[$pairName] 后端没有受管清单声明的接口：$name" }
+            if ($frontendInterfaces.Contains($name)) { $filteredFrontend[$name] = $frontendInterfaces[$name] }
+            else { $failures += "[$pairName] 前端没有受管清单声明的接口：$name" }
+        }
+        $backendInterfaces = $filteredBackend
+        $frontendInterfaces = $filteredFrontend
+        $backendFieldCount = 0
+        foreach ($k in $backendInterfaces.Keys) { $backendFieldCount += $backendInterfaces[$k].Count }
+        $frontendFieldCount = 0
+        foreach ($k in $frontendInterfaces.Keys) { $frontendFieldCount += $frontendInterfaces[$k].Count }
     }
 
     # ---- 防伪：任一侧解析出空集合即判红 ----

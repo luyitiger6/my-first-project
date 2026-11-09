@@ -95,7 +95,36 @@
 
 **建议最小动作**：断言改容差（判 `|差| ≤ 1`），或改为只比较「同一秒内发起」的哨兵口径。另开 `fix/` 分支，不随本 change 携带。
 
-### 2.7 共享 Redis 的长 TTL 计数键 × 06 重建库的自增 id 复用（2026-11-09 完整验收命中）
+### 2.7 本地 dev server 用后台管道启动会进入病态空转（2026-11-09 命中）
+
+**现象**：用后台 shell（stdout 接管道、无消费者）启动 `npm run dev` 后，进程 16 分钟累计烧掉 210 秒 CPU（约 22% 单核），但 `.next/dev` 连续 4 分钟零写入——在消耗资源，没有任何产出。同期请求时通时不通，浏览器里表现为首页反复重载、登录按钮时有时无。
+
+**后果**：把进程病态误当成业务 bug 去查，在「改代码」和「查环境」之间来回试，属于最典型的空循环；用户侧看到的是功能坏了。
+
+**建议最小动作**：本地启动一律把输出重定向到文件（`cmd /c npm run dev > %TEMP%\wc-3000.log 2>&1`），不要用后台管道；启动后立刻取「无请求时的 CPU 增量」与「日志行增量」两个数，任一非零即视为病态进程，直接杀掉重启，不看业务。
+
+**成本**：一条启动命令 + 两个读数。**价值**：把「进程是否健康」从感觉变成可读的数。
+
+### 2.8 06 号闸门 DROP DATABASE 会清掉本地既有账号（2026-11-09 命中）
+
+**现象**：跑一次 06 号建表闸门后，`wanderchain.accounts` 只剩当次造数产生的两个 E2E 账号，用户本人账号消失，此后所有登录持续 401、`/me` 永远 401。根因见 §4「不把闸门拆成并行执行」中已描述的行为：06 号对 `wanderchain` 执行 `DROP DATABASE ... CREATE DATABASE`。
+
+**后果**：本地联调的身份被闸门抹掉，且很难当场联想到是闸门干的；用户侧表现为「账号登不上、获取不到用户」，排查会先怀疑认证逻辑。
+
+**建议最小动作**：三选一——(a) 06 号在 DROP 前把既有 `accounts` / `posts` 行导出到临时表或文件，建表后回灌；(b) 06 号只在专门的 gate schema 上 DROP，不碰 `wanderchain`；(c) 什么都不改，但在 AGENTS.md §7「只查建表」一行显式标注「本闸门会清空 wanderchain 数据」。
+
+**成本**：一次脚本改造，或一行文档标注。**价值**：把「跑闸门」和「丢数据」解绑。
+
+### 2.9 Turbopack 监听根被推断到整个工作区（2026-11-09 命中）
+
+**现象**：`next dev` 启动日志告警 `We detected multiple lockfiles and selected the directory of D:\my-first-project\package-lock.json as the root directory`，Turbopack 的 workspace root 落在工作区根而不是 `frontend/`。
+
+**后果**：`backend/target`、根 `node_modules`、`.qoder/` 等目录都落在监听范围内，后端一编译就可能触发前端重编译与页面重载，同时拉高空闲 CPU。
+
+**建议最小动作**：`frontend/next.config.ts` 增加 `turbopack.root` 钉在 `frontend` 自身。另开 `fix/` 分支，不随本 change 携带。
+
+**成本**：三行配置。**价值**：把监听范围收回到真正需要的地方。
+### 2.10 共享 Redis 的长 TTL 计数键 × 06 重建库的自增 id 复用（2026-11-09 完整验收命中）
 
 **现象**：`CredentialsNormalizationTest.shortPasswordIsRejectedBeforePasswordIsCompared` 断言「连续 4 次密码错误还不该触发图形码」，实际触发。根因不在用例：账户维度失败计数落在共享 Redis，键是 `wc:login:fail:acct:{accounts 自增 id}`、TTL 30 天；06 号每轮 DROP 重建 `wanderchain`，`accounts` 自增 id 回到低位被下一轮复用，新种账户抽到一个「上一轮留下过失败计数」的 id——残留 1 加本次 4 次等于 5，正好越过 `fail-threshold: 5`。实测库里残留 44 个这类键（值全为 1，id 覆盖 30–1147），而 accounts 表只有 id 1、2。
 
@@ -105,7 +134,7 @@
 
 **建议最小动作**：把「种账户后清账户维度计数」抽成所有涉及登录限流的用例共用的夹具基类，消除逐类复制；或让测试库的自增起始值避开历史 id 段。**成本**：一处夹具抽取。另开 `fix/` 分支，不随本 change 携带。
 
-### 2.8 06 号建表闸门会重建 schema，本地既有数据被清空（2026-11-09 完整验收命中）
+### 2.11 06 号建表闸门会重建 schema，本地既有数据被清空（2026-11-09 完整验收命中）
 
 **现象**：`06-schema-check.ps1` 对 `ai_chat_gate` 与 `wanderchain` 执行 `DROP DATABASE ... CREATE DATABASE`，跑完两个库的业务数据全部归零——accounts、posts、attractions、dm_conversations、dm_messages 一并丢失。
 
@@ -115,7 +144,7 @@
 
 **建议最小动作**：06 号在 DROP 前自动 dump 到 `%TEMP%`，或给 `run-all.ps1` 加 `-BackupDb` 开关；至少让 06 号开头打印「本闸门会清空下列库，请先备份」。**成本**：约 10 行。另开 `fix/` 分支，不随本 change 携带。
 
-### 2.9 以默认编码重写 .ps1 会把中文注释静默变成乱码（2026-11-09 补「因」行时发现）
+### 2.12 以默认编码重写 .ps1 会把中文注释静默变成乱码（2026-11-09 补「因」行时发现）
 
 **现象**：`06-schema-check.ps1` 的第 3–7 行与 10 处分节注释全是 `寤鸿〃闂搁棬` 这类双重编码乱码，但闸门照常 PASS。`git log -S '寤鸿'` 定位到引入提交 `52a8b32`（2026-10-30 posts 归档），该提交的 diff 首行是 `-# 06-schema-check.ps1` → `+# 06-schema-check.ps1`：整个文件被无 BOM 的 UTF-8 重写为带 BOM，中文在这一步被按 GBK 解码后再存为 UTF-8。
 
@@ -124,6 +153,14 @@
 **本次处置**：按行号用正确原文（`git show 52a8b32^:harness/checks/06-schema-check.ps1` 的父版本）恢复 15 行注释，保留 UTF-8 BOM 与 CRLF，并补「因」行；`Parser::ParseFile` 语法 0 错、可疑字符计数 0、`git diff` 除注释外无变化。
 
 **建议最小动作**：写 .ps1 时用 `[IO.File]::WriteAllText($p, $t, [Text.UTF8Encoding]::new($true))` 显式指定编码，不依赖 `Set-Content` / `Out-File` 的默认值；提交前对 `harness/` 扫一次乱码特征（`閳|閿|瀵ら缚|寤鸿|鈥斺`）。**成本**：一条排查命令；若要固化成 16 号编码闸门，也符合 §3「由真实事故驱动」。
+
+### 2.13 三条 E2E 在 main 上既有失败（2026-11-10 user-detail 验收命中）
+
+**现象**：`npm run test:e2e -- docs/e2e/post-feed.spec.ts` 有 2 例失败——「卡片按真实 DTO 渲染…」与「名片缺失时…Author unavailable」；两例的快照里作者区停在骨架（`aria-hidden`），10 秒内昵称与缺失文案都没出现。`docs/e2e/post-interactions.spec.ts` 有 1 例失败——「375px 且 reduced-motion 下…无横向滚动」实测溢出 37px（阈值 ≤ 1）。把 frontend 切到 `main`（`c317afa`）逐条复跑，结果完全一致，与 `feat/user-detail-page` 无关。
+
+**后果**：E2E 子集跑不出「全绿」，Stage 2 的「E2E 全绿」判据当前被这三条既有失败卡住；若不做 main 对照，容易误判为新分支回归。
+
+**建议最小动作**：另开 `fix/` 分支——(a) 查 `/posts` 的作者名片请求为何在桩下不落地（先看 `stubProfilesApi` 的 `**/api/profiles**` 路由与 `AuthorArea` 的 pending 判定）；(b) 定位 post-detail 在 375px 下溢出 37px 的元素（用 `document.scrollingElement.scrollWidth` 对逐元素 `getBoundingClientRect` 差值）。**成本**：两个独立排查。**价值**：把「E2E 全绿」恢复成可判定信号。
 
 ---
 

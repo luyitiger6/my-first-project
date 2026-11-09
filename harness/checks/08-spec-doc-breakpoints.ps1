@@ -37,6 +37,7 @@ $pairs = @(
     @{ Doc = 'docs/specs/wanderchain/attractions-list.md';             Css = 'frontend/components/attractions/attraction-collections.module.css' },
     @{ Doc = 'docs/specs/wanderchain/attractions-detail.md';           Css = 'frontend/components/attractions/attraction-detail.module.css' }
     @{ Doc = 'docs/specs/wanderchain/profile.md';             Css = 'frontend/app/me/me.module.css' }
+    @{ Doc = 'docs/specs/wanderchain/user-page.md';            Css = 'frontend/app/users/[publicId]/user-page.module.css' }
     @{ Doc = 'docs/specs/wanderchain/messages.md';            Css = 'frontend/app/messages/messages.module.css' }
 )
 

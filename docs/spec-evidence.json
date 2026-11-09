@@ -1312,6 +1312,144 @@
       },
       "deferred": {},
       "historicallyCovered": []
+    },
+    "wanderchain-user-page": {
+      "sources": [
+        {
+          "kind": "gate",
+          "ref": "harness/checks/10-contract-check.ps1"
+        },
+        {
+          "kind": "gate",
+          "ref": "harness/checks/08-spec-doc-breakpoints.ps1"
+        },
+        {
+          "kind": "test",
+          "ref": "frontend/lib/profile/profile-api.test.ts"
+        },
+        {
+          "kind": "test",
+          "ref": "frontend/lib/posts/posts-api.test.ts"
+        }
+      ],
+      "verified": {
+        "公开用户资料的字段口径 / 游客读取用户资料": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/PublicProfileControllerTest.java"
+          }
+        ],
+        "公开用户资料的字段口径 / 响应不含内部字段": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/PublicProfileControllerTest.java"
+          }
+        ],
+        "公开用户资料的字段口径 / 资料未填写时返回空值": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/ProfileServiceImplTest.java"
+          }
+        ],
+        "公开用户资料的未找到口径 / 不存在的标识": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/PublicProfileControllerTest.java"
+          }
+        ],
+        "公开用户资料的未找到口径 / 已注销的用户": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/service/profile/ProfileServiceImplTest.java"
+          }
+        ],
+        "公开用户资料的未找到口径 / 形状不合的标识": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/PublicProfileControllerTest.java"
+          }
+        ],
+        "用户页帖子列表的范围 / 只返回该用户的已发布帖子": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/service/post/PostServiceTest.java"
+          }
+        ],
+        "用户页帖子列表的范围 / 已删除帖子不出现": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/dao/post/repository/PostRepositoryTest.java"
+          }
+        ],
+        "用户页帖子列表的范围 / 用户没有任何已发布帖子": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/service/post/PostServiceTest.java"
+          }
+        ],
+        "用户页帖子列表的范围 / 未知用户得 404": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/UserPostsControllerTest.java"
+          }
+        ],
+        "用户页帖子列表的分页 / 游标继续下一页": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/service/post/PostServiceTest.java"
+          }
+        ],
+        "用户页帖子列表的分页 / 非法游标": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/UserPostsControllerTest.java"
+          }
+        ],
+        "用户页帖子列表的分页 / 条数钳制": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/service/post/PostServiceTest.java"
+          }
+        ],
+        "用户页的入口与四态 / 从帖子卡片进入用户页": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/posts/post-card.test.tsx"
+          }
+        ],
+        "用户页的入口与四态 / 游客可访问": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/profile/PublicProfileControllerTest.java"
+          }
+        ],
+        "用户页的入口与四态 / 名片未就绪时不生成入口": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/posts/post-card.test.tsx"
+          }
+        ],
+        "用户页的入口与四态 / 用户不存在": [
+          {
+            "kind": "test",
+            "ref": "frontend/app/users/[publicId]/user-page-content.test.tsx"
+          }
+        ],
+        "用户页的入口与四态 / 读取失败可重试": [
+          {
+            "kind": "test",
+            "ref": "frontend/app/users/[publicId]/user-page-content.test.tsx"
+          }
+        ],
+        "用户页的入口与四态 / 用户没有已发布帖子": [
+          {
+            "kind": "test",
+            "ref": "frontend/app/users/[publicId]/user-page-content.test.tsx"
+          }
+        ]
+      },
+      "deferred": {},
+      "historicallyCovered": []
     }
   }
 }
