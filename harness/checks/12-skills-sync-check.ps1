@@ -1,5 +1,6 @@
 ﻿<#
     闸门 12-skills-sync-check：自研技能真源与三处适配副本逐字节一致
+    因：自研技能改动只同步部分副本时，各工具里的 agent 会拿到不同版本（2026-11-06 提交 bc74c71）
 
     AGENTS.md §5 约定：.agents/skills/ 是自研技能的编写真源，逐字节分发到
     .claude/skills/、.qoder/skills/、.opencode/skills/。本闸门把这条约定

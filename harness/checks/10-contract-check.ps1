@@ -1,4 +1,5 @@
 ﻿# 闸门 10：前后端契约一致性（字段名 + 类型，双向静态比对；扫描范围可配置）
+# 因：后端改字段名或类型后前端契约不同步，偏差要到运行时才暴露（2026-10-29 提交 b8f8e65，contract gate + auth-frontend）
 # 纯文本静态解析，不需要数据库、Redis 或服务启动。
 # - 后端：record 组件的「名字 + 类型」；前端：interface 字段的「名字 + 类型」与同文件 type 别名。
 # - 双向比字段名；共有字段按 Java→TS 映射表归一后比类型；映射表外或归一失败一律 fail-closed。
@@ -52,6 +53,13 @@ $contractPairs = @(
         BackendDirs     = @('backend/src/main/java/com/luyi/myfirst/web/profile/dto')
         BackendFiles    = @()
         Frontend        = 'frontend/lib/contracts/profile.ts'
+        ForbiddenFields = @()
+    },
+    @{
+        Name            = 'dm'
+        BackendDirs     = @('backend/src/main/java/com/luyi/myfirst/web/dm/dto')
+        BackendFiles    = @()
+        Frontend        = 'frontend/lib/contracts/dm.ts'
         ForbiddenFields = @()
     }
 )

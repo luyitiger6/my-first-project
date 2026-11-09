@@ -1,5 +1,6 @@
 ﻿<#
     闸门 14-change-scope-check：在飞 change 的粒度上限
+    因：在飞 change 粒度失控时，单轮验证成本会无上限增长（2026-11-07 提交 86e70e0）
 
     对 openspec/changes/ 下每个在飞 change（不含 archive）统计三项：
       能力数    -> specs/ 下含 spec.md 的目录路径去重计数 <= 2
