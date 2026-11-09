@@ -4,7 +4,7 @@
 
 ## 为什么有这一层
 
-这些规则此前散落在 `AGENTS.md`、`docs/db-design-spec.md` 与 `openspec/specs/*/spec.md`。把它们各复制一份进本目录，会让同一条规则出现两处表述——而本仓库已经有过实证：`docs/db-design-spec.md` 至今仍写 `06-flyway.ps1`，实际闸门早已是 `06-schema-check.ps1`，这个矛盾不产生任何红灯，因为它不在任何闸门的待检清单里。
+这些规则此前散落在 `AGENTS.md`、`docs/db-design-spec.md` 与 `openspec/specs/*/spec.md`。把它们各复制一份进本目录，会让同一条规则出现两处表述——而本仓库有过实证：`docs/db-design-spec.md` 曾长期写 `06-flyway.ps1` 与「只允许 Flyway 迁移」，实际闸门早已是 `06-schema-check.ps1`，这个矛盾长期不产生任何红灯，因为该文件不在任何闸门的待检清单里。这条漂移已修正，但它能潜伏数周本身就是最好的论据。
 
 本目录提供统一入口：已有规则引用原有真源，不复制全文；新的项目实践约定集中维护在对应主题文档中。能机械校验的部分由闸门守卫，分包粒度等需要业务判断的内容由 change 人工审阅，不把自动检查通过等同于设计合理。
 
