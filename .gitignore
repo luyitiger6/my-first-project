@@ -12,6 +12,9 @@ frontend/dist/
 docs/e2e/test-results/
 docs/e2e/playwright-report/
 docs/e2e/screenshots/
+# Playwright 在配置未生效时会在仓库根落默认产物
+test-results/
+playwright-report/
 
 # IDE
 .idea/
@@ -33,9 +36,10 @@ Thumbs.db
 # AI 工具的本地私有配置（团队共享的 commands/skills 要提交，私有配置不要）
 .claude/settings.local.json
 .qoder/*.local.json
-
-# Qoder 自动生成的仓库百科与 Playwright 根级输出：
-# 知识真源是 AGENTS.md 与 docs/，repowiki 会随每次 IDE 分析整树重写，
-# 留在索引里会让 git status 长期挂几十条与代码无关的改动。
+# Qoder 自动生成的仓库百科与本地截图：知识真源是 AGENTS.md 与 docs/，不入库
+# （repowiki 会随每次 IDE 分析整树重写，本地截图是走查产物）
 .qoder/repowiki/
+.qoder/*.png
+.qoder/user-detail-walk/
+# Playwright 在配置未生效时会于仓库根落默认产物
 test-results/

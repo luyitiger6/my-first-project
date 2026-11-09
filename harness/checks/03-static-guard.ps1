@@ -1,5 +1,6 @@
 ﻿<#
     闸门 03-static-guard：静态红线
+    因：留 TODO 或用跳过语法能让测试变绿而护栏强度归零（2026-10-24 提交 a5dffa8，首版骨架）
     拦截 AI 编码里最常见的「假通过」：
       1. 留 TODO / FIXME / XXX 占位就宣布完成（Java 与前端）
       2. 用 System.out.println 代替日志系统（Java）

@@ -433,6 +433,110 @@
         "互动入口安全回跳 / 会话未确认不回跳"
       ]
     },
+    "wanderchain-direct-messages": {
+      "sources": [
+        { "kind": "gate", "ref": "harness/checks/10-contract-check.ps1" },
+        { "kind": "test", "ref": "frontend/lib/dm/dm-api.test.ts" },
+        { "kind": "test", "ref": "frontend/lib/dm/dm-input.test.ts" },
+        { "kind": "e2e", "ref": "docs/e2e/messages.spec.ts" }
+      ],
+      "verified": {
+        "会话按参与者对唯一 / 首次发起创建会话": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "会话按参与者对唯一 / 重复发起返回同一会话": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "会话按参与者对唯一 / 不能向自己发起": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "会话按参与者对唯一 / 对方不存在": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "会话列表只含本人参与的会话 / 只返回本人参与的会话": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "会话列表只含本人参与的会话 / 按最近活跃时间倒序": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "会话列表只含本人参与的会话 / 每项含对方名片与未读数": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "会话列表只含本人参与的会话 / 没有会话时返回空列表": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "会话读写仅限参与者 / 非参与者不能读取消息": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/dm/DmControllerTest.java" }
+        ],
+        "会话读写仅限参与者 / 非参与者不能发送消息": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/dm/DmControllerTest.java" }
+        ],
+        "会话读写仅限参与者 / 非参与者不能标记已读": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/dm/DmControllerTest.java" }
+        ],
+        "会话读写仅限参与者 / 未登录被拒绝": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/dm/DmControllerTest.java" }
+        ],
+        "消息游标分页 / 首页返回最新消息": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/support/DmCursorTest.java" }
+        ],
+        "消息游标分页 / 游标翻页不重复": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/support/DmCursorTest.java" }
+        ],
+        "消息游标分页 / 没有更多消息": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/support/DmCursorTest.java" }
+        ],
+        "文本消息校验 / 空正文被拒绝": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/support/DmInputRulesTest.java" }
+        ],
+        "文本消息校验 / 纯空白被拒绝": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/support/DmInputRulesTest.java" }
+        ],
+        "文本消息校验 / 超长被拒绝": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/support/DmInputRulesTest.java" }
+        ],
+        "文本消息校验 / 边界长度被接受": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/support/DmInputRulesTest.java" }
+        ],
+        "发送消息并更新会话摘要 / 发送成功": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "发送消息并更新会话摘要 / 摘要与排序同步更新": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "未读计数与已读标记 / 收到消息后未读增加": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "未读计数与已读标记 / 标记已读后归零": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "未读计数与已读标记 / 自己的消息不计未读": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "未读计数与已读标记 / 已读与新消息并发时不丢": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "未读计数与已读标记 / 总未读数端点返回各会话之和": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+        ],
+        "会话内新消息实时推送 / 对方发消息后实时出现": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/dm/DmEventBrokerTest.java" },
+          { "kind": "e2e", "ref": "docs/e2e/messages.spec.ts" }
+        ],
+        "会话内新消息实时推送 / 断线恢复后补齐消息": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/dm/DmEventBrokerTest.java" },
+          { "kind": "e2e", "ref": "docs/e2e/messages.spec.ts" }
+        ],
+        "会话内新消息实时推送 / 推送只发给会话参与者": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/dm/DmEventBrokerTest.java" }
+        ],
+        "会话内新消息实时推送 / 未打开会话时不建立推送": [
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/web/dm/DmEventBrokerTest.java" }
+        ]
+      },
+      "deferred": {},
+      "historicallyCovered": []
+    },
     "wanderchain-homepage": {
       "sources": [
         {
