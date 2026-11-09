@@ -65,7 +65,23 @@
           "ref": "harness/checks/06-schema-check.ps1"
         }
       ],
-      "verified": {},
+      "verified": {
+        "wanderchain 表集合基线 / 八张表齐全": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "wanderchain 表集合基线 / 占位表缺失被拦截": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "对外标识与软删除唯一性基线 / 对外标识重复被拒绝": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "对外标识与软删除唯一性基线 / 注销后同邮箱可重新注册": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "对外标识与软删除唯一性基线 / 取消投票后可重新投票": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "关联与取值约束基线 / 引用不存在的帖子被拒绝": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "关联与取值约束基线 / 非法状态被拒绝": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "关联与取值约束基线 / 排序索引存在": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "帖子互动计数列的存储形态 / 计数列默认零": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "帖子互动计数列的存储形态 / 负计数被拒绝": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "帖子互动计数列的存储形态 / 计数排序索引存在": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "建表闸门断言 wanderchain 结构要点 / 缺表或改名即失败": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "建表闸门断言 wanderchain 结构要点 / 同名生成列不互相掩盖": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "建表闸门断言 wanderchain 结构要点 / 新增计数列被断言": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }],
+        "建表闸门断言 wanderchain 结构要点 / 不逐列镜像列类型": [{ "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" }]
+      },
       "deferred": {},
       "historicallyCovered": [
         "AI 会话核心表基线 / 核心表齐全",
@@ -779,9 +795,35 @@
         {
           "kind": "test",
           "ref": "backend/src/test/java/com/luyi/myfirst/web/post/interaction/PostInteractionControllerTest.java"
+        },
+        {
+          "kind": "test",
+          "ref": "backend/src/test/java/com/luyi/myfirst/dao/post/repository/PostRepositoryTest.java"
+        },
+        {
+          "kind": "gate",
+          "ref": "harness/checks/06-schema-check.ps1"
         }
       ],
-      "verified": {},
+      "verified": {
+        "评论写入同步帖子评论数 / 发表评论后计数加一": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "评论写入同步帖子评论数 / 删除评论后计数减一": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "评论写入同步帖子评论数 / 非法评论不改变计数": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "投票写入同步帖子点赞数 / 首次赞成加一": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "投票写入同步帖子点赞数 / 反对票不计入": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "投票写入同步帖子点赞数 / 换向按差额调整": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "投票写入同步帖子点赞数 / 取消赞成与取消反对": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "收藏写入同步帖子收藏数 / 收藏加一": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "收藏写入同步帖子收藏数 / 重复收藏幂等": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "收藏写入同步帖子收藏数 / 取消收藏减一": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "计数同步的原子性与边界 / 两次赞成累计为二": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "计数同步的原子性与边界 / 互动失败计数回滚": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "计数同步的原子性与边界 / 互动不刷新帖子更新时间": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/dao/post/repository/PostRepositoryTest.java" }],
+        "计数同步的原子性与边界 / 计数不可为负": [
+          { "kind": "gate", "ref": "harness/checks/06-schema-check.ps1" },
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/dao/post/repository/PostRepositoryTest.java" }
+        ]
+      },
       "deferred": {},
       "historicallyCovered": [
         "评论需登录且绑定作者 / 登录用户发表评论成功",

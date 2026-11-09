@@ -43,16 +43,24 @@ $expectations[$aiChatDb] = @{
     'fk_usage_user', 'fk_usage_conversation', 'fk_usage_message',
     'ck_usage_prompt_tokens', 'ck_usage_completion_tokens', 'ck_usage_cost'
   )
-  Generated   = @('active_email', 'total_tokens')
+  Generated   = @('users.active_email', 'usage_records.total_tokens')
   CreatedAt   = @('users', 'conversations', 'messages', 'usage_records')
 }
 $expectations[$authDb] = @{
   Script      = 'backend/src/main/resources/schema.sql'
-  Tables      = @('accounts', 'auth_sessions', 'posts', 'attractions', 'attraction_comments', 'dm_conversations', 'dm_messages')
+  Tables      = @(
+    'accounts', 'auth_sessions', 'posts',
+    'post_comments', 'post_votes', 'post_bookmarks',
+    'attractions', 'attraction_comments',
+    'dm_conversations', 'dm_messages'
+  )
   Indexes     = @(
     'uk_accounts_public_id', 'uk_accounts_active_email',
     'uk_auth_sessions_jti', 'idx_auth_sessions_account', 'idx_auth_sessions_expires',
-    'uk_posts_public_id', 'idx_posts_feed', 'idx_posts_author',
+    'uk_posts_public_id', 'idx_posts_feed', 'idx_posts_up_vote_count', 'idx_posts_comment_count', 'idx_posts_author',
+    'uk_post_comments_public_id', 'idx_post_comments_post', 'idx_post_comments_parent',
+    'uk_post_votes_public_id', 'uk_post_votes_active', 'idx_post_votes_post',
+    'uk_post_bookmarks_public_id', 'uk_post_bookmarks_active', 'idx_post_bookmarks_post',
     'uk_attractions_public_id',
     'idx_attractions_hot', 'idx_attractions_rating', 'idx_attractions_new',
     'idx_attractions_curated_first_trip', 'idx_attractions_curated_no_booking', 'idx_attractions_curated_open_monday',
@@ -64,7 +72,10 @@ $expectations[$authDb] = @{
   Constraints = @(
     'ck_accounts_status', 'ck_accounts_token_version', 'ck_accounts_version',
     'fk_auth_sessions_account', 'ck_auth_sessions_expires',
-    'fk_posts_author', 'ck_posts_status', 'ck_posts_version',
+    'fk_posts_author', 'ck_posts_status', 'ck_posts_up_vote_count', 'ck_posts_comment_count', 'ck_posts_bookmark_count', 'ck_posts_version',
+    'fk_post_comments_post', 'fk_post_comments_account', 'fk_post_comments_parent', 'ck_post_comments_version',
+    'fk_post_votes_post', 'fk_post_votes_account', 'ck_post_votes_direction', 'ck_post_votes_version',
+    'fk_post_bookmarks_post', 'fk_post_bookmarks_account', 'ck_post_bookmarks_version',
     'ck_attractions_status', 'ck_attractions_rating', 'ck_attractions_view_count',
     'ck_attractions_city_slug', 'ck_attractions_version',
     'fk_attraction_comments_attraction', 'fk_attraction_comments_account', 'fk_attraction_comments_parent',
@@ -74,8 +85,13 @@ $expectations[$authDb] = @{
     'ck_dm_conversations_low_unread', 'ck_dm_conversations_high_unread', 'ck_dm_conversations_version',
     'fk_dm_messages_conversation', 'fk_dm_messages_sender'
   )
-  Generated   = @('active_email')
-  CreatedAt   = @('accounts', 'posts', 'attractions', 'attraction_comments', 'dm_conversations', 'dm_messages')
+  Generated   = @('accounts.active_email', 'post_votes.active_account_id', 'post_bookmarks.active_account_id')
+  CreatedAt   = @('accounts', 'posts', 'post_comments', 'post_votes', 'post_bookmarks', 'attractions', 'attraction_comments', 'dm_conversations', 'dm_messages')
+  ColumnDefaults = @{
+    'posts.up_vote_count'  = '0'
+    'posts.comment_count'  = '0'
+    'posts.bookmark_count' = '0'
+  }
 }
 $databases = @($aiChatDb, $authDb)
 
@@ -206,7 +222,7 @@ foreach ($db in $databases) {
     if ($constraints -notcontains $constraint) { Fail "missing constraint: $db.$constraint" }
   }
 
-  $generated = @(Invoke-Sql "SELECT column_name FROM information_schema.columns WHERE table_schema='$db' AND extra LIKE '%GENERATED%';")
+  $generated = @(Invoke-Sql "SELECT CONCAT(table_name, '.', column_name) FROM information_schema.columns WHERE table_schema='$db' AND extra LIKE '%GENERATED%';")
   foreach ($column in $spec.Generated) {
     if ($generated -notcontains $column) { Fail "missing generated column: $db.$column" }
   }
@@ -214,6 +230,15 @@ foreach ($db in $databases) {
   $createdAtTables = @(Invoke-Sql "SELECT table_name FROM information_schema.columns WHERE table_schema='$db' AND column_name='created_at';")
   foreach ($table in $spec.CreatedAt) {
     if ($createdAtTables -notcontains $table) { Fail "missing created_at on $db.$table" }
+  }
+
+  if ($spec.ColumnDefaults) {
+    foreach ($entry in $spec.ColumnDefaults.GetEnumerator()) {
+      $parts = $entry.Key.Split('.')
+      $defaults = @(Invoke-Sql "SELECT column_default FROM information_schema.columns WHERE table_schema='$db' AND table_name='$($parts[0])' AND column_name='$($parts[1])';")
+      if ($defaults.Count -eq 0) { Fail "missing column: $db.$($entry.Key)" }
+      if ($defaults[0] -ne $entry.Value) { Fail "unexpected default for $db.$($entry.Key): '$($defaults[0])' (expected '$($entry.Value)')" }
+    }
   }
 }
 
