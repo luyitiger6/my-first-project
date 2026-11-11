@@ -1,6 +1,184 @@
 {
   "version": 1,
   "capabilities": {
+    "wanderchain-travel-weather": {
+      "sources": [
+        {
+          "kind": "test",
+          "ref": "frontend/components/travel/weather-tool.test.tsx"
+        },
+        {
+          "kind": "test",
+          "ref": "frontend/lib/travel/travel-api.test.ts"
+        },
+        {
+          "kind": "test",
+          "ref": "backend/src/test/java/com/luyi/myfirst/web/travel/TravelControllerTest.java"
+        },
+        {
+          "kind": "test",
+          "ref": "backend/src/test/java/com/luyi/myfirst/service/travel/impl/WeatherServiceImplTest.java"
+        }
+      ],
+      "verified": {
+        "头部天气入口 / 点击图标展开浮层": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/travel-popover.test.tsx"
+          }
+        ],
+        "头部天气入口 / 用 Escape 关闭并归还焦点": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/travel-popover.test.tsx"
+          }
+        ],
+        "天气查询的城市范围与默认值 / 首次打开默认北京": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/weather-tool.test.tsx"
+          }
+        ],
+        "天气查询的城市范围与默认值 / 城市清单不含平台外城市": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/weather-tool.test.tsx"
+          }
+        ],
+        "城市选择被记住 / 再次打开沿用上次城市": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/weather-tool.test.tsx"
+          }
+        ],
+        "天气结果的展示内容 / 成功查询时四项齐全": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/weather-tool.test.tsx"
+          },
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/service/travel/impl/WeatherServiceImplTest.java"
+          }
+        ],
+        "天气数据的新鲜度标注 / 展示观测时间": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/weather-tool.test.tsx"
+          }
+        ],
+        "天气读取失败的表现 / 数据源失败时给出提示与重试": [
+          {
+            "kind": "test",
+            "ref": "frontend/lib/travel/travel-api.test.ts"
+          },
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/service/travel/impl/OpenMeteoWeatherProviderTest.java"
+          }
+        ],
+        "天气读取失败的表现 / 切换城市后失败不残留旧城市结果": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/weather-tool.test.tsx"
+          }
+        ],
+        "天气读取失败的表现 / 重试成功恢复展示": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/weather-tool.test.tsx"
+          }
+        ]
+      },
+      "deferred": {},
+      "historicallyCovered": []
+    },
+    "wanderchain-travel-currency": {
+      "sources": [
+        {
+          "kind": "test",
+          "ref": "frontend/components/travel/currency-tool.test.tsx"
+        },
+        {
+          "kind": "test",
+          "ref": "frontend/lib/travel/format.test.ts"
+        },
+        {
+          "kind": "test",
+          "ref": "backend/src/test/java/com/luyi/myfirst/web/travel/TravelControllerTest.java"
+        },
+        {
+          "kind": "test",
+          "ref": "backend/src/test/java/com/luyi/myfirst/service/travel/impl/CurrencyServiceImplTest.java"
+        }
+      ],
+      "verified": {
+        "头部汇率入口 / 点击图标展开浮层": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/travel-popover.test.tsx"
+          }
+        ],
+        "头部汇率入口 / 用 Escape 关闭并归还焦点": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/travel-popover.test.tsx"
+          }
+        ],
+        "汇率查询的币种范围 / 展示固定的五个币种": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/currency-tool.test.tsx"
+          },
+          {
+            "kind": "test",
+            "ref": "frontend/lib/travel/travel-api.test.ts"
+          }
+        ],
+        "汇率数值的展示精度 / 大于一的币种保留两位": [
+          {
+            "kind": "test",
+            "ref": "frontend/lib/travel/format.test.ts"
+          }
+        ],
+        "汇率数值的展示精度 / 小于一的币种保留四位": [
+          {
+            "kind": "test",
+            "ref": "frontend/lib/travel/format.test.ts"
+          }
+        ],
+        "汇率数据的新鲜度标注 / 展示数据源更新日期": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/currency-tool.test.tsx"
+          }
+        ],
+        "汇率的署名义务 / 署名链接存在且可打开": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/currency-tool.test.tsx"
+          }
+        ],
+        "汇率读取失败的表现 / 数据源失败时给出提示与重试": [
+          {
+            "kind": "test",
+            "ref": "frontend/lib/travel/travel-api.test.ts"
+          },
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/service/travel/impl/ExchangeRateCurrencyProviderTest.java"
+          }
+        ],
+        "汇率读取失败的表现 / 重试成功恢复展示": [
+          {
+            "kind": "test",
+            "ref": "frontend/components/travel/currency-tool.test.tsx"
+          }
+        ]
+      },
+      "deferred": {},
+      "historicallyCovered": []
+    },
     "ci-harness": {
       "sources": [
         {

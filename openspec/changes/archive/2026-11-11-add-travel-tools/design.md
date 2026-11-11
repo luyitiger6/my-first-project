@@ -37,7 +37,7 @@
 
 `WeatherProvider` 与 `CurrencyProvider` 只暴露「按城市取天气」「取以 CNY 为基准的汇率表」，实现放 `impl/`。OpenWeatherMap 的 key 生效后新增一个实现、改一处装配即可切换，控制器、DTO、前端、缓存全部不动。
 
-这也是本次 MCP 结论的落点：将来 AI 助手接入 LLM 时，这两个接口正好是 MCP tool 的实现载体。
+这也是本次 MCP 结论的落点：**MCP 以后会集成到智能助手中**（已与需求方确认的方向）。届时这两个接口正好是 MCP tool 的实现载体——引入 MCP 需要新增的是「协议层 + 工具声明」，服务层不必重写。
 
 ### D3 缓存放进程内存，不放 Redis
 
@@ -51,7 +51,7 @@
 
 `Map<String, Double>` 是这道题最自然的表达，但 10 号闸门的类型映射表对 `Map` fail-closed，契约表无法声明、三方比对直接跳过——等于这个响应体不受管治。
 
-改用 `List<CurrencyRate>`，`CurrencyRate` 是 `{ code, value }` 的 record。契约表因此能逐个字段声明，且将来加币种不用改 DTO。
+改用 `List<CurrencyRateResponse>`，`CurrencyRateResponse` 是 `{ code, value }` 的 record。契约表因此能逐个字段声明，且将来加币种不用改 DTO。
 
 ### D5 天气按经纬度查询，不按城市名
 
@@ -101,9 +101,9 @@ Open-Meteo 返回的是 WMO weather code（0=晴、61=雨……）。映射表�
 |---|---|---|
 | CurrencyResponse | base | string |
 | CurrencyResponse | updatedAt | string |
-| CurrencyResponse | rates | Array<CurrencyRate> |
-| CurrencyRate | code | string |
-| CurrencyRate | value | number |
+| CurrencyResponse | rates | Array<CurrencyRateResponse> |
+| CurrencyRateResponse | code | string |
+| CurrencyRateResponse | value | number |
 
 ## Risks / Trade-offs
 
