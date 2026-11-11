@@ -7,7 +7,14 @@
       deferred            -> 显式欠账，必须带 reason / registeredOn / unlock
       historicallyCovered -> 历史按能力级来源覆盖，尚未逐条评估
 
-    闸门只保证「登记齐全、引用真实、字段完整」，不证明行为正确。
+    引用可写成 <path>#<anchor>：锚点必须是该文件中真实存在的标识符（Java 方法名）
+    或文本片段（vitest 的 it 描述），用于堵住「文件存在、其中并无对应测试」。
+
+    账本可选 evidencePolicy.methodAnchorPatterns（缺省时行为不变）：
+      标题命中这些关键词的场景，其 test 引用必须带锚点。不强制证据层级：
+      确定性模拟交错、两个实例共用一个存储都能由单测有效验证，强制 e2e 只会逼人造假。
+
+    闸门只保证「登记齐全、引用真实、锚点存在、强度达标」，不证明行为正确。
     通过则 exit 0，不通过则 exit 1，不做任何交互式提问（AGENTS.md §8 约定）。
 #>
 $ErrorActionPreference = 'Stop'
@@ -38,21 +45,52 @@ function Get-MapValue {
     return $Map.PSObject.Properties[$Key].Value
 }
 
+function Split-EvidenceRef {
+    param([string]$RawRef)
+    $hashIndex = $RawRef.IndexOf('#')
+    if ($hashIndex -lt 0) {
+        return @{ Path = $RawRef; Anchor = $null }
+    }
+    return @{
+        Path   = $RawRef.Substring(0, $hashIndex)
+        Anchor = $RawRef.Substring($hashIndex + 1)
+    }
+}
+
 function Test-EvidenceRef {
     param($Ref, [string]$Where)
     $kind = [string]$Ref.kind
-    $path = [string]$Ref.ref
+    $rawRef = [string]$Ref.ref
     if (-not ($validKinds -contains $kind)) {
         Add-Problem "未知证据类型：$Where -> $kind"
         return
     }
-    if ([string]::IsNullOrWhiteSpace($path)) {
+    if ([string]::IsNullOrWhiteSpace($rawRef)) {
         Add-Problem "证据引用为空：$Where"
+        return
+    }
+    $parts = Split-EvidenceRef -RawRef $rawRef
+    $path = $parts.Path
+    $anchor = $parts.Anchor
+    if ([string]::IsNullOrWhiteSpace($path)) {
+        Add-Problem "证据引用缺少路径：$Where -> $rawRef"
         return
     }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         Add-Problem "引用不存在：$Where -> $path"
         return
+    }
+    if (-not [string]::IsNullOrWhiteSpace($anchor)) {
+        $content = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+        if ($anchor -match '^[A-Za-z_][A-Za-z0-9_]*$') {
+            $pattern = '(?<![A-Za-z0-9_])' + [regex]::Escape($anchor) + '(?![A-Za-z0-9_])'
+            if ($content -notmatch $pattern) {
+                Add-Problem "引用锚点不存在：$Where -> $rawRef"
+            }
+        }
+        elseif (-not $content.Contains($anchor)) {
+            Add-Problem "引用锚点不存在：$Where -> $rawRef"
+        }
     }
     switch ($kind) {
         'gate' {
@@ -107,6 +145,12 @@ catch {
 if ($null -eq $ledger.capabilities) {
     Write-Host '13-spec-evidence-check FAILED: 账本缺少 capabilities'
     exit 1
+}
+
+$methodAnchorPatterns = @()
+if ($null -ne $ledger.evidencePolicy) {
+    $methodAnchorPatterns = @((Get-MapValue -Map $ledger.evidencePolicy -Key 'methodAnchorPatterns') |
+        Where-Object { $null -ne $_ } | ForEach-Object { [string]$_ })
 }
 
 $specDirs = @(Get-ChildItem -LiteralPath $specsRoot -Directory | Sort-Object Name)
@@ -189,6 +233,15 @@ foreach ($name in $specNames) {
         foreach ($ref in $refs) {
             Test-EvidenceRef -Ref $ref -Where "$name/verified/$title"
             $totalRefs++
+        }
+
+        $anchorHits = @($methodAnchorPatterns | Where-Object { $title -like "*$_*" })
+        if ($anchorHits.Count -gt 0) {
+            foreach ($ref in @($refs | Where-Object { [string]$_.kind -eq 'test' })) {
+                if (([string]$ref.ref) -notmatch '#') {
+                    Add-Problem "高风险场景的 test 引用缺少方法锚点：$name / $title -> $($ref.ref)（命中：$($anchorHits -join ',')）"
+                }
+            }
         }
     }
 

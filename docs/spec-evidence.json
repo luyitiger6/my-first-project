@@ -1,5 +1,8 @@
 {
   "version": 1,
+  "evidencePolicy": {
+    "methodAnchorPatterns": ["多实例", "并发", "重启", "持久化", "幂等"]
+  },
   "capabilities": {
     "wanderchain-travel-weather": {
       "sources": [
@@ -539,7 +542,7 @@
         "全站写操作来源限流 / 多实例共用同一额度": [
           {
             "kind": "test",
-            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitInterceptorTest.java"
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitInterceptorTest.java#twoInterceptorsShareTheSameQuota"
           }
         ],
         "全站写操作来源限流 / 缓存不可用时放行": [
@@ -766,7 +769,7 @@
           { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
         ],
         "未读计数与已读标记 / 已读与新消息并发时不丢": [
-          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
+          { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java#markReadRecomputesByPosition" }
         ],
         "未读计数与已读标记 / 总未读数端点返回各会话之和": [
           { "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/dm/DmServiceImplTest.java" }
@@ -1066,7 +1069,7 @@
         "投票写入同步帖子点赞数 / 换向按差额调整": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
         "投票写入同步帖子点赞数 / 取消赞成与取消反对": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
         "收藏写入同步帖子收藏数 / 收藏加一": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
-        "收藏写入同步帖子收藏数 / 重复收藏幂等": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
+        "收藏写入同步帖子收藏数 / 重复收藏幂等": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java#repeatedBookmarkIsIdempotent" }],
         "收藏写入同步帖子收藏数 / 取消收藏减一": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
         "计数同步的原子性与边界 / 两次赞成累计为二": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
         "计数同步的原子性与边界 / 互动失败计数回滚": [{ "kind": "test", "ref": "backend/src/test/java/com/luyi/myfirst/service/post/interaction/PostInteractionServiceTest.java" }],
