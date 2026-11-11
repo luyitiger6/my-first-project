@@ -18,6 +18,6 @@
 
 ## 4. 验证
 
-- [ ] 4.1 新增后端用例通过
-- [ ] 4.2 `13-spec-evidence-check.ps1` PASSED
-- [ ] 4.3 `15-test-weakening-check.ps1` PASSED（只增不减）
+- [x] 4.1 新增后端用例通过
+- [x] 4.2 `13-spec-evidence-check.ps1` PASSED
+- [x] 4.3 `15-test-weakening-check.ps1` PASSED（只增不减）
