@@ -187,7 +187,7 @@
 
 ### 2.15 13 号证据账本只校验引用文件存在，不校验证据强度（已实施）
 
-**状态**：2026-11-11 已实施，见 `openspec/changes/harden-evidence-refs/`。落地的是候选 1（`ref` 支持 `<path>#<anchor>`，标识符按词边界、其余按子串，找不到即 FAIL）；候选 2 的「证据层级」维度被否决——两个 `WriteRateLimitInterceptor` 实例共用一个 redis 就是完整的多实例拓扑，单测足以验证，强制 `e2e/gate` 只会逼人造假。最终只保留 `evidencePolicy.methodAnchorPatterns`：命中场景的 `test` 引用必须带方法锚点。存量覆盖 3 条高风险 Scenario，其中「多实例共用同一额度」补了真双实例用例 `twoInterceptorsShareTheSameQuota`。
+**状态**：2026-11-11 已实施并归档，见 `openspec/changes/archive/2026-11-11-harden-evidence-refs/`。落地的是候选 1（`ref` 支持 `<path>#<anchor>`，标识符按词边界、其余按子串，找不到即 FAIL）；候选 2 的「证据层级」维度被否决——两个 `WriteRateLimitInterceptor` 实例共用一个 redis 就是完整的多实例拓扑，单测足以验证，强制 `e2e/gate` 只会逼人造假。最终只保留 `evidencePolicy.methodAnchorPatterns`：命中场景的 `test` 引用必须带方法锚点。存量覆盖 3 条高风险 Scenario，其中「多实例共用同一额度」补了真双实例用例 `twoInterceptorsShareTheSameQuota`。
 
 **现状**（实施前）：`13-spec-evidence-check.ps1` 校验 `ref` 指向的文件真实存在、`kind` 合法，但不校验「那文件里真有这条测试」，也不区分「单元测试断言了逻辑」与「端到端跑通了链路」。
 
