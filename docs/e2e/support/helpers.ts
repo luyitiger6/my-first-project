@@ -470,6 +470,66 @@ export async function stubProfilesApi(page: Page, handler: ProfilesStubHandler):
   })
 }
 
+/** ------------------------------------------------------------------ *
+ * 资料页端点（本人资料 / 标签清单 / 公开资料 / 作者帖子）的桩
+ * ------------------------------------------------------------------ */
+
+export interface RecordedProfileRequest {
+  method: string
+  pathname: string
+  body: unknown
+}
+
+export interface ProfileStubResponse {
+  status?: number
+  body?: unknown
+}
+
+/** 按请求本身计算响应：同一个 handler 里按 pathname 与 method 分流四条端点。 */
+export type ProfileStubHandler = (
+  request: RecordedProfileRequest,
+) => ProfileStubResponse | Promise<ProfileStubResponse>
+
+/** `/api/profile`、`/api/profile/interests`、`/api/profiles/{id}` 与 `/api/profiles/{id}/posts`。 */
+const PROFILE_PATHS = /\/api\/(profile(\/interests)?|profiles\/[^/?]+(\/posts)?)(\?.*)?$/
+
+/**
+ * 把资料页用到的四条端点全部桩掉。
+ *
+ * 不复用 `stubProfilesApi`：那条 route 以 /api/profiles 为前缀通配，会把公开用户页的
+ * 单个资料与作者帖子请求一起吞成名片列表。这里用一条正则覆盖四条路径，handler 内按
+ * pathname 与 method 分流，spec 里不必为每个端点各写一次 route；
+ * 批量名片 `GET /api/profiles?publicIds=` 不在本正则内，仍由 `stubProfilesApi` 负责。
+ */
+export async function stubProfilePagesApi(page: Page, handler: ProfileStubHandler): Promise<void> {
+  await page.route(PROFILE_PATHS, async (route: Route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    const raw = request.postData()
+    let body: unknown = null
+    if (raw) {
+      try {
+        body = JSON.parse(raw) as unknown
+      } catch {
+        body = raw
+      }
+    }
+
+    const resolved = await handler({ method: request.method(), pathname: url.pathname, body })
+    const status = resolved.status ?? 200
+    try {
+      await route.fulfill({
+        status,
+        contentType: 'application/json',
+        // 204 不允许带响应体。
+        body: status === 204 ? '' : JSON.stringify(resolved.body ?? {}),
+      })
+    } catch {
+      // 离开页面会让浏览器取消在途请求，迟到响应本就该被丢弃。
+    }
+  })
+}
+
 /**
  * 显式证据截图：落到 `docs/e2e/screenshots/<spec>/<name>.png`（该目录在 .gitignore 中）。
  * 与失败自动截图分开命名，避免把「证据」和「故障现场」混在一起。
