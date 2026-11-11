@@ -26,6 +26,8 @@
 
 代理 MUST 额外按白名单转发 `Cookie`、`Origin`、`Referer` 三个请求头：后端只从 cookie 读取令牌、并对写请求做来源校验，缺任一头都会让认证链路在端到端上静默失效。白名单之外的请求头 MUST NOT 转发，`Host` MUST NOT 转发。上游响应的 `Set-Cookie` MUST 逐条回传（多条 MUST NOT 合并为一条），`Retry-After` 与 `Content-Type` 维持既有透传行为。
 
+在既有三个头之外，代理 MUST 转发 `X-Forwarded-For`，并 MUST 原样透传上游给出的值、MUST NOT 追加自身地址：后端按该头的最后一跳识别客户端来源，代理追加会让全部请求重新聚合成单一来源。上游未提供该头时，代理 MUST NOT 自行补值。
+
 #### Scenario: 同源转发
 
 - **WHEN** 浏览器请求 `/api/todos`
@@ -65,6 +67,16 @@
 
 - **WHEN** 后端在一个响应里下发多条 `Set-Cookie`
 - **THEN** 浏览器收到同样数量的 `Set-Cookie` 条目，每条属性完整，未被逗号合并成一条
+
+#### Scenario: 客户端地址转发头原样透传
+
+- **WHEN** 上游已在 `X-Forwarded-For` 中给出客户端地址，经代理发起请求
+- **THEN** 转发给后端的 `X-Forwarded-For` 与上游值逐字相同，不包含代理自身地址
+
+#### Scenario: 上游缺失地址转发头不伪造
+
+- **WHEN** 上游未提供 `X-Forwarded-For`
+- **THEN** 转发给后端的请求不包含该头，由后端按「未知来源」处理
 
 ### Requirement: 前端测试链可执行
 
