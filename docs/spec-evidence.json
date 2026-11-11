@@ -158,7 +158,20 @@
           "ref": "frontend/app/layout.test.tsx"
         }
       ],
-      "verified": {},
+      "verified": {
+        "API 同源代理（运行期可切换） / 客户端地址转发头原样透传": [
+          {
+            "kind": "test",
+            "ref": "frontend/app/api/[...path]/route.test.ts"
+          }
+        ],
+        "API 同源代理（运行期可切换） / 上游缺失地址转发头不伪造": [
+          {
+            "kind": "test",
+            "ref": "frontend/app/api/[...path]/route.test.ts"
+          }
+        ]
+      },
       "deferred": {},
       "historicallyCovered": [
         "Next.js 前端可独立构建 / 生产构建成功",
@@ -308,7 +321,68 @@
           "ref": "backend/src/test/java/com/luyi/myfirst/service/auth/PasswordResetTest.java"
         }
       ],
-      "verified": {},
+      "verified": {
+        "全站写操作来源限流 / 来源超限返回 429": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitInterceptorTest.java"
+          }
+        ],
+        "全站写操作来源限流 / 读请求不占写额度": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitInterceptorTest.java"
+          },
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitChainIntegrationTest.java"
+          }
+        ],
+        "全站写操作来源限流 / 认证端点不重复计数": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitInterceptorTest.java"
+          },
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitChainIntegrationTest.java"
+          }
+        ],
+        "全站写操作来源限流 / 未知来源独立额度": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitInterceptorTest.java"
+          },
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitChainIntegrationTest.java"
+          }
+        ],
+        "全站写操作来源限流 / 多实例共用同一额度": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitInterceptorTest.java"
+          }
+        ],
+        "全站写操作来源限流 / 缓存不可用时放行": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/WriteRateLimitInterceptorTest.java"
+          }
+        ],
+        "登录失败以来源限流代替账户锁定 / 空信任边界拒绝启动": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/config/AuthPropertiesBindingTest.java"
+          }
+        ],
+        "登录失败以来源限流代替账户锁定 / 可信代理按最后一跳识别": [
+          {
+            "kind": "test",
+            "ref": "backend/src/test/java/com/luyi/myfirst/web/auth/interceptor/TrustedProxySourceKeyResolverTest.java"
+          }
+        ]
+      },
       "deferred": {},
       "historicallyCovered": [
         "用户账户生命周期三态 / 注册即完成邮箱验证",
