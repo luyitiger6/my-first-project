@@ -154,13 +154,20 @@
 
 **建议最小动作**：写 .ps1 时用 `[IO.File]::WriteAllText($p, $t, [Text.UTF8Encoding]::new($true))` 显式指定编码，不依赖 `Set-Content` / `Out-File` 的默认值；提交前对 `harness/` 扫一次乱码特征（`閳|閿|瀵ら缚|寤鸿|鈥斺`）。**成本**：一条排查命令；若要固化成 16 号编码闸门，也符合 §3「由真实事故驱动」。
 
-### 2.13 三条 E2E 在 main 上既有失败（2026-11-10 user-detail 验收命中）
+### 2.13 三条 E2E 在 main 上既有失败（2026-11-10 user-detail 验收命中，2026-11-11 已解决）
 
 **现象**：`npm run test:e2e -- docs/e2e/post-feed.spec.ts` 有 2 例失败——「卡片按真实 DTO 渲染…」与「名片缺失时…Author unavailable」；两例的快照里作者区停在骨架（`aria-hidden`），10 秒内昵称与缺失文案都没出现。`docs/e2e/post-interactions.spec.ts` 有 1 例失败——「375px 且 reduced-motion 下…无横向滚动」实测溢出 37px（阈值 ≤ 1）。把 frontend 切到 `main`（`c317afa`）逐条复跑，结果完全一致，与 `feat/user-detail-page` 无关。
 
 **后果**：E2E 子集跑不出「全绿」，Stage 2 的「E2E 全绿」判据当前被这三条既有失败卡住；若不做 main 对照，容易误判为新分支回归。
 
 **建议最小动作**：另开 `fix/` 分支——(a) 查 `/posts` 的作者名片请求为何在桩下不落地（先看 `stubProfilesApi` 的 `**/api/profiles**` 路由与 `AuthorArea` 的 pending 判定）；(b) 定位 post-detail 在 375px 下溢出 37px 的元素（用 `document.scrollingElement.scrollWidth` 对逐元素 `getBoundingClientRect` 差值）。**成本**：两个独立排查。**价值**：把「E2E 全绿」恢复成可判定信号。
+
+**2026-11-11 处置（fix/e2e-baseline-failures-20261111）**：
+
+- post-feed 两例在当前 main 复跑 9/9 全绿，不复现——11-10 之后的合并已使其恢复，本次未改作者区代码。
+- 窄屏溢出根因：登录态站点头部 `.actions` 在 ≤760px 下同时容纳「昵称 + My profile + Log out」超宽。临时 probe 实测 `site-header …__actions` 宽 396、右缘 412，视口 375，溢出 37px 与断言完全一致。
+- 修复：窄屏隐藏账号昵称（`frontend/components/auth/account-menu.module.css` 的 `@media (max-width: 760px)` 内 `.name { display: none }`），完整昵称在 `/me` 昵称字段可见，个人中心与退出入口保留。
+- 验证：probe 复测 `scrollWidth=375`、无越界元素；`npm run test:e2e -- docs/e2e/post-interactions.spec.ts docs/e2e/post-feed.spec.ts` 21/21 绿；前端 vitest 54 文件 610 用例绿。
 
 ---
 
