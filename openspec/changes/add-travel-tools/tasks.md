@@ -50,7 +50,7 @@
 
 ## 7. 集成与工程登记
 
-- [ ] 7.1 在 `harness/checks/10-contract-check.ps1` 的 `$contractPairs` 增加 travel 一组（后端目录 `web/travel/dto`、前端 `lib/contracts/travel.ts`）；验证：`powershell -File harness\checks\10-contract-check.ps1` 退出码 0，且输出行数从 6 组增至 7 组
+- [ ] 7.1 在 `harness/checks/10-contract-check.ps1` 的 `$contractPairs` 增加 travel 一组（后端目录 `web/travel/dto`、前端 `lib/contracts/travel.ts`）；验证：`powershell -File harness\checks\10-contract-check.ps1` 退出码 0，且受管契约组数由 7 组增至 8 组
 
 - [ ] 7.2 后端编译与受影响的单测；验证：`mvn -q test` 退出码 0
 
